@@ -1,6 +1,7 @@
 from structure.exp import Experiment, ExperimentFactory
 from structure.arch import ArchFactory
 from structure.design import Design
+from util import pretty
 
 from rich.progress import track
 from rich.style import Style
@@ -47,7 +48,15 @@ class Runner():
         # collect all results
         results = []
         for future in track(as_completed(futures), description=desc, finished_style=Style(color='green'), total=len(futures)):
-            results.append(future.result())
+            result = future.result()
+            inp, out = result
+            print("====================================")
+            print("Provided params:")
+            pretty(inp, 1)
+            print("\nResults:")
+            pretty(out, 1)
+            print("====================================")
+            results.append(result)
         
         executor.shutdown()
         return results

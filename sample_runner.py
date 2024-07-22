@@ -3,7 +3,6 @@ from structure.exp.vtr import VtrExperiment
 from structure.arch.stratix_IV_like import BaseArchFactory
 from structure.design.conv_2d.pw import Conv2dPwDesign
 import structure.consts.keys as keys
-from util import pretty
 import os
 
 params = {
@@ -34,10 +33,4 @@ params = {
 runner = Runner(BaseArchFactory(), Conv2dPwDesign(), VtrExperiment, params)
 results = runner.run_all_threaded(desc='lut_explore')
 
-for inp, out in results:
-    print("====================================")
-    print("Provided params:")
-    pretty(inp, 1)
-    print("\nResults:")
-    pretty(out, 1)
-    print("====================================")
+# do as required with results: list of (params, results)
