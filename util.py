@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 import random
 import re
+from io import StringIO
 
 random.seed(114514)
 DATA_WIDTH_DEFAULT = [1, 2, 4, 8]
@@ -586,14 +587,28 @@ def bark(content='default flow notification', title='FPGA FLOW'):
         print('Bark URL not set')
         return False
 
-def pretty(d: dict, indent=0):
-   """
-   Pretty-print a dictionary.
-   """
-   for key, value in d.items():
-      print('\t' * indent + str(key), end='')
-      if isinstance(value, dict):
-         print()
-         pretty(value, indent+1)
-      else:
-         print(f": {value}")
+def pretty(d: dict, indent=0, to_string=False) -> str:
+    """
+    Pretty-print a dictionary.
+
+    Optional arguments:
+    * indent:int, base indent, default 0
+    * to_string:bool, True: returns a pretty-printed string; False: prints directly to console, default False
+    """
+
+    file = StringIO() if to_string else None
+
+    for key, value in d.items():
+        print('\t' * indent + str(key), end='', file=file)
+        if isinstance(value, dict):
+            print(file=file)
+            pretty(value, indent+1)
+        else:
+            print(f": {value}", file=file)
+
+    if to_string:
+        ret = file.getvalue()
+        file.close()
+        return ret
+
+    return None
