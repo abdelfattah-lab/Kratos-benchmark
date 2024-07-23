@@ -19,13 +19,13 @@ DEFAULTS_TCL = {
 
 # Wrapper defaults
 DEFAULTS_WRAPPER = {
-    'constant_weight': True
+    'constant_weight': True,
+    'sparsity': 0.0,
+    'clock': 1
 }
 DEFAULTS_WRAPPER_CONV = {
+    'buffer_stages': 0,
+    'kernel_only': False,
     'separate_filters': False,
     **DEFAULTS_WRAPPER
-}
-DEFAULTS_WRAPPER_CONV_2D = {
-    'buffer_stages': 0,
-    **DEFAULTS_WRAPPER_CONV
 }

@@ -18,8 +18,9 @@ TRANSLATIONS_DESIGN = {
     'data_width': 'Data width',
     'sparsity': 'Sparsity',
     'clock': 'Clock',
+    'constant_weight': 'Constant input',
 
-    # Convolution-specific
+    # Convolution
     'img_w': 'Image width',
     'img_h': 'Image height',
     'img_d': 'Image depth',
@@ -29,5 +30,9 @@ TRANSLATIONS_DESIGN = {
     'stride_w': 'Stride width',
     'stride_h': 'Stride height',
     'buffer_stages': 'Buffer stages',
-    'constant_weight': 'Constant weight',
+    
+    #GEMM
+    'row_num': 'No. of rows',
+    'col_num': 'No. of columns',
+    'length': 'Length',
 }

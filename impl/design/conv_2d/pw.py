@@ -1,11 +1,11 @@
 from structure.design import StandardizedSdcDesign
 from util import reset_seed, gen_long_constant_bits
-from structure.consts.shared_defaults import DEFAULTS_TCL, DEFAULTS_WRAPPER_CONV_2D
+from structure.consts.shared_defaults import DEFAULTS_TCL, DEFAULTS_WRAPPER_CONV
 from structure.consts.shared_requirements import REQUIRED_KEYS_CONV2D_STRIDE
 
 class Conv2dPwDesign(StandardizedSdcDesign):
     """
-    Conv-2D Fully Pixel-wise design.
+    Conv-2D Pixel-wise design.
     """
     def get_name(self, impl: str, data_width: int, img_w: int, img_h: int, img_d: int, fil_w: int, fil_h: int, res_d: int, stride_w: int, stride_h: int,
                     constant_weight: bool, sparsity: float, buffer_stages: int, separate_filters: bool, **kwargs):
@@ -16,9 +16,9 @@ class Conv2dPwDesign(StandardizedSdcDesign):
 
     def verify_params(self, params: dict[str, any]) -> dict[str, any]:
         """
-        Verification of parameters for Conv-2D Fully Pixel-wise.
+        Verification of parameters for Conv-2D Pixel-wise.
         """
-        return self.verify_required_keys(DEFAULTS_WRAPPER_CONV_2D, REQUIRED_KEYS_CONV2D_STRIDE, params)
+        return self.verify_required_keys(DEFAULTS_WRAPPER_CONV, REQUIRED_KEYS_CONV2D_STRIDE, params)
 
     def gen_tcl(self, wrapper_module_name: str, wrapper_file_name: str, search_path: str, **kwargs) -> str:
         """
@@ -40,7 +40,7 @@ class Conv2dPwDesign(StandardizedSdcDesign):
 load_package flow
 
 # new project
-project_new -revision v1 -overwrite unrolled_conv_reg_parallel
+project_new -revision v1 -overwrite unrolled_systolic_ws
 
 # device
 set_global_assignment -name FAMILY "Arria 10"
@@ -63,20 +63,23 @@ set_global_assignment -name SEARCH_PATH {search_path}
 set_instance_assignment -name VIRTUAL_PIN ON -to clk
 set_instance_assignment -name VIRTUAL_PIN ON -to reset
 
+set_instance_assignment -name VIRTUAL_PIN ON -to fil[*][*][*][*][*]
 set_instance_assignment -name VIRTUAL_PIN ON -to val_in
 set_instance_assignment -name VIRTUAL_PIN ON -to rdy_in
 
-set_instance_assignment -name VIRTUAL_PIN ON -to fil[*][*][*][*][*]
-set_instance_assignment -name VIRTUAL_PIN ON -to img[*][*][*][*]
-set_instance_assignment -name VIRTUAL_PIN ON -to result[*][*][*][*]
-
-
 set_instance_assignment -name VIRTUAL_PIN ON -to img_rdaddress[*][*][*]
+set_instance_assignment -name VIRTUAL_PIN ON -to img_wraddress[*][*][*]
 set_instance_assignment -name VIRTUAL_PIN ON -to img_data_in[*][*][*]
+set_instance_assignment -name VIRTUAL_PIN ON -to img_data_out[*][*][*]
+set_instance_assignment -name VIRTUAL_PIN ON -to img_wren[*][*]
 
-set_instance_assignment -name VIRTUAL_PIN ON -to result_wraddress[*][*][*]
-set_instance_assignment -name VIRTUAL_PIN ON -to result_data_out[*][*][*]
-set_instance_assignment -name VIRTUAL_PIN ON -to result_wren[*][*]
+
+
+set_instance_assignment -name VIRTUAL_PIN ON -to result_rdaddress[*][*]
+set_instance_assignment -name VIRTUAL_PIN ON -to result_wraddress[*][*]
+set_instance_assignment -name VIRTUAL_PIN ON -to result_data_in[*][*]
+set_instance_assignment -name VIRTUAL_PIN ON -to result_data_out[*][*]
+set_instance_assignment -name VIRTUAL_PIN ON -to result_wren[*]
 
 
 # effort level
