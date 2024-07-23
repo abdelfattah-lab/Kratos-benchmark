@@ -58,7 +58,7 @@ class Experiment(ParamsChecker):
 
         # generate README file
         self.readme_file_name = 'README.txt'
-        with open(os.path.join(self.root_dir, self.readme_file_name), 'w') as f:
+        with open(os.path.join(self.exp_dir, self.readme_file_name), 'w') as f:
             f.write(self.gen_readme(self.exp_params.get('extra_info')))
 
     def _prerun_check(self) -> None:
