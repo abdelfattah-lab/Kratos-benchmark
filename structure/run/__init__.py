@@ -45,7 +45,7 @@ class Runner():
 
         # collect all results
         results = []
-        for future in track(as_completed(futures_dict.keys()), description=desc, finished_style=Style(color='green'), total=len(futures)):
+        for future in track(as_completed(futures_dict.keys()), description=desc, finished_style=Style(color='green'), total=len(futures_dict)):
             exp: Experiment = futures_dict[future]
             try:
                 result = future.result()
