@@ -3,6 +3,7 @@ from structure.arch import ArchFactory
 from structure.design import Design
 from util import pretty
 
+import os
 from rich.progress import track
 from rich.style import Style
 from typing import Type, TypeVar
@@ -20,14 +21,14 @@ class Runner():
         self.factory = ExperimentFactory(arch, design, experiment_class)
         self.experiments = self.factory.gen_experiments(params)
 
-    def run_all_threaded(self, desc='run', num_parallel_tasks=1, **kwargs) -> list[dict, dict]:
+    def run_all_threaded(self, desc='run', num_parallel_tasks=1, runner_err_file='runner.err', **kwargs) -> list[dict, dict]:
         """
         Main function: run all generated experiments with a thread pool.
 
         Optional arguments:
         * desc:str, description of run (displayed with the progress bar)
         * num_parallel_tasks:int, maximum number of simultaneous threads allowed in the thread pool.
-
+        * runner_err_file:str, name of error file created by runner if an exception occurs while running the Experiment. Created in the Experiment folder.
         All other keyword arguments are passed directly to the Experiment.run() function.
 
         @return a list of (params, results).
@@ -39,24 +40,32 @@ class Runner():
             return exp.full_params, exp.get_result()
         
         # submit all Experiments into the ThreadPoolExecutor
-        futures = []
         executor = ThreadPoolExecutor(max_workers=num_parallel_tasks)
-        for exp in self.experiments:
-            future = executor.submit(run_experiment, exp)
-            futures.append(future)
+        futures_dict = { executor.submit(run_experiment, exp): exp for exp in self.experiments }
 
         # collect all results
         results = []
-        for future in track(as_completed(futures), description=desc, finished_style=Style(color='green'), total=len(futures)):
-            result = future.result()
-            inp, out = result
-            print("====================================")
-            print("Provided params:")
-            pretty(inp, 1)
-            print("\nResults:")
-            pretty(out, 1)
-            print("====================================")
-            results.append(result)
+        for future in track(as_completed(futures_dict.keys()), description=desc, finished_style=Style(color='green'), total=len(futures)):
+            exp: Experiment = futures_dict[future]
+            try:
+                result = future.result()
+                inp, out = result
+                print("====================================")
+                print("Provided params:")
+                pretty(inp, 1)
+                print("\nResults:")
+                pretty(out, 1)
+                print("====================================")
+                results.append(result)
+            except Exception as e:
+                err_str = f"Exception:\n{e}\n"
+                with open(os.path.join(exp.exp_dir, runner_err_file), 'w') as f:
+                    f.write(err_str)
+                
+                print("!-----------------------------------")
+                print(f"For experiment with directory {exp.exp_dir}, an exception occurred:")
+                print(err_str)
+                print("------------------------------------")
         
         executor.shutdown()
         return results
