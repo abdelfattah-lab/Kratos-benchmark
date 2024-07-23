@@ -585,3 +585,15 @@ def bark(content='default flow notification', title='FPGA FLOW'):
     else:
         print('Bark URL not set')
         return False
+
+def pretty(d: dict, indent=0):
+   """
+   Pretty-print a dictionary.
+   """
+   for key, value in d.items():
+      print('\t' * indent + str(key), end='')
+      if isinstance(value, dict):
+         print()
+         pretty(value, indent+1)
+      else:
+         print(f": {value}")

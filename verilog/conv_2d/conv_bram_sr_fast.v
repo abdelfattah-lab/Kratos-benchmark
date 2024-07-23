@@ -1,8 +1,8 @@
 `ifndef __CONV_BRAM_SR_FAST_V__
 `define __CONV_BRAM_SR_FAST_V__
 
-`include "conv_bram_sr/conv_bram_sr_fast_ctrl.v"
-`include "conv_bram_sr/conv_bram_sr_fast_dpath.v"
+`include "conv_2d/conv_bram_sr_fast_ctrl.v"
+`include "conv_2d/conv_bram_sr_fast_dpath.v"
 module conv_bram_sr_fast
 #(
     parameter DATA_WIDTH = 8, // data width
