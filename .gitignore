@@ -16,3 +16,7 @@ results*/
 flow.py
 flow2.py
 experiments.zip
+
+# used for background execution
+*.out
+*.pid
