@@ -1,9 +1,9 @@
 from structure.exp import Experiment
 from structure.consts.shared_requirements import REQUIRED_KEYS_EXP
-from util import extract_info_vtr
+from util import extract_info_vtr, start_dependent_process
 
 import os
-import subprocess
+from subprocess import DEVNULL
 
 class VtrExperiment(Experiment):
     """
@@ -57,7 +57,7 @@ class VtrExperiment(Experiment):
         self.stderr_file = open(os.path.join(self.exp_dir, self.exp_params['stderr_file']), 'w')
 
         # start VTR on subprocess        
-        self.process = subprocess.Popen(cmd, stdout=self.stdout_file, stderr=self.stderr_file, cwd=self.exp_dir)
+        self.process = start_dependent_process(cmd, stdout=self.stdout_file, stderr=self.stderr_file, cwd=self.exp_dir)
 
         # start GC thread
         self._start_gc_thread(self._clean, (clean,))
@@ -82,7 +82,7 @@ class VtrExperiment(Experiment):
                 remove_list.append(possible)
 
         cmd = ['zip', '-r', 'largefile.zip'] + remove_list
-        zip_result = subprocess.run(cmd, cwd=output_temp_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        zip_result = start_dependent_process(cmd, cwd=output_temp_dir, stdout=DEVNULL, stderr=DEVNULL)
 
         if zip_result.returncode == 0:
             for remove_file in remove_list:

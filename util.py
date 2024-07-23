@@ -13,6 +13,7 @@ import pandas as pd
 import random
 import re
 from io import StringIO
+import subprocess, signal, ctypes
 
 random.seed(114514)
 DATA_WIDTH_DEFAULT = [1, 2, 4, 8]
@@ -616,3 +617,18 @@ def pretty(d: dict, indent=0, to_string=False) -> str:
         return ret
 
     return None
+
+def start_dependent_process(cmd, **kwargs) -> subprocess.Popen:
+    """
+    Starts a subprocess that will terminate with the parent.
+    All keyword arguments will be passed to subprocess.Popen(), except preexec_fn, which will be overwritten.
+    """
+    if 'preexec_fn' in kwargs:
+        del kwargs['preexec_fn']
+    
+    def set_pdeathsig(sig = signal.SIGTERM):
+        def callable():
+            return ctypes.CDLL("libc.so.6").prctl(1, sig)
+        return callable
+    
+    return subprocess.Popen(cmd, preexec_fn=set_pdeathsig(), **kwargs)

@@ -1,9 +1,11 @@
+import os
+os.chdir(os.path.dirname(os.path.realpath(__file__))) # change working directory to this file's directory (for background scripts)
+
 from structure.run import Runner
 from impl.exp.vtr import VtrExperiment
 from impl.arch.base import BaseArchFactory
 from impl.design.conv_2d.pw import Conv2dPwDesign
 import structure.consts.keys as keys
-import os
 
 params = {
     keys.KEY_EXP: {

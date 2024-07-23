@@ -4,8 +4,6 @@ from structure.design import Design
 from util import pretty
 
 import os
-from rich.progress import track
-from rich.style import Style
 from typing import Type, TypeVar
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -45,7 +43,7 @@ class Runner():
 
         # collect all results
         results = []
-        for future in track(as_completed(futures_dict.keys()), description=desc, finished_style=Style(color='green'), total=len(futures_dict)):
+        for future in as_completed(futures_dict.keys()):
             exp: Experiment = futures_dict[future]
             try:
                 result = future.result()
