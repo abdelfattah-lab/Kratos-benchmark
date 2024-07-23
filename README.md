@@ -101,3 +101,20 @@ In this example, the test bench will run experiments for:
 - ...
 
 In general, the resultant final number of experiments run will be `a * b * c * ...`, where `a, b, c, ...` are the lengths of each provided list.
+
+### Background running
+
+`run_bg.sh` is provided to facilitate running of the Python scripts as background processes, so the terminal does not hang up:
+1. Ensure that `run_bg.sh` is executable, i.e., `chmod +x run_bg.sh`
+2. Edit the parameters at the top of `run_bg.sh`:
+    - `BASH_RUN_SCRIPT`: directs the script to run *another bash script* in the background.
+    - A sample bash script to use, `run_with_venv.sh`, has been included.
+    - Note the **known limitation in terminating the script**, as detailed at the top of this file.
+3. To use the script:
+    - Start execution: `./run_bg.sh start`
+    - Stop execution: `./run_bg.sh stop`
+    - Retart execution: `./run_bg.sh start` (may not work as intended due to the limitation as detailed)
+
+When the script is running, there will be a few files generated:
+- `<script_name>.out`: This serves as the stdout of the script.
+- `<script_name>.pid`: This logs the PID of the *parent bash script*.
