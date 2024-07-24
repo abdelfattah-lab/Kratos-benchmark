@@ -1,4 +1,4 @@
-from structure.util import Abstract, ParamsChecker
+from structure.util import ParamsChecker
 from structure.arch import ArchFactory
 from structure.design import Design
 import structure.consts.keys as keys
@@ -20,8 +20,6 @@ class Experiment(ParamsChecker):
         """
         Takes in an ArchFactory, Design, and a full set of Experiment parameters (meant to be split for different subclasses).
         """
-        self.full_params = params
-
         self.exp_params = params.get(keys.KEY_EXP)
         if self.exp_params is None:
             raise ValueError(f"Experiment parameters requires base parameters provided under key '{keys.KEY_EXP}'!")
@@ -48,6 +46,11 @@ class Experiment(ParamsChecker):
         self.result = None  # result of the experiment
 
     def _setup_exp(self, required_keys: list[str]) -> None:
+        """
+        Sets up the experiment when needed, i.e., make folders and README.
+
+        * required_keys: list of keys that are required in Experiment parameters.
+        """
         # Check all parameters.
         self.exp_params = self.verify_required_keys(DEFAULTS_EXP, required_keys, self.exp_params)
          # make root and experiment directory
@@ -147,6 +150,23 @@ class Experiment(ParamsChecker):
         Get the result of the Experiment.
         """
         self.raise_unimplemented("get_result")
+
+    def get_full_params(self) -> dict[str, dict[str, any]]:
+        """
+        Returns all parameters in original format.
+        Should be called only after all parameters have been verified and defaults filled.
+        """
+        return {
+            keys.KEY_EXP: {
+                **self.exp_params
+            },
+            keys.KEY_ARCH: {
+                **self.arch_params
+            },
+            keys.KEY_DESIGN: {
+                **self.design_params
+            }
+        }
 
 E = TypeVar('E', bound=Experiment)
 class ExperimentFactory():

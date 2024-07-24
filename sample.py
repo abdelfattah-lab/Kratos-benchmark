@@ -18,13 +18,19 @@ params = {
     keys.KEY_DESIGN: {
         'data_width': [4, 8],
         'sparsity': [0.0, 0.5, 0.9],
-        'row_num': 16,
-        'col_num': 16,
-        'length': 16
+        'row_num': 4,
+        'col_num': 4,
+        'length': 4
     }
 }
 
 runner = Runner(BaseArchFactory(), GemmTFuDesign(), VtrExperiment, params)
-results = runner.run_all_threaded(desc='lut_explore')
+results = runner.run_all_threaded(
+    desc='lut_explore',
+    num_parallel_tasks=4,
+    filter_params=['lut_size', 'data_width', 'sparsity'],
+    filter_results=['fmax', 'cpd', 'blocks', 'clb']
+)
 
-# do as required with results: list of (params, results)
+# do as required with results: pandas DataFrame
+results.to_csv('sample_results.csv')

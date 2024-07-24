@@ -3,7 +3,7 @@ from structure.consts.shared_requirements import REQUIRED_KEYS_EXP
 from util import extract_info_vtr, start_dependent_process
 
 import os
-from subprocess import DEVNULL
+import subprocess
 
 class VtrExperiment(Experiment):
     """
@@ -82,7 +82,7 @@ class VtrExperiment(Experiment):
                 remove_list.append(possible)
 
         cmd = ['zip', '-r', 'largefile.zip'] + remove_list
-        zip_result = start_dependent_process(cmd, cwd=output_temp_dir, stdout=DEVNULL, stderr=DEVNULL)
+        zip_result = subprocess.run(cmd, cwd=output_temp_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
         if zip_result.returncode == 0:
             for remove_file in remove_list:
@@ -90,7 +90,7 @@ class VtrExperiment(Experiment):
                 if os.path.exists(remove_path):
                     os.remove(remove_path)
         else:
-            raise RuntimeError('Unable to zip parmys.out')
+            print(f"Unable to perform zipping for: {output_temp_dir}")
         
     def get_result(self) -> dict:
         """
