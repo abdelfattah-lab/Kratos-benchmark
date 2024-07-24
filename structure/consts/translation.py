@@ -3,7 +3,8 @@ Provides key translations, i.e., parameter names to human-readable labels.
 """
 
 TRANSLATIONS_EXP = {
-
+    'root_dir': 'Experiment root directory',
+    'verilog_search_dir': 'SystemVerilog search directory'
 }
 
 TRANSLATIONS_ARCH = {
@@ -14,7 +15,6 @@ TRANSLATIONS_ARCH = {
 
 TRANSLATIONS_DESIGN = {
     # General
-    'impl': 'Implementation',
     'data_width': 'Data width',
     'sparsity': 'Sparsity',
     'clock': 'Clock',
