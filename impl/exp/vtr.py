@@ -48,7 +48,7 @@ class VtrExperiment(Experiment):
             raise RuntimeError('VTR_ROOT not found in environment variables; unable to execute VTR.')
         vtr_script_path = os.path.join(vtr_root, 'vtr_flow/scripts/run_vtr_flow.py')
         cmd = ['python', vtr_script_path, wrapper_file_name, arch_file_name,
-               '-parser', 'system-verilog', '-top', self.design_params['wrapper_module_name'], '-search', self.verilog_search_dir, '--seed', str(seed)]
+               '-parser', 'system-verilog', '-top', self.design.wrapper_module_name, '-search', self.verilog_search_dir, '--seed', str(seed)]
         if ending is not None:
             cmd += ['-ending_stage', ending]
         

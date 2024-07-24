@@ -12,7 +12,7 @@ REQUIRED_KEYS_EXP = ['root_dir', 'verilog_search_dir']
 # --- Start: Design
 
 # General
-REQUIRED_KEYS_DESIGN = ['module_dir', 'wrapper_module_name', 'impl', 'sparsity', 'data_width']
+REQUIRED_KEYS_DESIGN = ['sparsity', 'data_width']
 
 # Convolution
 REQUIRED_KEYS_CONV1D = [*REQUIRED_KEYS_DESIGN, 'img_w', 'img_d', 'fil_w', 'res_d']

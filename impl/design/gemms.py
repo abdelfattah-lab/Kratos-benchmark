@@ -7,11 +7,15 @@ class GemmSDesign(StandardizedSdcDesign):
     """
     GEMMS design.
     """
-    def get_name(self, impl: str, data_width: int, row_num: int, col_num: int, length: int, constant_weight: bool = True, sparsity: float = 0.0, **kwargs):
+    
+    def __init__(self, impl: str = 'systolic_ws', module_dir: str = 'gemms', wrapper_module_name: str = 'systolic_ws_wrapper'):
+        super().__init__(impl, module_dir, wrapper_module_name)
+
+    def get_name(self, data_width: int, row_num: int, col_num: int, length: int, constant_weight: bool = True, sparsity: float = 0.0, **kwargs):
         """
         Name generation 
         """
-        return f'i.{impl}_d.{data_width}_r.{row_num}_c.{col_num}_l.{length}_c.{constant_weight}_s.{sparsity}'
+        return f'i.{self.impl}_d.{data_width}_r.{row_num}_c.{col_num}_l.{length}_c.{constant_weight}_s.{sparsity}'
 
     def verify_params(self, params: dict[str, any]) -> dict[str, any]:
         """
@@ -19,12 +23,11 @@ class GemmSDesign(StandardizedSdcDesign):
         """
         return self.verify_required_keys(DEFAULTS_WRAPPER, REQUIRED_KEYS_GEMM, params)
 
-    def gen_tcl(self, wrapper_module_name: str, wrapper_file_name: str, search_path: str, **kwargs) -> str:
+    def gen_tcl(self, wrapper_file_name: str, search_path: str, **kwargs) -> str:
         """
         Generate TCL file.
 
         Required arguments:
-        wrapper_module_name:str, top level entity name
         wrapper_file_name:str, top level file name
         search_path:str, search path
 
@@ -54,7 +57,7 @@ set_global_assignment -name SDC_FILE flow.sdc
 set_global_assignment -name SEED 114514
 
 # files
-set_global_assignment -name TOP_LEVEL_ENTITY {wrapper_module_name}
+set_global_assignment -name TOP_LEVEL_ENTITY {self.wrapper_module_name}
 set_global_assignment -name SYSTEMVERILOG_FILE {wrapper_file_name}
 set_global_assignment -name SEARCH_PATH {search_path}
 
@@ -88,7 +91,7 @@ project_close
 
         return template
     
-    def gen_wrapper(self, impl, data_width, row_num, col_num, length, constant_weight, sparsity, module_dir, wrapper_module_name, **kwargs) -> str:
+    def gen_wrapper(self, data_width, row_num, col_num, length, constant_weight, sparsity, **kwargs) -> str:
         template_inputx = 'input   logic   [DATA_WIDTH-1:0]        weights         [0:LENGTH-1][0:COL_NUM-1],'
         if constant_weight:
             inputx = ''
@@ -101,9 +104,9 @@ project_close
             constant_bits = ''
             x_in = 'x'
 
-        template = f'''`include "{module_dir}/{impl}.v"
+        template = f'''`include "{self.module_dir}/{self.impl}.v"
 `include "vc/vc_sram.v"
-module {wrapper_module_name}
+module {self.wrapper_module_name}
 #(
     parameter DATA_WIDTH = {data_width},
     parameter ROW_NUM = {row_num},
@@ -166,7 +169,7 @@ module {wrapper_module_name}
         end
     endgenerate
 
-    {impl} #(DATA_WIDTH,ROW_NUM,COL_NUM,LENGTH) calc_inst
+    {self.impl} #(DATA_WIDTH,ROW_NUM,COL_NUM,LENGTH) calc_inst
     (
         .clk(clk),
         .reset(reset),

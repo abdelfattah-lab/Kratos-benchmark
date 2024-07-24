@@ -7,12 +7,16 @@ class Conv1dPwDesign(StandardizedSdcDesign):
     """
     Conv-1D Pixel-Wise design.
     """
-    def get_name(self, impl: str, data_width: int, img_w: int, img_d: int, fil_w: int, res_d: int, stride_w: int,
+
+    def __init__(self, impl: str = 'conv_bram_1d', module_dir: str = 'conv_1d', wrapper_module_name: str = 'conv_bram_1d_wrapper'):
+        super().__init__(impl, module_dir, wrapper_module_name)
+
+    def get_name(self, data_width: int, img_w: int, img_d: int, fil_w: int, res_d: int, stride_w: int,
                     constant_weight: bool, sparsity: float, buffer_stages: int, **kwargs):
         """
         Name generation 
         """
-        return f'i.{impl}_d.{data_width}_w.{img_w}_d.{img_d}_fw.{fil_w}_rd.{res_d}_sw.{stride_w}_c.{constant_weight}_s.{sparsity}_bf.{buffer_stages}'
+        return f'i.{self.impl}_d.{data_width}_w.{img_w}_d.{img_d}_fw.{fil_w}_rd.{res_d}_sw.{stride_w}_c.{constant_weight}_s.{sparsity}_bf.{buffer_stages}'
 
     def verify_params(self, params: dict[str, any]) -> dict[str, any]:
         """
@@ -25,12 +29,11 @@ class Conv1dPwDesign(StandardizedSdcDesign):
 
         return self.verify_required_keys(defaults, REQUIRED_KEYS_CONV2D_STRIDE, params)
     
-    def gen_tcl(self, wrapper_module_name: str, wrapper_file_name: str, search_path: str, **kwargs) -> str:
+    def gen_tcl(self, wrapper_file_name: str, search_path: str, **kwargs) -> str:
         """
         Generate TCL file.
 
         Required arguments:
-        wrapper_module_name:str, top level entity name
         wrapper_file_name:str, top level file name
         search_path:str, search path
 
@@ -60,7 +63,7 @@ set_global_assignment -name SDC_FILE flow.sdc
 set_global_assignment -name SEED 114514
 
 # files
-set_global_assignment -name TOP_LEVEL_ENTITY {wrapper_module_name}
+set_global_assignment -name TOP_LEVEL_ENTITY {self.wrapper_module_name}
 set_global_assignment -name SYSTEMVERILOG_FILE {wrapper_file_name}
 set_global_assignment -name SEARCH_PATH {search_path}
 
@@ -99,7 +102,7 @@ project_close
 '''
         return template
     
-    def gen_wrapper(self, impl, data_width, img_w, img_d, fil_w, res_d, stride_w, separate_filters, constant_weight, sparsity, module_dir, wrapper_module_name, **kwargs) -> str:
+    def gen_wrapper(self, data_width, img_w, img_d, fil_w, res_d, stride_w, separate_filters, constant_weight, sparsity, **kwargs) -> str:
         template_inputx = 'input   logic    [DATA_WIDTH-1:0]               fil                 [0:FILTER_K-1][0:IMG_D-1][0:FILTER_L-1],'
         if constant_weight:
             inputfil = ''
@@ -115,12 +118,9 @@ project_close
             constant_bits = ''
             fil_in = 'fil'
 
-        if wrapper_module_name is None:
-            wrapper_module_name = f'{impl}_wrapper'
-
-        template = f'''`include "{module_dir}/{impl}.v"
+        template = f'''`include "{self.module_dir}/{self.impl}.v"
 `include "vc/vc_sram.v"
-module {wrapper_module_name}
+module {self.wrapper_module_name}
 #(
     parameter DATA_WIDTH = {data_width},
     parameter IMG_W = {img_w},
@@ -169,7 +169,7 @@ module {wrapper_module_name}
             logic   [RESULT_D-1:0]                           result_wren  ;
 
 
-    {impl} #(DATA_WIDTH,IMG_W,IMG_D,FILTER_L,RESULT_D,STRIDE_W) conv_1d_inst
+    {self.impl} #(DATA_WIDTH,IMG_W,IMG_D,FILTER_L,RESULT_D,STRIDE_W) conv_1d_inst
     (
         .clk(clk),
         .reset(reset),

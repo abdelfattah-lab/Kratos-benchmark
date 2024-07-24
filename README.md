@@ -65,10 +65,8 @@ This test bench uses one dictionary passed into the runner. Class-specific param
     },
     keys.KEY_DESIGN: {
         # Design parameters
-        'impl': 'conv_bram_sr_fast', # Implementation name
-        'module_dir': 'conv_2d', # Module directory
-        'wrapper_module_name': 'conv_bram_sr_fast_wrapper', # Module name
         'data_width': 4, # Data width
+        'sparsity': 0.5, # Sparsity
         # ...and any other design-specific parameters
     }
 }

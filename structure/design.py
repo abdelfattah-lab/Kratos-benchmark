@@ -8,6 +8,13 @@ class Design(DynamicallyNamed, ParamsChecker):
     - TCL & SDC files (Quartus-only)
     - Wrapper file (design.v)
     """
+
+    def __init__(self, impl: str, module_dir: str, wrapper_module_name: str):
+        self.impl = impl
+        self.module_dir = module_dir
+        if wrapper_module_name is None and impl is not None:
+            wrapper_module_name = f"{impl}_wrapper"
+        self.wrapper_module_name = wrapper_module_name
     
     def gen_sdc(self, **kwargs) -> str:
         """
