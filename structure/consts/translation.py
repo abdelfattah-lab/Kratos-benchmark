@@ -32,7 +32,7 @@ TRANSLATIONS_DESIGN = {
     'buffer_stages': 'Buffer stages',
     
     #GEMM
-    'row_num': 'No. of rows',
-    'col_num': 'No. of columns',
-    'length': 'Length',
+    'row_num': 'No. of result rows',
+    'col_num': 'No. of result columns',
+    'length': 'Length of input matrix',
 }

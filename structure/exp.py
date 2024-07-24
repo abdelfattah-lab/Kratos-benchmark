@@ -110,9 +110,9 @@ class Experiment(ParamsChecker):
         table = []
         for k, v in params.items():
             label = translations.get(k, k)
-            table.append([label, v])
+            table.append([label, str(v)])
 
-        return f"{param_group} parameters:\n{tabulate(table, tablefmt='rounded_grid')}\n"
+        return f"{param_group} parameters:\n{tabulate(table, tablefmt='rounded_grid', disable_numparse=True)}\n"
     
     def gen_readme(self, extra_info: str = None) -> str:
         """
