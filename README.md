@@ -46,7 +46,11 @@ This folder contains concrete implementations of the interfaces found in `struct
 
 ## Usage
 
-Sample usage can be found in `sample.py`.
+### Creating runs
+
+Sample usage can be found in `sample.py`. Some key points to note:
+- A run returns a `pandas.DataFrame`, which then can be used to plot graphs, perform data analysis etc.
+- You can provide `filter_params` and `filter_results` to the `run_all_threaded()` method to obtain a smaller DataFrame.
 
 ### Parameters
 
@@ -102,7 +106,7 @@ In general, the resultant final number of experiments run will be `a * b * c * .
 
 ### Background running
 
-`run_bg.sh` is provided to facilitate running of the Python scripts as background processes, so the terminal does not hang up:
+`run_bg.sh` is provided to facilitate running of the Python scripts as background processes, so it can continue even when the terminal is closed, e.g., SSH connection terminated:
 1. Ensure that `run_bg.sh` is executable, i.e., `chmod +x run_bg.sh`
 2. Edit the parameters at the top of `run_bg.sh`:
     - `BASH_RUN_SCRIPT`: directs the script to run *another bash script* in the background.
