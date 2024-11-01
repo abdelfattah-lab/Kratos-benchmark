@@ -139,7 +139,6 @@ def run_vtr_denoised_v1(
         true_exp_dir = sep.join(exp_dir_split[:-1])
         exp_type, seed = exp_dir_split[-1].split('-')
 
-        df['adp'] = df['area_total'] * df['cpd']
         df['adp_used'] = df['area_total_used'] * df['cpd']
 
         # Add average utilization per CLB
@@ -153,7 +152,6 @@ def run_vtr_denoised_v1(
             df_dict[true_exp_dir] = pd.concat([df_dict[true_exp_dir], df], ignore_index=True)
     
     # add post-processing keys
-    filter_results.append('adp')            # ADP, total area
     filter_results.append('adp_used')       # ADP, used area
     filter_results.append('clb_avg_util')   # average utilization of CLB
 
