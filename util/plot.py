@@ -126,6 +126,7 @@ def plot_xy(
         save_path: str = None,
         short_labels: dict[str, str] = None,
         plot_type_2d: Literal['line', 'bar'] = 'bar',
+        group_order: list[any] = None,
     ) -> None:
     """
     Plots a multi-line XY graph.
@@ -147,6 +148,7 @@ def plot_xy(
     * plot_type_2d:['line', 'bar'], determines what plots are generated for 2D plots: (Default: 'bar')
         - 'line': each group is plotted as a line of different color.
         - 'bar': for each x-axis value, each group has a bar chart starting from 0, of a different color. Will void y_axis_col_secondary.
+    * group_order:list[any], the order in which to present grouped 'bar' data in, from left to right. Only valid for 1 group identifier. Default: None, i.e., any order works.
     """
     # Sanity checks
     if x_axis_label is not None and type(x_axis_label) is not type(x_axis_col):
@@ -157,7 +159,9 @@ def plot_xy(
         raise ValueError("Type mismatch between y_axis_label and y_axis_col! Either define both as str or list[str].")
     if isinstance(y_axis_label, list) and len(y_axis_label) != len(y_axis_col):
         raise ValueError("Length mismatch between y_axis_label and y_axis_col!")
-    
+    if not group_order is None and len(group_identifiers) > 1:
+        raise ValueError("group_order can only be specified for group_identifiers of size 1!")
+
     # Convenience function for labelling
     def get_identifiers_label(identifiers: list[str], values: list[str] = None, df: pd.DataFrame = None) -> str:
         assert values is not None or df is not None
@@ -242,6 +246,10 @@ def plot_xy(
         main_fig.set_size_inches(fig_w * cols, fig_h * rows)
         subplot_figs = main_fig.subfigures(rows, cols, width_ratios=[1 for _ in range(cols)], height_ratios=[1 for _ in range(rows)])
 
+    # Convert group column into categorical to preserve order, if needed.
+    if not group_order is None:
+        df[group_identifiers[0]] = pd.Categorical(df[group_identifiers[0]], categories=group_order, ordered=True)
+
     # Get all unique group permutations.
     unique_groups = df.value_counts(group_identifiers).index.tolist()
     num_unique_groups = len(unique_groups)
@@ -299,8 +307,8 @@ def plot_xy(
         elif is_identifier_subplot:
             fig.suptitle(get_identifiers_label(subplots_identifiers, df=df))
 
-        # Split DataFrame into distinct groups
-        groups = [y for _, y in df.groupby(group_identifiers, as_index=False)]
+        # Split DataFrame into distinct groups 
+        groups = [y for _, y in df.groupby(group_identifiers, as_index=False, observed=False)]
 
         if is_3d:
             # 3D subplot case
