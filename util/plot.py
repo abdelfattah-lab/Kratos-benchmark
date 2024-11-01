@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 from itertools import cycle
 from random import shuffle
-from typing import Callable
+from typing import Callable, Literal
 
 USABLE_MARKERS = ['.', 'o', 'v', '^', '<', '>', '1', '2', '3', '4', '8', 's', 'p', 'P', '*', 'h', '+', 'x', 'X', 'D']
 
@@ -124,7 +124,8 @@ def plot_xy(
         y_axis_label_secondary: str = None,
         subplot_size_inches: tuple[int, int] = (6, 4), 
         save_path: str = None,
-        short_labels: dict[str, str] = None
+        short_labels: dict[str, str] = None,
+        plot_type_2d: Literal['line', 'bar'] = 'bar',
     ) -> None:
     """
     Plots a multi-line XY graph.
@@ -143,6 +144,9 @@ def plot_xy(
     * subplot_size_inches:(int, int), size of each subplot, in inches. Default: (6, 4)
     * save_name:str, if provided, then plot image is saved at the provided path; else the result is just displayed. Default: None
     * short_labels:dict[str, str], if provided, then labels are created using the provided <key>: <value to use>; or else keys will be truncated to the first 3 characters by default.
+    * plot_type_2d:['line', 'bar'], determines what plots are generated for 2D plots: (Default: 'bar')
+        - 'line': each group is plotted as a line of different color.
+        - 'bar': for each x-axis value, each group has a bar chart starting from 0, of a different color. Will void y_axis_col_secondary.
     """
     # Sanity checks
     if x_axis_label is not None and type(x_axis_label) is not type(x_axis_col):
@@ -193,6 +197,9 @@ def plot_xy(
         else:
             is_3d = True
 
+    # check for bar plot
+    is_bar = not is_3d and (plot_type_2d == 'bar')
+
     # Set up figure and axes
     fig_w, fig_h = subplot_size_inches
     main_fig = plt.figure(constrained_layout=not is_3d)
@@ -237,7 +244,8 @@ def plot_xy(
 
     # Get all unique group permutations.
     unique_groups = df.value_counts(group_identifiers).index.tolist()
-    
+    num_unique_groups = len(unique_groups)
+
     # Set up markers and colors
     markers = USABLE_MARKERS.copy()
     shuffle(markers)
@@ -267,6 +275,10 @@ def plot_xy(
             label=get_identifiers_label(group_identifiers, list(combi))
         )
         legend_handles.append(legend_line)
+
+    # get the offsets if using 'bar' mode
+    bar_width = 0.8 / num_unique_groups
+    bar_offsets = [(2*i + 1 - num_unique_groups) * bar_width / 2 for i in range(num_unique_groups)]
 
     # function to remove all axes legends
     def remove_legend(ax: Axes):
@@ -335,14 +347,25 @@ def plot_xy(
             if y_axis_col_secondary is not None:
                 ax2 = ax.twinx()
 
-            for grp in groups:
+            # Get x-axis count
+            x_axis_count = df[x_axis_col].nunique()
+            bar_x = np.arange(x_axis_count)
+
+            for grp_i, grp in enumerate(groups):
                 marker, color = attr_map[tuple(grp[col].unique()[0] for col in group_identifiers)]
 
                 # sort group by x-axis
                 grp.sort_values(by=[x_axis_col], inplace=True)
-                grp.plot(x=x_axis_col, y=ycol, kind='line', linestyle='solid', marker=marker, color=color, ax=ax)
-                if y_axis_col_secondary is not None:
-                    grp.plot(x=x_axis_col, y=y_axis_col_secondary, kind='line', linestyle='dotted', marker=marker, color=color, ax=ax2)
+                if is_bar:
+                    ax.bar(bar_x + bar_offsets[grp_i], grp[ycol].tolist(), bar_width, color=color)
+                else:
+                    grp.plot(x=x_axis_col, y=ycol, kind='line', linestyle='solid', marker=marker, color=color, ax=ax)
+                    if y_axis_col_secondary is not None:
+                        grp.plot(x=x_axis_col, y=y_axis_col_secondary, kind='line', linestyle='dotted', marker=marker, color=color, ax=ax2)
+            
+            # set ticks (if bar)
+            if is_bar:
+                ax.set_xticks(bar_x, sorted(df[x_axis_col].unique().tolist()))
             
             # set labels
             ax.set_xlabel(xlabel=x_axis_label)
