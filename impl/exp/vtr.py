@@ -14,7 +14,7 @@ class VtrExperiment(Experiment):
     VTR implementation of an Experiment.
     """
 
-    def get_name(self, adder_cin_global: bool, avoid_mult: bool, soft_multiplier_adders: bool, compressor_tree_type: str, **kwargs):
+    def get_name(self, adder_cin_global: bool, avoid_mult: bool, soft_multiplier_adders: bool, compressor_tree_type: str, route_chan_width: int, force_denser_packing: bool, **kwargs):
         name = "vtr"
         if adder_cin_global:
             name += "_acg"
@@ -25,6 +25,10 @@ class VtrExperiment(Experiment):
             name += "0"
         else:
             name += compressor_tree_type
+        if route_chan_width >= 0:
+            name += f"_rcw.{route_chan_width}"
+        if force_denser_packing:
+            name += "_dp"
 
         return name
         
@@ -45,6 +49,7 @@ class VtrExperiment(Experiment):
             - 'cascade': ignore this flag, and set soft_multiplier_adders to True.
             - 'old': ignore all new implementations, and revert to vanilla VTR soft multiplication.
         avoid_mult: if True, then avoids using hard multipliers. Default: False
+        route_chan_width: int, if provided >= 0, then routes with this fixed channel width, else ask VTR to find the minimum channel width. Default: None
         force_denser_packing: if True, then force VPR to pack as tightly as possible. Default: False
         """
         self._prerun_check()
@@ -68,6 +73,7 @@ class VtrExperiment(Experiment):
         soft_multiplier_adders = self.exp_params.get('soft_multiplier_adders', False)
         compressor_tree_type = self.exp_params['compressor_tree_type']
         avoid_mult = self.exp_params.get('avoid_mult', False)
+        route_chan_width = self.exp_params.get('route_chan_width', -1) 
         force_denser_packing = self.exp_params.get('force_denser_packing', False)
 
         # generate wrapper file
@@ -95,6 +101,7 @@ class VtrExperiment(Experiment):
         vtr_script_path = os.path.join(vtr_root, 'vtr_flow/scripts/run_vtr_flow.py')
         cmd = ['python', vtr_script_path, wrapper_file_name, arch_file_name,
                '-parser', 'system-verilog', 
+               '--sweep_constant_primary_outputs', 'on', # remove LUTs that drive constant '0's
                '-top', self.design.wrapper_module_name, 
                '-search', self.verilog_search_dir, 
                '--seed', str(seed),
@@ -102,11 +109,10 @@ class VtrExperiment(Experiment):
         if adder_cin_global:
             cmd += ['-adder_cin_global'] # only works with self-modified fork: https://github.com/abdelfattah-lab/vtr-updated
 
-        if compressor_tree_type != 'old':        
-            if soft_multiplier_adders or compressor_tree_type == 'cascade':
-                cmd += ['-soft_multiplier_adders'] # only works with self-modified fork: https://github.com/abdelfattah-lab/vtr-updated
-            elif compressor_tree_type != 'cascade':
-                cmd += ['-compressor_tree_type', compressor_tree_type] # only works with self-modified fork: https://github.com/abdelfattah-lab/vtr-updated
+        if soft_multiplier_adders or compressor_tree_type == 'cascade':
+            cmd += ['-soft_multiplier_adders'] # only works with self-modified fork: https://github.com/abdelfattah-lab/vtr-updated
+        elif compressor_tree_type != 'cascade':
+            cmd += ['-compressor_tree_type', compressor_tree_type] # only works with self-modified fork: https://github.com/abdelfattah-lab/vtr-updated
 
         if avoid_mult:
             cmd += ['-min_hard_mult_size', '9999'] # arbitrarily large multiplier size
@@ -114,13 +120,15 @@ class VtrExperiment(Experiment):
             cmd += ['-ending_stage', ending]
 
         # Add VPR commands
+        if route_chan_width >= 0:
+            # set route channel width
+            cmd += ['--route_chan_width', str(int(route_chan_width))]
+
         if force_denser_packing:
+            # enable unrelated clustering
+            cmd += ['--allow_unrelated_clustering', 'on']
             # focus solely on area
             cmd += ['--alpha_clustering', '0']
-
-            # focus solely on signal sharing
-            cmd += ['--connection_driven_clustering', 'on'] 
-            cmd += ['--beta_clustering', '0']
 
         # Make out and error files
         self.stdout_file = open(os.path.join(self.exp_dir, self.exp_params['stdout_file']), 'w')
