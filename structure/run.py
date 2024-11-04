@@ -2,6 +2,7 @@ from structure.exp import Experiment, ExperimentFactory
 from structure.arch import ArchFactory
 from structure.design import Design
 from util.formatting import pretty, gen_time_elapsed
+from util.external_notifs import telegram_notify
 
 import os
 from timeit import default_timer as timer
@@ -37,6 +38,8 @@ class Runner():
     def run_all_threaded(self,
             verbose: bool = False,
             track_run_time: bool = True,
+            notify_via_tele: bool = True,
+            tele_batch: int = 50,
             desc: str = 'run', 
             num_parallel_tasks: int = 1,
             runner_err_file: str = 'runner.err',
@@ -51,6 +54,8 @@ class Runner():
         Optional arguments:
         * verbose:bool, prints detailed report of each result if True. Default: False
         * track_run_time:bool, will track total run time and print at the end if True. Default: True
+        * notify_via_tele:bool, will send failure/batched success updates to the specified Telegram bot and chat ID (refer to util.external_notifs) if True. Default: True
+        # tele_batch:int, (only valid if notify_via_tele is True) send an update every ? experiments run. Failures are sent individually. Default: 50
         * desc:str, description of run
         * num_parallel_tasks:int, maximum number of simultaneous threads allowed in the thread pool.
         * runner_err_file:str, name of error file created by runner if an exception occurs while running the Experiment. Created in the Experiment folder.
@@ -60,6 +65,10 @@ class Runner():
         * result_kwargs:dict, kwargs to pass into each Experiment get_result() function. Default: empty, i.e., no kwargs. 
         @returns a dictionary of (experiment root directory): (Pandas DataFrame with filtered parameters and results).
         """
+        # sanity checks.
+        if notify_via_tele and tele_batch <= 0:
+            raise ValueError("tele_batch must be an integer value of at least 1!")
+
         # print experiment count.
         total_count = len(self.experiments)
         print(f"Running '{desc}': Found {total_count} experiment(s).")
@@ -101,6 +110,7 @@ class Runner():
         for i, future in enumerate(as_completed(futures_dict.keys())):
             exp: Experiment = futures_dict[future]
             try:
+                result_no = i+1
                 result = future.result()
                 inp, out = result
 
@@ -113,6 +123,21 @@ class Runner():
                 if is_success:
                     successes += 1
 
+                # notify Telegram if enabled
+                if notify_via_tele and ((is_success and result_no % tele_batch == 0) or not is_success):
+                    msg = f"Run '{desc}': "
+                    if is_success:
+                        msg += f"{result_no}/{total_count} experiment(s) run, {successes} succeeded."
+                    else:
+                        msg += f"failed experiment {result_no} @ root directory {exp.root_dir}:\n{pretty(res_dict, 1, to_string=True)}"
+                    
+                    if track_run_time:
+                        time_diff = timer() - start_time
+                        est_time_left = time_diff / result_no * (total_count - result_no)
+                        msg += f"\n(Estimated time left: {gen_time_elapsed(est_time_left)})"
+                    
+                    telegram_notify(msg)
+
                 if exp.root_dir in results:
                     results[exp.root_dir].append(res_dict)
                 else:
@@ -120,7 +145,7 @@ class Runner():
                 
                 if verbose:
                     print("====================================")
-                    print(f"Result {i+1}/{total_count}: {'succeeded' if is_success else 'failed'}")
+                    print(f"Result {result_no}/{total_count}: {'succeeded' if is_success else 'failed'}")
                     if track_run_time:
                         print(f" (Time elapsed for this experiment: {gen_time_elapsed(timer() - exp_start_times[exp])})")
                     
@@ -144,11 +169,15 @@ class Runner():
         executor.shutdown()
 
         # print summary
-        top_line = f"*********************** Run '{desc}' complete! ***********************"
-        print(top_line)
-        print(f"Total: {total_count}, of which {successes} succeeded ({(successes / total_count * 100):.2f}%).")
+        summary = f"*********************** Run '{desc}' complete! ***********************"
+        len_top_line = len(summary)
+        summary += f"\nTotal: {total_count}, of which {successes} succeeded ({(successes / total_count * 100):.2f}%)."
         if track_run_time:
-            print(f"Run time: {gen_time_elapsed(timer() - start_time)}.")
-        print("*" * len(top_line))
+            summary += f"\nRun time: {gen_time_elapsed(timer() - start_time)}."
+        summary += "\n" + "*" * len_top_line
+
+        print(summary)
+        if notify_via_tele:
+            telegram_notify(summary)
 
         return { k: pd.DataFrame.from_records(v) for k, v in results.items() }
