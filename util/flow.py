@@ -239,7 +239,8 @@ def generate_specific_matrix(row_num, column_num, data_width, value):
     return arr_str
 
 
-def generate_random_matrix(row_num, column_num, data_width, sparsity):
+def generate_random_matrix(row_num, column_num, data_width, sparsity, n=114514):
+    rng = np.random.default_rng(n)
     total_num = row_num * column_num
     params = np.zeros((total_num), dtype=int)
     threshold = int(total_num * sparsity)
@@ -247,8 +248,8 @@ def generate_random_matrix(row_num, column_num, data_width, sparsity):
     for i in range(total_num):
         count += 1
         if count > threshold:
-            params[i] = random.randint(1, pow(2, data_width)-1)
-    np.random.shuffle(params)
+            params[i] = rng.integers(low=1, high=pow(2, data_width)-1,size=1)[0]
+    rng.shuffle(params)
     params = params.reshape((row_num, column_num))
 
     return generate_specific_matrix(row_num, column_num, data_width, params)
@@ -340,7 +341,7 @@ def generate_random_matrix_4d(filter_num, depth, row_num, column_num, data_width
     return arr_str
 
 
-def generate_flattened_bit(data_width, total_num, sparsity):
+def generate_flattened_bit(data_width, total_num, sparsity, n=114514):
     '''
     this method will return a bit string of length total_number * data_width, for example
     if data_width = 8, and total_number is 4, then it will return 32'hdeadbeef
@@ -350,6 +351,7 @@ def generate_flattened_bit(data_width, total_num, sparsity):
     assert sparsity >= 0 and sparsity <= 1, "0 <= sparsity <= 1!"
 
     # generate sparsity % zero weights, and the rest non-zero.
+    rng = np.random.default_rng(n)
     params = np.zeros((total_num), dtype=int)
     threshold = round(total_num * sparsity)
     upper = pow(2, data_width)
@@ -357,10 +359,10 @@ def generate_flattened_bit(data_width, total_num, sparsity):
     for i in range(total_num):
         count += 1
         if count > threshold:
-            params[i] = np.random.randint(1, upper)
+            params[i] = rng.integers(low=1, high=upper, size=1)[0]
 
     # shuffle into random positions.
-    np.random.shuffle(params)
+    rng.shuffle(params)
 
     # convert to hexadecimal string.
     total_bit_length = total_num * data_width
