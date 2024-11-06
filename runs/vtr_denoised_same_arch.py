@@ -90,8 +90,9 @@ def run_vtr_denoised_same_arch(
     )
 
     # process results
-    df_dict = {}
-    mean_dict = {}
+    df_dict: dict[str, pd.DataFrame] = {}
+    mean_dict: dict[str, pd.DataFrame] = {}
+    norm_dict: dict[str, pd.DataFrame] = {}
 
     for exp_dir, df in results.items():
         # process experiment directory
@@ -106,10 +107,8 @@ def run_vtr_denoised_same_arch(
             df_dict[true_exp_dir] = pd.concat([df_dict[true_exp_dir], df], ignore_index=True)
 
     # take means of each DataFrame
+    merged = None # used if merge_designs is True
     for exp_dir, df in df_dict.items():
-        # used if merge_designs is True
-        merged = None
-
         seed_mean = df.groupby(by=exp_filter_params).mean().reset_index()
         if merge_designs:
             # merge all DataFrames into one DataFrame
@@ -122,19 +121,20 @@ def run_vtr_denoised_same_arch(
         # save DataFrame individually
         mean_dict[exp_dir] = seed_mean
 
-        if merge_designs:
-            # drop all other keys
-            keys_to_drop = list(mean_dict.keys())
-            # for key in keys_to_drop:
-            #     mean_dict.pop(key, None)
-            
-            # take the n-th root (geometric mean)
-            for col in filter_results:
-                merged[col] **= 1/(len(keys_to_drop))
-            mean_dict['merged'] = merged
+    if merge_designs:
+        # drop all other keys
+        keys_to_drop = list(mean_dict.keys())
+        # for key in keys_to_drop:
+        #     mean_dict.pop(key, None)
+        
+        # take the n-th root (geometric mean)
+        for col in filter_results:
+            merged[col] **= 1/(len(keys_to_drop))
+        mean_dict['merged'] = merged
 
     # baseline normalization and post-processing
     for key, df in mean_dict.items():
+        print(f"-- normalizing {key}")
         # normalize within DataFrame, in groups
         def normalize_group(group):
             # normalize within each group
@@ -150,7 +150,12 @@ def run_vtr_denoised_same_arch(
 
             return group
         
-        mean_dict[key] = df.groupby(filter_params, group_keys=False).apply(normalize_group)
+        norm_dict[key] = df.groupby(filter_params, group_keys=False).apply(normalize_group)
+
+    # define dir function (save raw values)
+    def do_with_dir_fn(save_dir: str):
+        for key, df in mean_dict.items():
+            df.to_csv(path.join(save_dir, f"{key.replace('/', '_')}_raw.csv"))
 
     # define plot function
     def plot_fn(save_dir: str, filesafe_name: str, df: pd.DataFrame) -> None:
@@ -166,4 +171,4 @@ def run_vtr_denoised_same_arch(
                 )
     
     # save into results directory
-    save_and_plot(mean_dict, plot_fn=plot_fn)
+    save_and_plot(norm_dict, do_with_dir_fn=do_with_dir_fn, plot_fn=plot_fn)
