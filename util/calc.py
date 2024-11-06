@@ -61,18 +61,18 @@ def merge_op(
     """
     # merge both dataframes together
     suffix = '_<m>'
-    merged = parent.merge(child, on=merge_on,  suffixes=('', suffix))
-    
+    merged = parent.merge(child, on=merge_on, suffixes=('', suffix))
+
     # perform operation
     rem_cols = parent.columns.intersection(child.columns).drop(merge_on)
     suffixed_cols = []
     for col in rem_cols:
         suffixed_col = f"{col}{suffix}"
+        suffixed_cols.append(suffixed_col)
+
         if col in ignore:
             continue
-
         merged[col] = col_op(merged[col], merged[suffixed_col])
-        suffixed_cols.append(suffixed_col)
 
     # drop remaining columns
     return merged.drop(columns=suffixed_cols)
