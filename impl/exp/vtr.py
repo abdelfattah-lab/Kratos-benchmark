@@ -14,7 +14,9 @@ class VtrExperiment(Experiment):
     VTR implementation of an Experiment.
     """
 
-    def get_name(self, adder_cin_global: bool, avoid_mult: bool, soft_multiplier_adders: bool, compressor_tree_type: str, route_chan_width: int, force_denser_packing: bool, **kwargs):
+    def get_name(self, adder_cin_global: bool, avoid_mult: bool, soft_multiplier_adders: bool, compressor_tree_type: str, force_denser_packing: bool, **kwargs):
+        route_chan_width = kwargs.get('route_chan_width', -1)
+        
         name = "vtr"
         if adder_cin_global:
             name += "_acg"
