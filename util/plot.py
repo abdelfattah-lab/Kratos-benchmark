@@ -127,6 +127,7 @@ def plot_xy(
         short_labels: dict[str, str] = None,
         plot_type_2d: Literal['line', 'bar'] = 'bar',
         group_order: list[any] = None,
+        normalized_y_axes: list[str] = [],
     ) -> None:
     """
     Plots a multi-line XY graph.
@@ -149,6 +150,7 @@ def plot_xy(
         - 'line': each group is plotted as a line of different color.
         - 'bar': for each x-axis value, each group has a bar chart starting from 0, of a different color. Will void y_axis_col_secondary.
     * group_order:list[any], the order in which to present grouped 'bar' data in, from left to right. Only valid for 1 group identifier. Default: None, i.e., any order works.
+    * normalized_y_axes:list[str], y-axis subplots that are normalized plots, and should have a dotted line marking 1.0. Default: empty list.
     """
     # Sanity checks
     if x_axis_label is not None and type(x_axis_label) is not type(x_axis_col):
@@ -370,7 +372,11 @@ def plot_xy(
                     grp.plot(x=x_axis_col, y=ycol, kind='line', linestyle='solid', marker=marker, color=color, ax=ax)
                     if y_axis_col_secondary is not None:
                         grp.plot(x=x_axis_col, y=y_axis_col_secondary, kind='line', linestyle='dotted', marker=marker, color=color, ax=ax2)
-            
+
+                # add normalization line
+                if ycol in normalized_y_axes:
+                    ax.axhline(1, linestyle='--', color='black')
+
             # set ticks (if bar)
             if is_bar:
                 ax.set_xticks(bar_x, sorted(df[x_axis_col].unique().tolist()))
