@@ -5,20 +5,20 @@ from structure.consts.shared_requirements import REQUIRED_KEYS_CONV2D_STRIDE
 
 from structure.consts.quartus import DEVICE_FAMILY, DEVICE_NAME, TURN_OFF_DSPS
 
-class Conv2dFuAndShax10Design(StandardizedSdcDesign):
+class Conv2dFuAndShaxNDesign(StandardizedSdcDesign):
     """
-    Conv-2D Fully Unrolled design, with 10x instances of sha benchmark (from https://docs.verilogtorouting.org/en/latest/vtr/benchmarks/) alongside.
+    Conv-2D Fully Unrolled design, with N instances of sha benchmark (from https://docs.verilogtorouting.org/en/latest/vtr/benchmarks/) alongside.
     """
 
-    def __init__(self, impl: str = 'conv_reg_full', module_dir: str = 'conv_2d', wrapper_module_name: str = 'conv_reg_full_and_shax10_wrapper'):
+    def __init__(self, impl: str = 'conv_reg_full', module_dir: str = 'conv_2d', wrapper_module_name: str = 'conv_reg_full_and_shaxn_wrapper'):
         super().__init__(impl, module_dir, wrapper_module_name)
 
     def get_name(self, tree_base: int, data_width: int, img_w: int, img_h: int, img_d: int, fil_w: int, fil_h: int, res_d: int, stride_w: int, stride_h: int,
-                    constant_weight: bool, sparsity: float, buffer_stages: int, separate_filters: bool, **kwargs):
+                    constant_weight: bool, sparsity: float, buffer_stages: int, separate_filters: bool, sha_num: int, **kwargs):
         """
         Name generation 
         """
-        return f'i.{self.impl}+shax10_tb.{tree_base}_d.{data_width}_w.{img_w}_h.{img_h}_d.{img_d}_fw.{fil_w}_fh.{fil_h}_rd.{res_d}_sw.{stride_w}_sh.{stride_h}_c.{constant_weight}_s.{sparsity}_bf.{buffer_stages}_sf.{separate_filters}'
+        return f'i.{self.impl}+shax{sha_num}_tb.{tree_base}_d.{data_width}_w.{img_w}_h.{img_h}_d.{img_d}_fw.{fil_w}_fh.{fil_h}_rd.{res_d}_sw.{stride_w}_sh.{stride_h}_c.{constant_weight}_s.{sparsity}_bf.{buffer_stages}_sf.{separate_filters}'
 
     def verify_params(self, params: dict[str, any]) -> dict[str, any]:
         """
@@ -27,6 +27,9 @@ class Conv2dFuAndShax10Design(StandardizedSdcDesign):
         defaults = DEFAULTS_WRAPPER_CONV.copy()
         # remove unused keys
         del defaults['kernel_only']
+
+        # set default SHA instances to 10
+        defaults['sha_num'] = 10
         
         return self.verify_required_keys(defaults, REQUIRED_KEYS_CONV2D_STRIDE, params)
 
@@ -98,7 +101,7 @@ project_close
 
         return template
     
-    def gen_wrapper(self, tree_base, data_width, img_w, img_h, img_d, fil_w, fil_h, res_d, stride_w, stride_h, constant_weight, sparsity, buffer_stages, separate_filters, **kwargs) -> str:
+    def gen_wrapper(self, tree_base, data_width, img_w, img_h, img_d, fil_w, fil_h, res_d, stride_w, stride_h, constant_weight, sparsity, buffer_stages, separate_filters, sha_num, **kwargs) -> str:
         template_inputx = 'input   logic    [DATA_WIDTH*FILTER_K*IMG_D*FILTER_H*FILTER_W-1:0]               fil,'
         if constant_weight:
             inputfil = ''
@@ -201,7 +204,7 @@ module {self.wrapper_module_name}
     
     genvar i;
     generate
-        for (i = 0; i < 10; i = i+1) begin : sha_block
+        for (i = 0; i < {sha_num}; i = i+1) begin : sha_block
             sha1 sha_inst
             (
                 .clk_i(clk),
