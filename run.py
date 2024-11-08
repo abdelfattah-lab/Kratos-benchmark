@@ -6,6 +6,8 @@ import runs.benchmarks as general_bm
 import runs.benchmarks.kratos as kratos
 import runs.benchmarks.kratos_mini as mini
 
+import util.derived_metrics as derived_metrics
+
 # Stratix-IV, v1.2
 from impl.arch.stratix_IV.gen_exp_fpop import GenExpFpopArchFactory
 
@@ -34,6 +36,7 @@ from impl.design.simple_unrolled import SimpleUnrolledDesign
 
 import numpy as np
 import os.path as path
+from pandas import DataFrame
 
 BASE_PARAMS = {
     keys.KEY_EXP: {
@@ -85,6 +88,15 @@ DESIGN_LIST = [
     # (SimpleUnrolledDesign(), general_bm.get_params(BASE_PARAMS, 'simple_unrolled', {}))
 ]
 
+# add derived metrics:
+# - ADP used
+# - CLB average utilization
+def add_derived_metrics(df: DataFrame) -> tuple[DataFrame, list[str]]:
+    df = derived_metrics.apply_adp_used(df)
+    df = derived_metrics.apply_clb_avg_util(df, 10)
+    df = derived_metrics.apply_lut5_to_adder_ratio(df)
+    return df, ['adp_used', 'clb_avg_util', 'lut5/adder']
+
 run_vtr_denoised_v1(
     new_arch=LUTSkipArchFactory,
     base_arch=BaseArchFactory,
@@ -125,6 +137,7 @@ run_vtr_denoised_v1(
         'arithmetic_skip.adder': '(Skip) Adders (absolute count)',
         'arithmetic.adder': '(Normal) Adders (absolute count)',
     },
+    df_processing_fn=add_derived_metrics,
     merge_designs=True,
     num_parallel_tasks=4,
     verbose=True,

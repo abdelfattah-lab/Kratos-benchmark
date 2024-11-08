@@ -10,7 +10,7 @@ from util.results import save_and_plot
 from util.plot import plot_xy
 from util.search import query_df
 
-from typing import Type
+from typing import Type, Callable
 import os.path as path
 from os import sep
 import pandas as pd
@@ -33,6 +33,7 @@ def run_vtr_denoised_v1(
         merge_designs: bool = False,
         avoid_norm: list[str] = [],
         translations: dict[str, str] = {},
+        df_processing_fn: Callable[[pd.DataFrame], tuple[pd.DataFrame, list[str]]] = None,
         **runner_kwargs
     ) -> None:
     """
@@ -63,7 +64,7 @@ def run_vtr_denoised_v1(
     * merge_designs:bool, will take the geometric mean of all designs as the final result and generate an additional 'merged' result if True. Default: False
     * avoid_norm:list[str], list of columns that should not be normalized (i.e., the value stays absolute). Default: empty list
     * translations:dict[str, str], dictionary mapping columns -> long names. If not present in the dictionary, then the column name is re-used. Default: empty dictionary
-    
+    * df_processing_fn: (pd.DataFrame) -> (pd.DataFrame, list[str]), function called on each mean DataFrame from 3 seeds to add any derived metrics. Returns (new DataFrame, keys to add to filter_results).  Default: None
     Remaining keyword arguments are passed directly to Runner.run_all_threaded().
     """
     # x-axis is derived from variable architecture parameters
@@ -76,16 +77,6 @@ def run_vtr_denoised_v1(
         raise ValueError("x_axis must be of length of either 1 or 2!")
     if group_normalize_on is not None and normalize_each_group_on is None:
         raise ValueError("normalize_each_group_on must be provided if group_normalize_on is provided!")
-    
-    # Ensure parameters for post-processing are present
-    if 'ble_count' not in variable_arch_params.keys():
-        raise ValueError("This sequence requires the architecture to have 'ble_count' as a variable!")
-    if 'ble_count' not in filter_params_new:
-        filter_params_new.append('ble_count')
-    if 'cpd' not in filter_results:
-        filter_results.append('cpd')
-    if 'clb' not in filter_blocks:
-        filter_blocks.append('clb')
 
     # Check if baseline is to be used
     should_use_baseline = group_normalize_on is None
@@ -139,21 +130,12 @@ def run_vtr_denoised_v1(
         true_exp_dir = sep.join(exp_dir_split[:-1])
         exp_type, seed = exp_dir_split[-1].split('-')
 
-        df['adp_used'] = df['area_total_used'] * df['cpd']
-
-        # Add average utilization per CLB
-        df['clb_avg_util'] = df['fle'] / df['clb'] / (10 if exp_type == 'baseline' else df['ble_count'])
-
         # concatenate DataFrames (and take mean if complete)
         df_dict = exp_results[exp_type]
         if true_exp_dir not in df_dict:
             df_dict[true_exp_dir] = df
         else:
             df_dict[true_exp_dir] = pd.concat([df_dict[true_exp_dir], df], ignore_index=True)
-    
-    # add post-processing keys
-    filter_results.append('adp_used')       # ADP, used area
-    filter_results.append('clb_avg_util')   # average utilization of CLB
 
     # take means of each DataFrame
     for exp_type, dfs in exp_results.items():
@@ -166,6 +148,15 @@ def run_vtr_denoised_v1(
                 flt += filter_params_new
             
             seed_mean = df.groupby(by=flt).mean().reset_index()
+
+            # add post-processing (if any)
+            if df_processing_fn is not None:
+                seed_mean, new_keys = df_processing_fn(seed_mean)
+                # added this way to preserve existing order
+                for df_key in new_keys:
+                    if df_key not in filter_results:
+                        filter_results.append(df_key)
+
             if merge_designs:
                 # merge all DataFrames into one DataFrame
                 if merged is None:
