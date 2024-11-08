@@ -220,7 +220,9 @@ def run_vtr_denoised_v1(
                 x_axis_label=[translations.get(c, c) for c in x_axis],
                 y_axis_label=[f"{'*' if c in avoid_norm else ''}{translations.get(c, c)}" for c in filter_results],
                 save_path=path.join(save_dir, f"{filesafe_name}_graphs.png"),
-                short_labels=group_cols_short_labels)
+                short_labels=group_cols_short_labels,
+                normalized_y_axes=list(set(filter_results) - set(avoid_norm)),
+                )
     
     # save into results directory
     save_and_plot(norm_results, do_with_dir_fn=do_with_dir_fn, plot_fn=plot_fn)
