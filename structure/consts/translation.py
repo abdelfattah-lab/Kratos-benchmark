@@ -41,3 +41,19 @@ TRANSLATIONS_DESIGN = {
     'col_num': 'No. of result columns',
     'length': 'Length of input matrix',
 }
+
+# Common graph headers.
+TRANSLATIONS_GRAPH = {
+    'fmax': 'Maximum Frequency',
+    'cpd': 'Critical Path Delay',
+    'twl': 'Total Wire Length',
+    'area_total_used': 'Total Area Used',
+    'adp_used': 'Area-Delay Product',
+    'clb': 'LAB Count',
+    'fle': 'ALM Count',
+    'lut': 'LUTs Used',
+    'adder': 'Adders',
+    'adder_avg_util': 'Average Adder Utilisation',
+    'lut5/adder': '5-LUT to Adder Ratio',
+    'lut5_concurrency': '5-LUT Concurrency Percentage',
+}

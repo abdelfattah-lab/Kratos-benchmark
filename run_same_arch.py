@@ -1,4 +1,5 @@
 import structure.consts.keys as keys
+from structure.consts.translation import TRANSLATIONS_GRAPH
 
 from runs.vtr_denoised_same_arch import run_vtr_denoised_same_arch
 
@@ -115,16 +116,7 @@ run_vtr_denoised_same_arch(
                     'arithmetic.adder',
                    ],
     avoid_norm=['lut'],
-    translations={
-        'fmax': 'Maximum Frequency',
-        'cpd': 'Critical Path Delay',
-        'twl': 'Total Wirelength',
-        'clb': 'LAB Count',
-        'fle': 'ALM Count',
-        'area_total_used': 'Total area (used logic area + routing)',
-        'lut': 'LUTs Used (absolute count)',
-        'arithmetic.adder': 'Adders',
-    },
+    translations=TRANSLATIONS_GRAPH,
     merge_designs=True,
     num_parallel_tasks=4,
     verbose=True,

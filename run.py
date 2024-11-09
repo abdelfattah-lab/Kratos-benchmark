@@ -1,5 +1,5 @@
 import structure.consts.keys as keys
-
+from structure.consts.translation import TRANSLATIONS_GRAPH
 from runs.vtr_denoised_v1 import run_vtr_denoised_v1
 
 import runs.benchmarks as general_bm
@@ -92,10 +92,19 @@ DESIGN_LIST = [
 # - ADP used
 # - CLB average utilization
 def add_derived_metrics(df: DataFrame) -> tuple[DataFrame, list[str]]:
-    df = derived_metrics.apply_adp_used(df)
-    df = derived_metrics.apply_clb_avg_util(df, 10)
+    # df = derived_metrics.apply_clb_avg_util(df, 10)
+    df = derived_metrics.apply_adder_avg_util(df)
     df = derived_metrics.apply_lut5_to_adder_ratio(df)
-    return df, ['adp_used', 'clb_avg_util', 'lut5/adder']
+    df = derived_metrics.apply_lut5_concurrency(df)
+    df = derived_metrics.apply_adp_used(df)
+
+    return df, [
+        # 'clb_avg_util', 
+        'adder_avg_util',
+        'lut5/adder',
+        'lut5_concurrency',
+        'adp_used', 
+    ]
 
 run_vtr_denoised_v1(
     new_arch=LUTSkipArchFactory,
@@ -109,34 +118,23 @@ run_vtr_denoised_v1(
     filter_results=['fmax', 'cpd', 'twl', 'area_total_used'],
     filter_blocks=['clb', 'fle',
                     'lut5',
-                    'arithmetic_skip.lut5', 
-                    'arithmetic_skip.lut5_ff', 
-                    'arithmetic_skip.adder',
-                    'arithmetic.adder',
+                    'dual_lut4s.lut5',
+                    # 'flut5.lut5',
+                    'adder',
                    ],
-    avoid_norm=['clb_avg_util', 
-                'lut5',
-                'arithmetic_skip.lut5', 'arithmetic_skip.lut5_ff', 
-                'arithmetic_skip.adder', 'arithmetic.adder',
+    avoid_norm=[ 
+                # 'lut5',
+                # 'dual_lut4s.lut5',
+                # 'flut5.lut5',
+                'lut5/adder',
+                'lut5_concurrency',
                 ],
-    translations={
-        'ble_count': 'N',
-        'fmax': 'Maximum Frequency',
-        'cpd': 'Critical Path Delay',
-        'twl': 'Total Wirelength',
-        'clb': 'LAB Count',
-        'fle': 'ALM Count',
-        'area_total_used': 'Total area (used logic area + routing)',
-        'adp_used': 'Area-Delay Product (used logic area + routing)',
-        'clb_avg_util': '% of CLB used, average',
-        # 'flutS.ff': 'Non-arithmetic Register Count',
-        # 'arithmetic.ff': 'Arithmetic Register Count',
-        # 'ff': 'Total Register Count',
-        'lut5': '(Global) 5-LUTs (absolute count)',
-        'arithmetic_skip.lut5': '(Skip) 5-LUTs (absolute count)',
-        'arithmetic_skip.adder': '(Skip) Adders (absolute count)',
-        'arithmetic.adder': '(Normal) Adders (absolute count)',
-    },
+    avoid_plot=[
+                'lut5',
+                'dual_lut4s.lut5',
+                'adder',
+                ],
+    translations=TRANSLATIONS_GRAPH,
     df_processing_fn=add_derived_metrics,
     merge_designs=True,
     num_parallel_tasks=4,
