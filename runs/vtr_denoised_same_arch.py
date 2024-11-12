@@ -168,6 +168,7 @@ def run_vtr_denoised_same_arch(
                 },
                 plot_type_2d='bar',
                 group_order=compare_param_order,
+                normalized_y_axes=list(set(filter_results) - set(avoid_norm)),
                 )
     
     # save into results directory
