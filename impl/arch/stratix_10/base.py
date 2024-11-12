@@ -201,7 +201,7 @@ TEMPLATE = """<!--
   </layout>
   <device>
     <sizing R_minW_nmos="13090" R_minW_pmos="19086.83"/>
-    <area grid_logic_tile_area="21673.155"/>
+    <area grid_logic_tile_area="{grid_logic_tile_area}"/>
     <chan_width_distr>
       <x distr="uniform" peak="1.000000"/>
       <y distr="uniform" peak="1.000000"/>
@@ -958,6 +958,10 @@ TEMPLATE = """<!--
 </architecture>
 """
 
+DEFAULTS = {
+    'per_fle_area': 2167.3155, # LAB area / 10
+}
+
 class BaseArchFactory(ArchFactory, ParamsChecker):
     def get_name(self, **kwargs):
         return f"type.s10-base"
@@ -966,7 +970,9 @@ class BaseArchFactory(ArchFactory, ParamsChecker):
         """
         Transparent pass.
         """
-        return params
+        return self.verify_required_keys(DEFAULTS, [], params)
     
-    def get_arch(self, **kwargs):
-        return TEMPLATE
+    def get_arch(self, per_fle_area: float, **kwargs):
+        return TEMPLATE.format(
+            grid_logic_tile_area=per_fle_area*10,
+        )

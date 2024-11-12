@@ -16,6 +16,18 @@ def apply_adp_used(df: pd.DataFrame) -> pd.DataFrame:
     df['adp_used'] = df['area_total_used'] * df['cpd']
     return df
 
+def apply_adp_fle(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Returns "adp_fle" as "area_fle" * "cpd"
+    """
+    
+    # sanity checks
+    assert 'area_fle' in df.columns
+    assert 'cpd' in df.columns
+
+    df['adp_fle'] = df['area_fle'] * df['cpd']
+    return df
+ 
 def apply_clb_avg_util(df: pd.DataFrame, fle_per_clb: int = 10) -> pd.DataFrame:
     """
     Returns "clb_avg_util" as "fle" / ("clb" * fle_per_clb)
@@ -65,4 +77,16 @@ def apply_adder_avg_util(df: pd.DataFrame) -> pd.DataFrame:
     
     df['adder_avg_util'] = 0.0
     df.loc[(df['adder'] > 0) & (df['fle'] > 0), 'adder_avg_util'] = df['adder'] / df['fle'] / 2
+    return df
+
+def apply_area_fle(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Returns "area_fle" as "fle" * "per_fle_area"
+    """
+
+    # sanity checks
+    assert 'fle' in df.columns
+    assert 'per_fle_area' in df.columns
+    df['area_fle'] = 0.0
+    df.loc[(df['fle'] > 0) & (df['per_fle_area'] > 0), 'area_fle'] = df['fle'] * df['per_fle_area']
     return df

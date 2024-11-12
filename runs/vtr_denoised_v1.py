@@ -27,6 +27,7 @@ def run_vtr_denoised_v1(
         x_axis: list[str] = None,
         group_cols: list[str] = None,
         group_cols_short_labels: dict[str, str] = {},
+        filter_params_add: list[str] = [],
         filter_results: list[str] = ['fmax', 'cpd', 'rcw', 'area_total', 'area_total_used'],
         filter_blocks: list[str] = ['clb', 'fle'],
         seeds: tuple[int, int, int] = (1239, 5741, 1473),
@@ -59,6 +60,7 @@ def run_vtr_denoised_v1(
     * x_axis: list[str], list of columns (1 or 2) that should be used as the graph's x-axis. Should be a subset of the keys of variable_arch_params. If None, then all keys of variable_arch_params is used. Default: None
     * group_cols: list[str], list of columns that should be used to group lines together. If None, then 'filter_params_baseline' is used. Default: None
     * group_cols_short_labels:dict[str, str], short translations for parameter keys (e.g., 'sparsity': 's').
+    * filter_params_add:list[str], list of parameters to extract from input parameters, but not use for merging databases. Put parameters here if they cause empty DataFrames. Default: empty list
     * filter_results:list[str], list of parameters to extract from VPR (excluding Pb types blocks; see filter_blocks). All will be baseline normalized (unless also in avoid_norm) and plotted.
     * filter_blocks:list[str], list of Pb type blocks to extract from VPR. All will be baseline normalized (unless also in avoid_norm) and plotted.
     * seeds: (int, int, int), a tuple of 3 seeds to use for averaging.
@@ -117,7 +119,7 @@ def run_vtr_denoised_v1(
     # run all experiments
     filter_results += filter_blocks
     results = runner.run_all_threaded(
-        filter_params=filter_params_baseline + filter_params_new,
+        filter_params=filter_params_baseline + filter_params_add + filter_params_new,
         filter_results=filter_results,
         result_kwargs=dict(
             extract_blocks_list=filter_blocks
