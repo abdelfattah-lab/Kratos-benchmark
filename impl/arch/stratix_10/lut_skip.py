@@ -554,79 +554,7 @@ TEMPLATE = """<!--
           </mode>
           
           <!-- n2_lut5 -->
-          <mode name="n1_lut6">
-            <pb_type name="ble6" num_pb="1">
-              <input name="in" num_pins="6"/>
-              <output name="out" num_pins="4"/>
-              <clock name="clk" num_pins="1"/>
-              <pb_type name="lut6" blif_model=".names" num_pb="1" class="lut">
-                <input name="in" num_pins="6" port_class="lut_in"/>
-                <output name="out" num_pins="1" port_class="lut_out"/>
-                <!-- LUT timing using delay matrix -->
-                <!-- These are the physical delay inputs on a Stratix 10 LUT but because VPR cannot do LUT rebalancing,
-                           we instead take the average of these numbers to get more stable results
-                           231.11e-12
-                           232.93e-12
-                           177.84e-12
-                           174.73e-12
-                           104.73e-12
-                           76.51e-12
-                      -->
-                <delay_matrix type="max" in_port="lut6.in" out_port="lut6.out">
-                        166.31e-12
-                        166.31e-12
-                        166.31e-12
-                        166.31e-12
-                        166.31e-12
-                        166.31e-12
-                    </delay_matrix>
-              </pb_type>
-              <pb_type name="ff" blif_model=".latch" num_pb="2" class="flipflop">
-                <input name="D" num_pins="1" port_class="D"/>
-                <output name="Q" num_pins="1" port_class="Q"/>
-                <clock name="clk" num_pins="1" port_class="clock"/>
-                <T_setup value="18.91e-12" port="ff.D" clock="clk"/>
-                <T_clock_to_Q max="60.32e-12" port="ff.Q" clock="clk"/>
-              </pb_type>
-              <interconnect>
-                <direct name="lut6_inputs" input="ble6.in" output="lut6.in"/>
-                <direct name="lut6_ff" input="lut6.out" output="ff[1].D">
-                  <delay_constant max="15.2e-12" in_port="lut6.out" out_port="ff[1].D"/>
-                  <pack_pattern name="ble6" in_port="lut6.out" out_port="ff[1].D"/>
-                </direct>
-                <complete name="clock" input="ble6.clk" output="ff.clk"/>
-                <direct name="input_to_ff" input="ble6.in[0]" output="ff[0].D">
-                  <delay_constant max="15.58e-12" in_port="ble6.in[0]" out_port="ff[0].D"/>
-                </direct>
-                <mux name="mux1" input="ff[0].Q lut6.out" output="ble6.out[0]">
-                  <delay_constant max="48.41e-12" in_port="lut6.out" out_port="ble6.out[0]"/>
-                  <delay_constant max="48.41e-12" in_port="ff[0].Q" out_port="ble6.out[0]"/>
-                </mux>
-                <!-- This mux is the same as mux1 but connected to output 2 -->
-                <mux name="mux2" input="ff[0].Q lut6.out" output="ble6.out[1]">
-                  <delay_constant max="48.41e-12" in_port="lut6.out" out_port="ble6.out[1]"/>
-                  <delay_constant max="48.41e-12" in_port="ff[0].Q" out_port="ble6.out[1]"/>
-                </mux>
-                <mux name="mux3" input="ff[1].Q lut6.out" output="ble6.out[2]">
-                  <delay_constant max="43.49e-12" in_port="lut6.out" out_port="ble6.out[2]"/>
-                  <delay_constant max="43.49e-12" in_port="ff[1].Q" out_port="ble6.out[2]"/>
-                </mux>
-                <!-- This mux is the same as mux2 but connected to output 3 -->
-                <mux name="mux4" input="ff[1].Q lut6.out" output="ble6.out[3]">
-                  <delay_constant max="43.49e-12" in_port="lut6.out" out_port="ble6.out[3]"/>
-                  <delay_constant max="43.49e-12" in_port="ff[1].Q" out_port="ble6.out[3]"/>
-                </mux>
-              </interconnect>
-            </pb_type>
-            <interconnect>
-              <!-- ble6 takes inputs A, B, C, D, E, & F; where F is fle[7] -->
-              <direct name="lut6_inputs1" input="fle.in[4:0]" output="ble6.in[4:0]"/>
-              <direct name="lut6_inputs2" input="fle.in[7]" output="ble6.in[5]"/>
-              <direct name="direct2" input="ble6.out" output="fle.out"/>
-              <direct name="direct4" input="fle.clk" output="ble6.clk"/>
-            </interconnect>
-          </mode>
-          <!-- n1_lut6 -->
+          {mode_lut6}
         </pb_type>
         <interconnect>
           <!-- 50% sparsely populated local routing, general ALMs -->
@@ -1100,18 +1028,99 @@ def gen_carry_chain_links(ble_count=10, mux_stride=1):
 </direct>
 """   
 
+def gen_lut6():
+    return """<mode name="n1_lut6">
+            <pb_type name="ble6" num_pb="1">
+              <input name="in" num_pins="6"/>
+              <output name="out" num_pins="4"/>
+              <clock name="clk" num_pins="1"/>
+              <pb_type name="lut6" blif_model=".names" num_pb="1" class="lut">
+                <input name="in" num_pins="6" port_class="lut_in"/>
+                <output name="out" num_pins="1" port_class="lut_out"/>
+                <!-- LUT timing using delay matrix -->
+                <!-- These are the physical delay inputs on a Stratix 10 LUT but because VPR cannot do LUT rebalancing,
+                           we instead take the average of these numbers to get more stable results
+                           231.11e-12
+                           232.93e-12
+                           177.84e-12
+                           174.73e-12
+                           104.73e-12
+                           76.51e-12
+                      -->
+                <delay_matrix type="max" in_port="lut6.in" out_port="lut6.out">
+                        166.31e-12
+                        166.31e-12
+                        166.31e-12
+                        166.31e-12
+                        166.31e-12
+                        166.31e-12
+                    </delay_matrix>
+              </pb_type>
+              <pb_type name="ff" blif_model=".latch" num_pb="2" class="flipflop">
+                <input name="D" num_pins="1" port_class="D"/>
+                <output name="Q" num_pins="1" port_class="Q"/>
+                <clock name="clk" num_pins="1" port_class="clock"/>
+                <T_setup value="18.91e-12" port="ff.D" clock="clk"/>
+                <T_clock_to_Q max="60.32e-12" port="ff.Q" clock="clk"/>
+              </pb_type>
+              <interconnect>
+                <direct name="lut6_inputs" input="ble6.in" output="lut6.in"/>
+                <direct name="lut6_ff" input="lut6.out" output="ff[1].D">
+                  <delay_constant max="15.2e-12" in_port="lut6.out" out_port="ff[1].D"/>
+                  <pack_pattern name="ble6" in_port="lut6.out" out_port="ff[1].D"/>
+                </direct>
+                <complete name="clock" input="ble6.clk" output="ff.clk"/>
+                <direct name="input_to_ff" input="ble6.in[0]" output="ff[0].D">
+                  <delay_constant max="15.58e-12" in_port="ble6.in[0]" out_port="ff[0].D"/>
+                </direct>
+                <mux name="mux1" input="ff[0].Q lut6.out" output="ble6.out[0]">
+                  <delay_constant max="48.41e-12" in_port="lut6.out" out_port="ble6.out[0]"/>
+                  <delay_constant max="48.41e-12" in_port="ff[0].Q" out_port="ble6.out[0]"/>
+                </mux>
+                <!-- This mux is the same as mux1 but connected to output 2 -->
+                <mux name="mux2" input="ff[0].Q lut6.out" output="ble6.out[1]">
+                  <delay_constant max="48.41e-12" in_port="lut6.out" out_port="ble6.out[1]"/>
+                  <delay_constant max="48.41e-12" in_port="ff[0].Q" out_port="ble6.out[1]"/>
+                </mux>
+                <mux name="mux3" input="ff[1].Q lut6.out" output="ble6.out[2]">
+                  <delay_constant max="43.49e-12" in_port="lut6.out" out_port="ble6.out[2]"/>
+                  <delay_constant max="43.49e-12" in_port="ff[1].Q" out_port="ble6.out[2]"/>
+                </mux>
+                <!-- This mux is the same as mux2 but connected to output 3 -->
+                <mux name="mux4" input="ff[1].Q lut6.out" output="ble6.out[3]">
+                  <delay_constant max="43.49e-12" in_port="lut6.out" out_port="ble6.out[3]"/>
+                  <delay_constant max="43.49e-12" in_port="ff[1].Q" out_port="ble6.out[3]"/>
+                </mux>
+              </interconnect>
+            </pb_type>
+            <interconnect>
+              <!-- ble6 takes inputs A, B, C, D, E, & F; where F is fle[7] -->
+              <direct name="lut6_inputs1" input="fle.in[4:0]" output="ble6.in[4:0]"/>
+              <direct name="lut6_inputs2" input="fle.in[7]" output="ble6.in[5]"/>
+              <direct name="direct2" input="ble6.out" output="fle.out"/>
+              <direct name="direct4" input="fle.clk" output="ble6.clk"/>
+            </interconnect>
+          </mode>
+          <!-- n1_lut6 -->"""
+
 DEFAULTS = {
     'cin_mux_stride': 0, # insert a 2:1 MUX in the carry chain every ? ALMs.
+    'enable_lut6': True, # turn on/off 6-LUT mode
 }
 
 class LUTSkipArchFactory(ArchFactory, ParamsChecker):
-    def get_name(self, cin_mux_stride: int, **kwargs):
-        return f"type.s10-skip_cin.{cin_mux_stride}"
+    def get_name(self, cin_mux_stride: int, enable_lut6: bool, **kwargs):
+        name = f"type.s10-skip_cin.{cin_mux_stride}"
+        if not enable_lut6:
+            name += "_l6.off"
+        
+        return name
     
     def verify_params(self, params):
         return self.verify_required_keys(DEFAULTS, [], params)
     
-    def get_arch(self, cin_mux_stride: int, **kwargs):
+    def get_arch(self, cin_mux_stride: int, enable_lut6: bool, **kwargs):
         return TEMPLATE.format(
             carry_chain_links=gen_carry_chain_links(mux_stride=cin_mux_stride),
+            mode_lut6=gen_lut6() if enable_lut6 else '',
         )
