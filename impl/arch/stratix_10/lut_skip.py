@@ -205,7 +205,7 @@ TEMPLATE = """<!--
   </layout>
   <device>
     <sizing R_minW_nmos="13090" R_minW_pmos="19086.83"/>
-    <area grid_logic_tile_area="23620.587"/>
+    <area grid_logic_tile_area="{grid_logic_tile_area}"/>
     <chan_width_distr>
       <x distr="uniform" peak="1.000000"/>
       <y distr="uniform" peak="1.000000"/>
@@ -1106,6 +1106,7 @@ def gen_lut6():
 DEFAULTS = {
     'cin_mux_stride': 0, # insert a 2:1 MUX in the carry chain every ? ALMs.
     'enable_lut6': True, # turn on/off 6-LUT mode
+    'per_fle_area': 2362.0587, # LAB area / 10
 }
 
 class LUTSkipArchFactory(ArchFactory, ParamsChecker):
@@ -1119,8 +1120,9 @@ class LUTSkipArchFactory(ArchFactory, ParamsChecker):
     def verify_params(self, params):
         return self.verify_required_keys(DEFAULTS, [], params)
     
-    def get_arch(self, cin_mux_stride: int, enable_lut6: bool, **kwargs):
+    def get_arch(self, cin_mux_stride: int, enable_lut6: bool, per_fle_area: float, **kwargs):
         return TEMPLATE.format(
             carry_chain_links=gen_carry_chain_links(mux_stride=cin_mux_stride),
             mode_lut6=gen_lut6() if enable_lut6 else '',
+            grid_logic_tile_area=per_fle_area * 10,
         )

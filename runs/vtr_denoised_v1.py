@@ -27,6 +27,7 @@ def run_vtr_denoised_v1(
         x_axis: list[str] = None,
         group_cols: list[str] = None,
         group_cols_short_labels: dict[str, str] = {},
+        filter_params_add: list[str] = [],
         filter_results: list[str] = ['fmax', 'cpd', 'rcw', 'area_total', 'area_total_used'],
         filter_blocks: list[str] = ['clb', 'fle'],
         seeds: tuple[int, int, int] = (1239, 5741, 1473),
@@ -59,6 +60,7 @@ def run_vtr_denoised_v1(
     * x_axis: list[str], list of columns (1 or 2) that should be used as the graph's x-axis. Should be a subset of the keys of variable_arch_params. If None, then all keys of variable_arch_params is used. Default: None
     * group_cols: list[str], list of columns that should be used to group lines together. If None, then 'filter_params_baseline' is used. Default: None
     * group_cols_short_labels:dict[str, str], short translations for parameter keys (e.g., 'sparsity': 's').
+    * filter_params_add:list[str], list of parameters to extract from input parameters, but not use for merging databases. Put parameters here if they cause empty DataFrames. Default: empty list
     * filter_results:list[str], list of parameters to extract from VPR (excluding Pb types blocks; see filter_blocks). All will be baseline normalized (unless also in avoid_norm) and plotted.
     * filter_blocks:list[str], list of Pb type blocks to extract from VPR. All will be baseline normalized (unless also in avoid_norm) and plotted.
     * seeds: (int, int, int), a tuple of 3 seeds to use for averaging.
@@ -117,7 +119,7 @@ def run_vtr_denoised_v1(
     # run all experiments
     filter_results += filter_blocks
     results = runner.run_all_threaded(
-        filter_params=filter_params_baseline + filter_params_new,
+        filter_params=filter_params_baseline + filter_params_add + filter_params_new,
         filter_results=filter_results,
         result_kwargs=dict(
             extract_blocks_list=filter_blocks
@@ -182,8 +184,12 @@ def run_vtr_denoised_v1(
             exp_results[exp_type]['merged'] = merged
 
     # baseline normalization and post-processing
+    new_raw_results = {}
     norm_results = exp_results['new']
     for key, df in norm_results.items():
+        # save a raw copy
+        new_raw_results[key] = df
+
         if should_use_baseline:
             # perform merge and divide by baseline
             norm_results[key] = merge_op(df, exp_results['baseline'][key], lambda a, b: a / b, filter_params_baseline, ignore=avoid_norm)
@@ -207,6 +213,10 @@ def run_vtr_denoised_v1(
 
     # save baseline results
     def do_with_dir_fn(dir: str):
+        # save raw results
+        for exp_dir, df in new_raw_results.items():
+            df.to_csv(path.join(dir, f"{exp_dir.replace(path.sep, '_')}_raw_results.csv"))
+
         if not should_use_baseline:
             # skip baseline CSV generation
             return

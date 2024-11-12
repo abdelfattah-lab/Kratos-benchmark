@@ -94,16 +94,26 @@ DESIGN_LIST = [
 def add_derived_metrics(df: DataFrame) -> tuple[DataFrame, list[str]]:
     # df = derived_metrics.apply_clb_avg_util(df, 10)
     df = derived_metrics.apply_adder_avg_util(df)
+    
+    # 5-LUT measurements
     df = derived_metrics.apply_lut5_to_adder_ratio(df)
     df = derived_metrics.apply_lut5_concurrency(df)
-    df = derived_metrics.apply_adp_used(df)
+
+    # Area calculations
+    df = derived_metrics.apply_area_fle(df)
+
+    # ADP
+    # df = derived_metrics.apply_adp_used(df)
+    df = derived_metrics.apply_adp_fle(df)
 
     return df, [
         # 'clb_avg_util', 
         'adder_avg_util',
         'lut5/adder',
         'lut5_concurrency',
-        'adp_used', 
+        'area_fle',
+        # 'adp_used',
+        'adp_fle', 
     ]
 
 run_vtr_denoised_v1(
@@ -113,9 +123,12 @@ run_vtr_denoised_v1(
     variable_arch_params=VARIABLE_ARCH_PARAMS,
     x_axis=['data_width'],
     filter_params_baseline=['data_width', 'sparsity'],
+    filter_params_add=['per_fle_area'],
     group_cols=['sparsity'],
     group_cols_short_labels=dict(sparsity='s'),
-    filter_results=['fmax', 'cpd', 'twl', 'area_total_used'],
+    filter_results=['fmax', 'cpd', 'twl', 
+                    # 'area_total_used'
+                    ],
     filter_blocks=['clb', 'fle',
                     'lut5',
                     'dual_lut4s.lut5',
@@ -130,6 +143,7 @@ run_vtr_denoised_v1(
                 'lut5_concurrency',
                 ],
     avoid_plot=[
+                'per_fle_area',
                 'lut5',
                 'dual_lut4s.lut5',
                 'adder',
