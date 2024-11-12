@@ -184,8 +184,12 @@ def run_vtr_denoised_v1(
             exp_results[exp_type]['merged'] = merged
 
     # baseline normalization and post-processing
+    new_raw_results = {}
     norm_results = exp_results['new']
     for key, df in norm_results.items():
+        # save a raw copy
+        new_raw_results[key] = df
+
         if should_use_baseline:
             # perform merge and divide by baseline
             norm_results[key] = merge_op(df, exp_results['baseline'][key], lambda a, b: a / b, filter_params_baseline, ignore=avoid_norm)
@@ -209,6 +213,10 @@ def run_vtr_denoised_v1(
 
     # save baseline results
     def do_with_dir_fn(dir: str):
+        # save raw results
+        for exp_dir, df in new_raw_results.items():
+            df.to_csv(path.join(dir, f"{exp_dir.replace(path.sep, '_')}_raw_results.csv"))
+
         if not should_use_baseline:
             # skip baseline CSV generation
             return
