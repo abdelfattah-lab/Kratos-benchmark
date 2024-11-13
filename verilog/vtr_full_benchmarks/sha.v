@@ -2,7 +2,8 @@
 ////                                                             ////
 ////  SHA-160                                                    ////
 ////  Secure Hash Algorithm (SHA-160)                            ////
-////                                                             ////
+////  + 1,855 <= 5-LUTs, 309 adders								 ////
+////															 ////
 ////  Author: marsgod                                            ////
 ////          marsgod@opencores.org                              ////
 ////                                                             ////
