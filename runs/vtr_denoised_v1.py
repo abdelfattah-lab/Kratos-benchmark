@@ -145,12 +145,11 @@ def run_vtr_denoised_v1(
     for exp_type, dfs in exp_results.items():
         # used if merge_designs is True
         merged = None
-
+        flt = filter_params_baseline.copy()
+        if exp_type != 'baseline':
+            flt += filter_params_new
+        
         for key, df in dfs.items():
-            flt = filter_params_baseline.copy()
-            if exp_type != 'baseline':
-                flt += filter_params_new
-            
             seed_mean = df.groupby(by=flt).mean().reset_index()
 
             # add post-processing (if any)
@@ -179,7 +178,7 @@ def run_vtr_denoised_v1(
             #     exp_results[exp_type].pop(key, None)
             
             # take the n-th root (geometric mean)
-            for col in filter_results:
+            for col in [col for col in merged.columns if col not in flt]:
                 merged[col] **= 1/(len(keys_to_drop))
             exp_results[exp_type]['merged'] = merged
 
