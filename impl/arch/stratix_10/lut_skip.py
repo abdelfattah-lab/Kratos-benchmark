@@ -594,7 +594,7 @@ TEMPLATE = """<!--
             <delay_constant max="69.39e-12" in_port="lab.I2" out_port="fle.in[7:7]"/>
           </complete>
           
-          <!-- 50% sparsely populated local routing, direct adder connections from LAB-LAB pins only -->
+          <!-- 25% sparsely populated local routing, direct adder connections from LAB-LAB pins only -->
           <!-- pins from right LAB -->
           <complete name="directA_R" input="lab.I1[9:5] lab.I3[9:5]" output="fle[0:0].in_direct[3:0]">
             <delay_constant max="76.33e-12" in_port="lab.I1[9:5]" out_port="fle[0:0].in_direct[3:0]"/>
