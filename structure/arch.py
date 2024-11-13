@@ -3,6 +3,7 @@ from util.search import query_df
 
 import sys, os
 import pandas as pd
+from lxml.etree import Element
 
 class ArchFactory(DynamicallyNamed):
     """
@@ -13,6 +14,8 @@ class ArchFactory(DynamicallyNamed):
     * a COFFE input file.
     
     Can also get a set of MWTA area values from a COFFE archive .csv file.
+
+    With a VTR final '.net' file, an ArchFactory can also return important statistics.
     """
 
     def get_arch(self, **kwargs) -> str:
@@ -82,3 +85,17 @@ class ArchFactory(DynamicallyNamed):
         
         # return merged result
         return defaults | result.iloc[0][result.columns.drop(search_kwargs.keys())].to_dict()
+    
+    def should_update_netstats(self, netstats: dict[str, any]) -> bool:
+        """
+        {abstract}
+        Force re-writing of 'netstats.json' whenever this is True. This usually results in slower re-use of existing experiments, since VTR '.net' files will have to be unzipped and re-zipped.
+        """
+        return False
+
+    def get_netstats(self, root: Element) -> dict[str, any]:
+        """
+        {abstract}
+        Take the root Element of a VTR '.net' file (loaded with lxml.etree), and returns a JSON-serializable dictionary of important statistics.
+        """
+        return {}

@@ -8,6 +8,9 @@ from util.flow import start_dependent_process
 
 import os
 import subprocess
+from lxml import etree as ET
+import json
+import zipfile
 
 class VtrExperiment(Experiment):
     """
@@ -62,6 +65,7 @@ class VtrExperiment(Experiment):
 
         # generic experiment setup
         self._setup_exp(DEFAULTS_EXP_VTR, REQUIRED_KEYS_EXP, clear_exp_dir=not allow_skipping)
+        self.vtr_output_dir = os.path.join(self.exp_dir, 'temp') # VTR output directory
 
         # Check for viable result (i.e., it has been run in the past)
         if (not dry_run) and allow_skipping and self.get_result().get('status', False):
@@ -142,6 +146,17 @@ class VtrExperiment(Experiment):
         # start GC thread
         self._start_gc_thread(self._clean, (clean,))
 
+    def _generate_netstats_json(self, net_root: ET.Element, output_dir: str) -> dict[str, any]:
+        """
+        Uses the ArchFactory to generate vital information from 'design.net' file, and saves a 'netstats.json' file in the same directory.
+        @returns netstats dictionary.
+        """
+        netstats = self.arch.get_netstats(net_root)
+        with open(os.path.join(output_dir, 'netstats.json'), 'w') as f:
+            json.dump(netstats, f)
+
+        return netstats
+
     def _clean(self, clean=True) -> None:
         """
         VTR cleanup with zipping of large files.
@@ -150,7 +165,12 @@ class VtrExperiment(Experiment):
         if not clean:
             return
         
-        output_temp_dir = os.path.join(self.exp_dir, 'temp')
+        output_temp_dir = self.vtr_output_dir
+        
+        # add a lightweight .json summary from .net file before zipping
+        net_path = os.path.join(output_temp_dir, 'design.net')
+        if os.path.exists(net_path):
+            self._generate_netstats_json(ET.parse(net_path).getroot(), self.vtr_output_dir)
 
         # zip parmys.out and delete the original file
         # using subprocess to zip the file
@@ -182,6 +202,25 @@ class VtrExperiment(Experiment):
         """
         self._preresult_check()
 
-        self.result = extract_info_vtr(os.path.join(self.exp_dir, 'temp'), **kwargs)
+        # load netstats if available
+        netstats = {}
+        netstats_path = os.path.join(self.vtr_output_dir, 'netstats.json')
+        needs_updating = False
+        if os.path.exists(netstats_path):
+            with open(netstats_path, 'r') as netstats_file:
+                netstats = json.load(netstats_file)
+            needs_updating = self.arch.should_update_netstats(netstats)
+        else:
+            needs_updating = True
+
+        if needs_updating:
+            # file exists in a .zip file
+            largefile_zip_path = os.path.join(self.vtr_output_dir, 'largefile.zip')
+            if os.path.exists(largefile_zip_path):
+                with zipfile.ZipFile(largefile_zip_path) as z:
+                    with z.open('design.net') as net_file:
+                        netstats = self._generate_netstats_json(ET.parse(net_file).getroot(), self.vtr_output_dir)
+
+        self.result = extract_info_vtr(self.vtr_output_dir, **kwargs) | netstats
         return self.result
 
