@@ -8,6 +8,9 @@ Modified:
 
 from structure.arch import ArchFactory
 from structure.util import ParamsChecker
+import util.netstats as ns
+
+from lxml.etree import Element
 
 TEMPLATE = """<!--
     This is the architecture file for a Stratix-10-like *arithmetic* Architecture discussed in [1].
@@ -1125,4 +1128,32 @@ class LUTSkipArchFactory(ArchFactory, ParamsChecker):
             carry_chain_links=gen_carry_chain_links(mux_stride=cin_mux_stride),
             mode_lut6=gen_lut6() if enable_lut6 else '',
             grid_logic_tile_area=per_fle_area * 10,
+        )
+    
+    def should_update_netstats(self, netstats: dict[str, any]) -> bool:
+        """
+        Check for required keys.
+        Update this function when you update get_netstats.
+        """
+        required_keys = ['concurrent_lut5s']
+        for key in required_keys:
+            if key not in netstats:
+                return True
+        
+        return False
+
+    def get_netstats(self, root: Element) -> dict[str, any]:
+        """
+        Gets the following statistics:
+        - concurrent_lut5s: int -> number of 5-LUTs used together with adders.
+
+        Update should_update_netstats with keys produced by the latest implementation of this function.
+        """
+        concurrent_lut5s = 0
+        for arith_block in ns.find_all_block_instances(root, 'arithmetic[0]'):
+            if ns.has_valid_child_block_instance(arith_block, 'adder[0]') and ns.has_valid_child_block_mode(arith_block, 'as_lut5'):
+                concurrent_lut5s += 1
+
+        return dict(
+            concurrent_lut5s=concurrent_lut5s
         )

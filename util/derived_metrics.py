@@ -54,16 +54,16 @@ def apply_lut5_to_adder_ratio(df: pd.DataFrame) -> pd.DataFrame:
 
 def apply_lut5_concurrency(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Returns "lut5_concurrency" as "dual_lut4s.lut5" / "lut5"
-    Use only with impl.arch.stratix_10.lut_skip.LUTSkipArchFactory.
+    Returns "lut5_concurrency" as "concurrent_lut5s" / "lut5"
+    Use only with impl.arch.stratix_10.lut_skip.LUTSkipArchFactory for non-zero columns.
     """
+    df['lut5_concurrency'] = 0.0
     
     # sanity checks
-    assert 'dual_lut4s.lut5' in df.columns
-    assert 'lut5' in df.columns
+    if not 'concurrent_lut5s' in df.columns or not 'lut5' in df.columns:
+        return df
 
-    df['lut5_concurrency'] = 0.0
-    df.loc[(df['lut5'] > 0) & (df['dual_lut4s.lut5'] > 0), 'lut5_concurrency'] = df['dual_lut4s.lut5'] / df['lut5']
+    df.loc[(df['lut5'] > 0) & (df['concurrent_lut5s'] > 0), 'lut5_concurrency'] = df['concurrent_lut5s'] / df['lut5']
     return df
 
 def apply_adder_avg_util(df: pd.DataFrame) -> pd.DataFrame:

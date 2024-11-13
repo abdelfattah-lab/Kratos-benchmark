@@ -127,6 +127,7 @@ run_vtr_denoised_v1(
     group_cols=['sparsity'],
     group_cols_short_labels=dict(sparsity='s'),
     filter_results=['fmax', 'cpd', 'twl', 
+                    'concurrent_lut5s',
                     # 'area_total_used'
                     ],
     filter_blocks=['clb', 'fle',
@@ -143,6 +144,7 @@ run_vtr_denoised_v1(
                 'lut5_concurrency',
                 ],
     avoid_plot=[
+                'concurrent_lut5s',
                 'per_fle_area',
                 'lut5',
                 'dual_lut4s.lut5',
