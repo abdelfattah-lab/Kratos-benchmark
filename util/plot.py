@@ -13,6 +13,7 @@ import pandas as pd
 from itertools import cycle
 from random import shuffle
 from typing import Callable, Literal
+import math
 
 USABLE_MARKERS = ['.', 'o', 'v', '^', '<', '>', '1', '2', '3', '4', '8', 's', 'p', 'P', '*', 'h', '+', 'x', 'X', 'D']
 
@@ -361,21 +362,44 @@ def plot_xy(
             x_axis_count = df[x_axis_col].nunique()
             bar_x = np.arange(x_axis_count)
 
+            # Get min and max y values for ylim scaling
+            y_min = math.inf
+            y_max = -math.inf
+
+            # check normalized
+            is_norm = ycol in normalized_y_axes
             for grp_i, grp in enumerate(groups):
                 marker, color = attr_map[tuple(grp[col].unique()[0] for col in group_identifiers)]
 
                 # sort group by x-axis
                 grp.sort_values(by=[x_axis_col], inplace=True)
+
+                # update ylims
+                y_vals = grp[ycol].tolist()
+                y_min = min(y_min, min(y_vals))
+                y_max = max(y_max, max(y_vals))
+                
                 if is_bar:
-                    ax.bar(bar_x + bar_offsets[grp_i], grp[ycol].tolist(), bar_width, color=color)
+                    ax.bar(bar_x + bar_offsets[grp_i], y_vals, bar_width, color=color)
                 else:
                     grp.plot(x=x_axis_col, y=ycol, kind='line', linestyle='solid', marker=marker, color=color, ax=ax)
                     if y_axis_col_secondary is not None:
                         grp.plot(x=x_axis_col, y=y_axis_col_secondary, kind='line', linestyle='dotted', marker=marker, color=color, ax=ax2)
 
-                # add normalization line
-                if ycol in normalized_y_axes:
-                    ax.axhline(1, linestyle='--', color='black')
+            # set ylims
+            ylim_diff = 0.2*(y_max-y_min)
+            ylim_bottom = y_min - ylim_diff
+            if y_min >= 0:
+                ylim_bottom = max(0, ylim_bottom) # avoid floating bars
+            ylim_top = y_max + ylim_diff
+            if is_norm:
+                ylim_bottom = max(0, ylim_bottom) if ylim_bottom < 1 else min(0.95, ylim_bottom) # clamp to 0/0.95
+                ylim_top = max(1.05, ylim_top) # clamp to 1.05
+            ax.set_ylim(bottom=ylim_bottom, top=ylim_top)
+
+            # add normalization line
+            if is_norm:
+                ax.axhline(1, linestyle='--', color='black')
 
             # set ticks (if bar)
             if is_bar:
