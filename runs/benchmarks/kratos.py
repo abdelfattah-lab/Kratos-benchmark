@@ -2,6 +2,8 @@
 Experiments to simulate Kratos benchmarks.
 """
 
+from structure.consts.keys import KEY_DESIGN
+import runs.benchmarks.kratos_mini as mini
 from runs.benchmarks import get_params
 
 def get_conv_1d_fu_params(base_params: dict[str, any], exp_root_dir: str = 'conv_1d/fu', is_L: bool = False) -> dict[str, any]:
@@ -44,6 +46,17 @@ def get_conv_2d_fu_params(base_params: dict[str, any], exp_root_dir: str = 'conv
         'stride_w': 1,
         'stride_h': 1
     })
+
+def get_conv_2d_fu_and_shaxN_params(base_params: dict[str, any], exp_root_dir: str = 'conv_2d/fu', is_L: bool = False, sha_num: int = 10) -> dict[str, any]:
+    """
+    Add Conv-2D Fully-Unrolled with shaxN parameters.
+    """
+    params = mini.get_conv_2d_fu_params(base_params, exp_root_dir=exp_root_dir, 
+                                        # is_L=is_L
+                                        )
+    params[KEY_DESIGN]['sha_num'] = params[KEY_DESIGN].get('sha_num', sha_num)
+
+    return params
 
 def get_conv_2d_rp_params(base_params: dict[str, any], exp_root_dir: str = 'conv_2d/rp', is_L: bool = False) -> dict[str, any]:
     """
