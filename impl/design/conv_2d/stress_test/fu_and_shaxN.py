@@ -117,6 +117,7 @@ project_close
             constant_bits = ''
             fil_in = 'fil'
 
+        sha_last_i = sha_num - 1
         template = f'''`include "{self.module_dir}/{self.impl}.v"
 `include "vtr_full_benchmarks/sha.v"
 
@@ -176,14 +177,14 @@ module {self.wrapper_module_name}
     // End: --- conv2d-FU I/O ---
 
     // Start: --- sha I/O ---
-	input	[9:0]   rst_i, 	    // global reset input , active high
+	input	[{sha_last_i}:0]   rst_i, 	    // global reset input , active high
 	
-	input	[31:0]	text_i[0:9],	// text input 32bit
-	output	[31:0]	text_o[0:9],    // text output 32bit
+	input	[31:0]	text_i[0:{sha_last_i}],	// text input 32bit
+	output	[31:0]	text_o[0:{sha_last_i}],    // text output 32bit
 	
-	input	[2:0]	cmd_i[0:9],	// command input
-	input	[9:0]	cmd_w_i,     // command input write enable
-	output	[3:0]	cmd_o[0:9]	// command output(status)
+	input	[2:0]	cmd_i[0:{sha_last_i}],	// command input
+	input	[{sha_last_i}:0]	cmd_w_i,     // command input write enable
+	output	[3:0]	cmd_o[0:{sha_last_i}]	// command output(status)
     // End: --- sha I/O ---
 );
 
