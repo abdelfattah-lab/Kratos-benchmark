@@ -393,8 +393,8 @@ def plot_xy(
                 ylim_bottom = max(0, ylim_bottom) # avoid floating bars
             ylim_top = y_max + ylim_diff
             if is_norm:
-                ylim_bottom = max(0, ylim_bottom) if ylim_bottom < 1 else min(0.95, ylim_bottom) # clamp to 0/0.95
-                ylim_top = max(1.05, ylim_top) # clamp to 1.05
+                ylim_bottom = max(0, ylim_bottom) if ylim_bottom < 1 else min(1-ylim_diff, ylim_bottom) # clamp to 0 or 1-ylim_diff
+                ylim_top = max(1+ylim_diff, ylim_top) # clamp to 1+ylim_diff
             ax.set_ylim(bottom=ylim_bottom, top=ylim_top)
 
             # add normalization line
