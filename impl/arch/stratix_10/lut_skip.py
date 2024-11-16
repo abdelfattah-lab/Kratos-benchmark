@@ -192,7 +192,7 @@ TEMPLATE = """<!--
   <!-- ODIN II specific config ends -->
   <layout>
     <!-- Physical descriptions begin -->
-    <auto_layout aspect_ratio="1.0">
+    {layout_sizing_start}
       <!--Perimeter of 'io' blocks with 'EMPTY' blocks at corners-->
       <perimeter type="io" priority="100"/>
       <corners type="EMPTY" priority="101"/>
@@ -204,7 +204,7 @@ TEMPLATE = """<!--
       <!--Column of 'memory' with 'EMPTY' blocks wherever a 'memory' does not fit. Vertical offset by 1 for perimeter.-->
       <col type="memory" startx="2" starty="1" repeatx="8" priority="20"/>
       <col type="EMPTY" startx="2" repeatx="8" starty="1" priority="19"/>
-    </auto_layout>
+    {layout_sizing_end}
   </layout>
   <device>
     <sizing R_minW_nmos="13090" R_minW_pmos="19086.83"/>
@@ -1106,28 +1106,42 @@ def gen_lut6():
           </mode>
           <!-- n1_lut6 -->"""
 
+def gen_layout_sizing(fixed_size: tuple[int, int]|None):
+    if fixed_size is None:
+        return '<auto_layout aspect_ratio="1.0">', '</auto_layout>'
+    
+    w, h = fixed_size
+    return f'<fixed_layout name="fixed_arch_size" width="{w}" height="{h}">', '</fixed_layout>'
+
 DEFAULTS = {
     'cin_mux_stride': 0, # insert a 2:1 MUX in the carry chain every ? ALMs.
     'enable_lut6': True, # turn on/off 6-LUT mode
     'per_fle_area': 2362.0587, # LAB area / 10
+    'fixed_size': None, # (w, h) of fixed size, None for auto sizing
 }
 
 class LUTSkipArchFactory(ArchFactory, ParamsChecker):
-    def get_name(self, cin_mux_stride: int, enable_lut6: bool, **kwargs):
+    def get_name(self, cin_mux_stride: int, enable_lut6: bool, fixed_size: tuple[int, int]|None, **kwargs):
         name = f"type.s10-skip_cin.{cin_mux_stride}"
         if not enable_lut6:
             name += "_l6.off"
-        
+        if fixed_size is not None:
+            w, h = fixed_size
+            name += f"_fs.{w}x{h}"
         return name
     
     def verify_params(self, params):
         return self.verify_required_keys(DEFAULTS, [], params)
     
-    def get_arch(self, cin_mux_stride: int, enable_lut6: bool, per_fle_area: float, **kwargs):
+    def get_arch(self, cin_mux_stride: int, enable_lut6: bool, per_fle_area: float, fixed_size: tuple[int, int]|None, **kwargs):
+        layout_sizing_start, layout_sizing_end = gen_layout_sizing(fixed_size)
+        
         return TEMPLATE.format(
             carry_chain_links=gen_carry_chain_links(mux_stride=cin_mux_stride),
             mode_lut6=gen_lut6() if enable_lut6 else '',
             grid_logic_tile_area=per_fle_area * 10,
+            layout_sizing_start=layout_sizing_start,
+            layout_sizing_end=layout_sizing_end,
         )
     
     def should_update_netstats(self, netstats: dict[str, any]) -> bool:
