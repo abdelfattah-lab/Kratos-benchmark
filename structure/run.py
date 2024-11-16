@@ -34,8 +34,15 @@ class Runner():
         * params:dict, parameters to use
         """
         self.experiments += self.factory.gen_experiments(experiment_class, arch, design, params)
+    
+    def clear_experiments(self):
+        """
+        Clear all added experiments.
+        """
+        self.experiments.clear()
 
     def run_all_threaded(self,
+            only_store_successes: bool = True,
             verbose: bool = False,
             track_run_time: bool = True,
             notify_via_tele: bool = True,
@@ -52,10 +59,11 @@ class Runner():
         Main function: run all generated experiments with a thread pool.
 
         Optional arguments:
+        * only_store_successes:bool, will not add to results if the experiment failed. Default: True
         * verbose:bool, prints detailed report of each result if True. Default: False
         * track_run_time:bool, will track total run time and print at the end if True. Default: True
         * notify_via_tele:bool, will send failure/batched success updates to the specified Telegram bot and chat ID (refer to util.external_notifs) if True. Default: True
-        # tele_batch:int, (only valid if notify_via_tele is True) send an update every ? experiments run. Failures are sent individually. Default: 50
+        * tele_batch:int, (only valid if notify_via_tele is True) send an update every ? experiments run. Failures are sent individually. Default: 50
         * desc:str, description of run
         * num_parallel_tasks:int, maximum number of simultaneous threads allowed in the thread pool.
         * runner_err_file:str, name of error file created by runner if an exception occurs while running the Experiment. Created in the Experiment folder.
@@ -138,10 +146,11 @@ class Runner():
                     
                     telegram_notify(msg)
 
-                if exp.root_dir in results:
-                    results[exp.root_dir].append(res_dict)
-                else:
-                    results[exp.root_dir] = [res_dict]
+                if not only_store_successes or is_success:
+                    if exp.root_dir in results:
+                        results[exp.root_dir].append(res_dict)
+                    else:
+                        results[exp.root_dir] = [res_dict]
                 
                 if verbose:
                     print("====================================")
