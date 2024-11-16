@@ -177,14 +177,15 @@ module {self.wrapper_module_name}
     // End: --- conv2d-FU I/O ---
 
     // Start: --- sha I/O ---
-	input	[{sha_last_i}:0]   rst_i, 	    // global reset input , active high
-	
-	input	[31:0]	text_i[0:{sha_last_i}],	// text input 32bit
-	output	[31:0]	text_o[0:{sha_last_i}],    // text output 32bit
-	
-	input	[2:0]	cmd_i[0:{sha_last_i}],	// command input
-	input	[{sha_last_i}:0]	cmd_w_i,     // command input write enable
-	output	[3:0]	cmd_o[0:{sha_last_i}]	// command output(status)
+    // form a long chain of N shas.
+    // inputs -> sha 0 -> sha 1 -> sha 2 -> outputs
+    // share I/Os
+    input   rst_i, 	    // global reset input , active high
+	input	[31:0]	text_i,	// text input 32bit
+	output	[31:0]	text_o,    // text output 32bit
+	input	[2:0]	cmd_i,	// command input
+	input	cmd_w_i,     // command input write enable
+	output	[3:0]	cmd_o	// command output(status)
     // End: --- sha I/O ---
 );
 
@@ -203,18 +204,29 @@ module {self.wrapper_module_name}
         .opaque_out(opaque_out)
     );
     
+    // make intermediate wires.
+    logic [31:0] text_int[0:{sha_num}];
+    logic [3:0] cmd_int[0:{sha_num}];
+
+    // assign initial and ending.
+    assign text_int[0] = text_i;
+    assign text_o = text_int[{sha_num}];
+    assign cmd_int[0] = {{ cmd_i, cmd_w_i }};
+    assign cmd_o = cmd_int[{sha_num}];
+
     genvar i;
     generate
         for (i = 0; i < {sha_num}; i = i+1) begin : sha_block
             sha1 sha_inst
             (
                 .clk_i(clk),
-                .rst_i(rst_i[i]),
-                .text_i(text_i[i]),
-                .text_o(text_o[i]),
-                .cmd_i(cmd_i[i]),
-                .cmd_w_i(cmd_w_i[i]),
-                .cmd_o(cmd_o[i])
+
+                .rst_i(rst_i),
+                .text_i(text_int[i]),
+                .text_o(text_int[i+1]),
+                .cmd_i(cmd_int[i][3:1]),
+                .cmd_w_i(cmd_int[i][0]),
+                .cmd_o(cmd_int[i+1])
             );
         end
     endgenerate
