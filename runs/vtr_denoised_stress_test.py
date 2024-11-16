@@ -98,9 +98,8 @@ def run_vtr_denoised_stress_test(
 
                     p[keys.KEY_EXP]['root_dir'] = path.join(design_root_dir, f"{exp_type}-{seed}")
                     runner.add_experiments(VtrExperiment, arch, design, p)
-                
-                # map base -> stress test
-                design_mappings[design_root_dirs[0]] = design_root_dirs[1]
+                # map stress test -> base
+                design_mappings[design_root_dirs[1]] = design_root_dirs[0]
 
     # run all experiments
     filter_results += filter_blocks
@@ -165,10 +164,10 @@ def run_vtr_denoised_stress_test(
 
     # baseline normalization and post-processing
     norm_results = {}
-    for base_design, stress_design in design_mappings.items():
+    for stress_design, base_design in design_mappings.items():
         # normalize gains/losses of stress_design to base_design for both baseline and new architecture
-        df_base_arch = merge_op(exp_results['baseline'][stress_design], exp_results['baseline'][base_design], lambda a, b: (a-b) / b, filter_params_baseline, ignore=avoid_norm)
-        df_stress_arch = merge_op(exp_results['new'][stress_design], exp_results['new'][base_design], lambda a, b: (a-b) / b, filter_params_baseline, ignore=avoid_norm)
+        df_base_arch = merge_op(exp_results['baseline'][stress_design], exp_results['baseline'][base_design], lambda a, b: a-b, filter_params_baseline, ignore=avoid_norm)
+        df_stress_arch = merge_op(exp_results['new'][stress_design], exp_results['new'][base_design], lambda a, b: a-b, filter_params_baseline, ignore=avoid_norm)
 
         print("base gains:")
         print(df_base_arch)
