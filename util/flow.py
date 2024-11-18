@@ -387,11 +387,14 @@ def gen_long_constant_bits(length, sparsity, length_placeholder, bits_name='cons
     str_temp = 'localparam bit [{total_length}:0] const_fil_part_{i} = {arr_str};'
     constructed_parts_consts = ''
     data_width = 4
+
+    seed = 114514
     for i in range(num_complete):
-        arr_str = generate_flattened_bit(data_width, 8192 // data_width, sparsity)
+        arr_str = generate_flattened_bit(data_width, 8192 // data_width, sparsity, n=seed)
         constructed_parts_consts += str_temp.format(total_length=8191, i=i, arr_str=arr_str) + '\n'
+        seed += i+1
     if num_remain != 0:
-        arr_str = generate_flattened_bit(data_width, num_remain // data_width, sparsity)
+        arr_str = generate_flattened_bit(data_width, num_remain // data_width, sparsity, n=seed)
         constructed_parts_consts += str_temp.format(total_length=num_remain-1, i=num_complete, arr_str=arr_str) + '\n'
 
     idxs = '{' + ','.join([f'const_fil_part_{i}' for i in range(num_complete + 1)]) + '}'
