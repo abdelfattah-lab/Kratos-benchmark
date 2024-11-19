@@ -143,8 +143,18 @@ class VtrExperiment(Experiment):
         # start VTR on subprocess        
         self.process = start_dependent_process(cmd, stdout=self.stdout_file, stderr=self.stderr_file, cwd=self.exp_dir)
 
+        # start post-processing thread
+        self._start_post_thread(self._post_thread, ())
         # start GC thread
         self._start_gc_thread(self._clean, (clean,))
+
+    def _post_thread(self) -> None:
+        self._wait_main_process()
+
+        # add a lightweight .json summary from .net file before zipping
+        net_path = os.path.join(self.vtr_output_dir, 'design.net')
+        if os.path.exists(net_path):
+            self._generate_netstats_json(ET.parse(net_path).getroot(), self.vtr_output_dir)
 
     def _generate_netstats_json(self, net_root: ET.Element, output_dir: str) -> dict[str, any]:
         """
@@ -166,12 +176,6 @@ class VtrExperiment(Experiment):
             return
         
         output_temp_dir = self.vtr_output_dir
-        
-        # add a lightweight .json summary from .net file before zipping
-        net_path = os.path.join(output_temp_dir, 'design.net')
-        if os.path.exists(net_path):
-            self._generate_netstats_json(ET.parse(net_path).getroot(), self.vtr_output_dir)
-
         # zip parmys.out and delete the original file
         # using subprocess to zip the file
         possible_list = ['parmys.out', 'design.net.post_routing', 'design.net', 'design.route']
@@ -205,13 +209,11 @@ class VtrExperiment(Experiment):
         # load netstats if available
         netstats = {}
         netstats_path = os.path.join(self.vtr_output_dir, 'netstats.json')
-        needs_updating = False
+        needs_updating = True
         if os.path.exists(netstats_path):
             with open(netstats_path, 'r') as netstats_file:
                 netstats = json.load(netstats_file)
             needs_updating = self.arch.should_update_netstats(netstats)
-        else:
-            needs_updating = True
 
         if needs_updating:
             # file exists in a .zip file
@@ -221,6 +223,6 @@ class VtrExperiment(Experiment):
                     with z.open('design.net') as net_file:
                         netstats = self._generate_netstats_json(ET.parse(net_file).getroot(), self.vtr_output_dir)
 
-        self.result = extract_info_vtr(self.vtr_output_dir, **kwargs) | netstats
+        self.result = { **extract_info_vtr(self.vtr_output_dir, **kwargs), **netstats }
         return self.result
 

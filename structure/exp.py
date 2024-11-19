@@ -43,6 +43,7 @@ class Experiment(ParamsChecker, Hashable):
         self.process = None  # subprocess
         self.stdout_file = None  # stdout file
         self.stderr_file = None  # stderr file
+        self.postthread = None # thread for post-process functions
         self.gcthread = None  # thread for garbage collection
         self.result = None  # result of the experiment
 
@@ -86,7 +87,11 @@ class Experiment(ParamsChecker, Hashable):
         """
         if self.process is not None:
             raise RuntimeError('Experiment is already running or has finished.')
-    
+
+    def _wait_main_process(self) -> None:
+        if self.process is not None:
+            self.process.wait()
+
     def _clean(self) -> None:
         if self.process is not None:
             self.process.wait()
@@ -99,6 +104,13 @@ class Experiment(ParamsChecker, Hashable):
     def _start_gc_thread(self, fn: Callable[..., None], args: tuple) -> None:
         self.gcthread = threading.Thread(target=fn, args=args)
         self.gcthread.start()
+    
+    def _start_post_thread(self, fn: Callable[..., None], args: tuple) -> None:
+        self.postthread = threading.Thread(target=fn, args=args)
+        self.postthread.start()
+    def _wait_post_thread(self) -> None:
+        if self.postthread is not None:
+            self.postthread.join()
 
     def run(self, dry_run=False, **kwargs) -> None:
         """
@@ -118,10 +130,11 @@ class Experiment(ParamsChecker, Hashable):
 
     def wait(self):
         """
-        Wait for finished execution of Experiment.
+        Wait for finished execution of Experiment. (and the post-processing thread, if any)
         """
         if self.process is not None:
             self.process.wait()
+            self._wait_post_thread()
     
     def _get_readme_section(self, param_group: str, translations: dict[str, str], params: dict[str, any]) -> str:
         """
