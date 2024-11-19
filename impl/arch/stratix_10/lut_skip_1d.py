@@ -8,9 +8,6 @@ Modified:
 """
 
 from impl.arch.stratix_10.lut_skip import LUTSkipArchFactory
-import util.netstats as ns
-
-from lxml.etree import Element
 
 TEMPLATE = """<!--
     This is the architecture file for a Stratix-10-like *arithmetic* Architecture discussed in [1].
@@ -404,11 +401,11 @@ TEMPLATE = """<!--
                     <input name="cin" num_pins="1"/>
                     <output name="cout" num_pins="1"/>
                     <output name="sumout" num_pins="1"/>
-                    <delay_constant max="56.66e-12" in_port="adder.a" out_port="adder.sumout"/>
-                    <delay_constant max="56.66e-12" in_port="adder.b" out_port="adder.sumout"/>
+                    <delay_constant max="48.65e-12" in_port="adder.a" out_port="adder.sumout"/>
+                    <delay_constant max="48.65e-12" in_port="adder.b" out_port="adder.sumout"/>
                     <delay_constant max="46.60e-12" in_port="adder.cin" out_port="adder.sumout"/>
-                    <delay_constant max="40.30e-12" in_port="adder.a" out_port="adder.cout"/>
-                    <delay_constant max="40.30e-12" in_port="adder.b" out_port="adder.cout"/>
+                    <delay_constant max="34.96e-12" in_port="adder.a" out_port="adder.cout"/>
+                    <delay_constant max="34.96e-12" in_port="adder.b" out_port="adder.cout"/>
                     <delay_constant max="19.95e-12" in_port="adder.cin" out_port="adder.cout"/>
                   </pb_type>
                   <pb_type name="ff" blif_model=".latch" num_pb="2" class="flipflop">

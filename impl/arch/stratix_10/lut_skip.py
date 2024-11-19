@@ -408,11 +408,11 @@ TEMPLATE = """<!--
                     <input name="cin" num_pins="1"/>
                     <output name="cout" num_pins="1"/>
                     <output name="sumout" num_pins="1"/>
-                    <delay_constant max="56.66e-12" in_port="adder.a" out_port="adder.sumout"/>
-                    <delay_constant max="56.66e-12" in_port="adder.b" out_port="adder.sumout"/>
+                    <delay_constant max="48.65e-12" in_port="adder.a" out_port="adder.sumout"/>
+                    <delay_constant max="48.65e-12" in_port="adder.b" out_port="adder.sumout"/>
                     <delay_constant max="46.60e-12" in_port="adder.cin" out_port="adder.sumout"/>
-                    <delay_constant max="40.30e-12" in_port="adder.a" out_port="adder.cout"/>
-                    <delay_constant max="40.30e-12" in_port="adder.b" out_port="adder.cout"/>
+                    <delay_constant max="34.96e-12" in_port="adder.a" out_port="adder.cout"/>
+                    <delay_constant max="34.96e-12" in_port="adder.b" out_port="adder.cout"/>
                     <delay_constant max="19.95e-12" in_port="adder.cin" out_port="adder.cout"/>
                   </pb_type>
                   <pb_type name="ff" blif_model=".latch" num_pb="2" class="flipflop">
@@ -1116,7 +1116,7 @@ def gen_layout_sizing(fixed_size: tuple[int, int]|None):
 DEFAULTS = {
     'cin_mux_stride': 0, # insert a 2:1 MUX in the carry chain every ? ALMs.
     'enable_lut6': True, # turn on/off 6-LUT mode
-    'per_fle_area': 2362.0587, # LAB area / 10
+    'per_fle_area': 2248.0434, # LAB area / 10
     'fixed_size': None, # (w, h) of fixed size, None for auto sizing
 }
 
