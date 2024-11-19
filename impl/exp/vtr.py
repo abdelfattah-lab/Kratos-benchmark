@@ -46,6 +46,7 @@ class VtrExperiment(Experiment):
         ending: ending stage of VTR, if None, run the whole flow, options: 'parmys', 'vpr'
         seed: random seed for VTR
         allow_skipping: if True, then the experiment is skipped if the folder already exists with valid results
+        allow_skip_existing: if True, then the experiment is skipped if the folder already exists, regardless of valid results. Will only apply if allow_skipping is True.
         adder_cin_global: tells VTR to connect the first cin of an adder/subtractor chain to (True) global GND/Vdd, or (False) a dummy adder. Default: False
         soft_multiplier_adders: tells VTR to use cascading adder chains if True, else a compressor tree, to implement soft multiplication. Default: False
         compressor_tree_type: chooses a compressor tree type to implement:
@@ -62,14 +63,16 @@ class VtrExperiment(Experiment):
         # get variables
         dry_run = self.exp_params.get('dry_run', False)
         allow_skipping = self.exp_params.get('allow_skipping', False)
+        allow_skip_existing = self.exp_params.get('allow_skip_existing', False)
 
         # generic experiment setup
         self._setup_exp(DEFAULTS_EXP_VTR, REQUIRED_KEYS_EXP, clear_exp_dir=not allow_skipping)
         self.vtr_output_dir = os.path.join(self.exp_dir, 'temp') # VTR output directory
 
         # Check for viable result (i.e., it has been run in the past)
-        if (not dry_run) and allow_skipping and self.get_result().get('status', False):
-            return
+        if (not dry_run) and allow_skipping:
+            if allow_skip_existing or self.get_result().get('status', False):
+                return
         
         # get variables
         clean = self.exp_params.get('clean', True)
@@ -214,12 +217,18 @@ class VtrExperiment(Experiment):
             needs_updating = True
 
         if needs_updating:
-            # file exists in a .zip file
-            largefile_zip_path = os.path.join(self.vtr_output_dir, 'largefile.zip')
-            if os.path.exists(largefile_zip_path):
-                with zipfile.ZipFile(largefile_zip_path) as z:
-                    with z.open('design.net') as net_file:
-                        netstats = self._generate_netstats_json(ET.parse(net_file).getroot(), self.vtr_output_dir)
+            net_file_path = os.path.join(self.vtr_output_dir, 'design.net')
+            if os.path.exists(net_file_path):
+                # file exists as-is
+                netstats = self._generate_netstats_json(ET.parse(net_file_path).getroot(), self.vtr_output_dir)
+            else:
+                # file may exist in a .zip file
+                largefile_zip_path = os.path.join(self.vtr_output_dir, 'largefile.zip')
+                if os.path.exists(largefile_zip_path):
+                    with zipfile.ZipFile(largefile_zip_path) as z:
+                        if 'design.net' in z.namelist():
+                            with z.open('design.net') as net_file:
+                                netstats = self._generate_netstats_json(ET.parse(net_file).getroot(), self.vtr_output_dir)
 
         self.result = extract_info_vtr(self.vtr_output_dir, **kwargs) | netstats
         return self.result
