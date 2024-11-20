@@ -54,6 +54,8 @@ TRANSLATIONS_GRAPH = {
     'clb': 'LAB Count',
     'fle': 'ALM Count',
     'lut': 'LUTs Used',
+    'lut5': '5-LUTs',
+    'concurrent_lut5s': 'Concurrent 5-LUTs',
     'adder': 'Adders',
     'adder_avg_util': 'Average Adder Utilisation',
     'lut5/adder': '5-LUT to Adder Ratio',
