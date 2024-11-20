@@ -66,7 +66,7 @@ def run_vtr_denoised_v1(
     * seeds: (int, int, int), a tuple of 3 seeds to use for averaging.
     * merge_designs:bool, will take the geometric mean of all designs as the final result and generate an additional 'merged' result if True. Default: False
     * avoid_norm:list[str], list of columns that should not be normalized (i.e., the value stays absolute). Default: empty list
-    * avoid_norm:list[str], list of columns that should not be plotted (i.e., required by another derived metric, but should not be presented). Default: empty list
+    * avoid_plot:list[str], list of columns that should not be plotted (i.e., required by another derived metric, but should not be presented). Default: empty list
     * translations:dict[str, str], dictionary mapping columns -> long names. If not present in the dictionary, then the column name is re-used. Default: empty dictionary
     * df_processing_fn: (pd.DataFrame) -> (pd.DataFrame, list[str]), function called on each mean DataFrame from 3 seeds to add any derived metrics. Returns (new DataFrame, keys to add to filter_results).  Default: None
     Remaining keyword arguments are passed directly to Runner.run_all_threaded().
