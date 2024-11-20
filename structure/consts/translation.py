@@ -48,7 +48,7 @@ TRANSLATIONS_GRAPH = {
     'cpd': 'Critical Path Delay',
     'twl': 'Total Wire Length',
     'area_total_used': 'Total Area Used',
-    'area_fle': 'Total ALM Area',
+    'area_fle': 'Total ALM Area Used',
     'adp_used': 'Area-Delay Product',
     'adp_fle': 'Area-Delay Product',
     'clb': 'LAB Count',
