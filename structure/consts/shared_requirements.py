@@ -5,7 +5,10 @@ Requirements that are shared across multiple implementations.
 # --- Start: Experiment
 
 # General
-REQUIRED_KEYS_EXP = ['root_dir', 'verilog_search_dir']
+REQUIRED_KEYS_EXP = ['root_dir']
+
+# VTR/Quartus
+REQUIRED_KEYS_EXP_VERILOG = [*REQUIRED_KEYS_EXP, 'verilog_search_dir']
 
 # --- End: Experiment
 

@@ -226,7 +226,7 @@ def extract_info_vtr(path='.', extract_blocks_list=['clb', 'fle']) -> dict:
     result_dict['nets_absorbed_frac'] = -1.0    # nets_absorbed / nets_total
 
     # vpr output is not same as quartus, the status is at the end of the file, so we need to extract the block usage first and later extratc flow status
-    vpr_out_path = os.path.join(path, 'vpr.out')
+    vpr_out_path = os.path.join(path, 'vpr_stdout.log')
     # if not exit, then return
     if not os.path.exists(vpr_out_path):
         return result_dict

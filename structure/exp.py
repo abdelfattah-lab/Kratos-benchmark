@@ -69,7 +69,6 @@ class Experiment(ParamsChecker, Hashable):
         self.exp_params = self.verify_required_keys(defaults, required_keys, self.exp_params)
          # make root and experiment directory
         self.root_dir = self.exp_params['root_dir']
-        self.verilog_search_dir = self.exp_params['verilog_search_dir']
         self.exp_dir = os.path.join(self.root_dir, f"{self.arch.get_name(**self.arch_params)}--{self.design.get_name(**self.design_params)}--{self.get_name(**self.exp_params)}")
         if os.path.exists(self.exp_dir) and clear_exp_dir:
             # attempt folder removal

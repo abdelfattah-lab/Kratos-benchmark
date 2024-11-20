@@ -2,7 +2,7 @@ from structure.arch import ArchFactory
 from structure.design import Design
 from structure.exp import Experiment
 from structure.consts.shared_defaults import DEFAULTS_EXP_QUARTUS
-from structure.consts.shared_requirements import REQUIRED_KEYS_EXP
+from structure.consts.shared_requirements import REQUIRED_KEYS_EXP_VERILOG
 from util.extract import extract_info_quartus
 from util.flow import start_dependent_process
 
@@ -27,7 +27,8 @@ class QuartusExperiment(Experiment):
         allow_skipping = self.exp_params.get('allow_skipping', False)
 
         # generic experiment setup
-        self._setup_exp(DEFAULTS_EXP_QUARTUS, REQUIRED_KEYS_EXP, clear_exp_dir=not allow_skipping)
+        self._setup_exp(DEFAULTS_EXP_QUARTUS, REQUIRED_KEYS_EXP_VERILOG, clear_exp_dir=not allow_skipping)
+        self.verilog_search_dir = self.exp_params['verilog_search_dir']
 
         # Check for viable result (i.e., it has been run in the past)
         if allow_skipping and self.get_result().get('status', False):
