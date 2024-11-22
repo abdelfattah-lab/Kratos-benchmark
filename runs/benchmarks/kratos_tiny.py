@@ -62,12 +62,12 @@ def get_conv_2d_pw_params(base_params: dict[str, any], exp_root_dir: str = 'tiny
     Add Conv-2D Pixel-Wise parameters.
     """
     return get_params(base_params, exp_root_dir, {
-        'img_w': 8,
-        'img_h': 8,
-        'img_d': 8,
-        'fil_w': 3,
-        'fil_h': 3,
-        'res_d': 8,
+        'img_w': 3,
+        'img_h': 3,
+        'img_d': 3,
+        'fil_w': 2,
+        'fil_h': 2,
+        'res_d': 3,
         'stride_w': 1,
         'stride_h': 1
     })
