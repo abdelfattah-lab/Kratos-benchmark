@@ -17,11 +17,11 @@ def find_all_block_instances(root: Element, instance_name: str) -> list[Element]
     """
     return root.findall(f'.//block[@instance="{instance_name}"]')
 
-def has_valid_child_block_instance(block: Element, instance_name: str, 
+def get_valid_child_block_instance(block: Element, instance_name: str, 
     check_valid: Callable[[Element], bool] = check_element_not_open
-) -> bool:
+) -> Element:
     """
-    Returns True if the child instance is valid:
+    Returns the child Element if the child instance is valid, else None:
     uses 'block[@instance="<instance_name>"]'.
 
     Required arguments:
@@ -32,14 +32,17 @@ def has_valid_child_block_instance(block: Element, instance_name: str,
     * check_valid: (Element) -> bool, used to check if the found child is valid. Default: check for @name != 'open'
     """
     child = block.find(f'block[@instance="{instance_name}"]')
-    return child is not None and check_valid(child)
+    if child is not None and check_valid(child):
+        return child
+    
+    return None
 
 
-def has_valid_child_block_mode(block: Element, mode_name: str, 
+def get_valid_child_block_mode(block: Element, mode_name: str, 
     check_valid: Callable[[Element], bool] = check_element_not_open
-) -> bool:
+) -> Element:
     """
-    Returns True if the child mode is valid:
+    Returns the child Element if the child mode is valid, else None:
     uses 'block[@mode="<mode_name>"]'.
 
     Required arguments:
@@ -50,4 +53,7 @@ def has_valid_child_block_mode(block: Element, mode_name: str,
     * check_valid: (Element) -> bool, used to check if the found child is valid. Default: check for @name != 'open'
     """
     child = block.find(f'block[@mode="{mode_name}"]')
-    return child is not None and check_valid(child)
+    if child is not None and check_valid(child):
+        return child
+    
+    return None

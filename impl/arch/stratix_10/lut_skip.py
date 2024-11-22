@@ -1165,7 +1165,9 @@ class LUTSkipArchFactory(ArchFactory, ParamsChecker):
         """
         concurrent_lut5s = 0
         for arith_block in ns.find_all_block_instances(root, 'arithmetic[0]'):
-            if ns.has_valid_child_block_instance(arith_block, 'adder[0]') and ns.has_valid_child_block_mode(arith_block, 'as_lut5'):
+            adder_block = ns.get_valid_child_block_instance(arith_block, 'adder[0]')
+            lut5_block= ns.get_valid_child_block_mode(arith_block, 'as_lut5')
+            if (adder_block is not None) and (lut5_block is not None):
                 concurrent_lut5s += 1
 
         return dict(
