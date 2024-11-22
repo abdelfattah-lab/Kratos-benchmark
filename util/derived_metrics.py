@@ -66,6 +66,61 @@ def apply_lut5_concurrency(df: pd.DataFrame) -> pd.DataFrame:
     df.loc[(df['lut5'] > 0) & (df['concurrent_lut5s'] > 0), 'lut5_concurrency'] = df['concurrent_lut5s'] / df['lut5']
     return df
 
+def apply_lut6_to_adder_ratio(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Returns "lut6/adder" as "lut6" / "adder"
+    """
+    
+    # sanity checks
+    assert 'lut6' in df.columns
+    assert 'adder' in df.columns
+
+    df['lut6/adder'] = df['lut6'] / df['adder']
+    return df
+
+def apply_lut6_concurrency(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Returns "lut6_concurrency" as "concurrent_lut6s" / "lut6"
+    Use only with impl.arch.stratix_10.lut_skip.LUTSkipArchFactory for non-zero columns.
+    """
+    df['lut6_concurrency'] = 0.0
+    
+    # sanity checks
+    if not 'concurrent_lut6s' in df.columns or not 'lut6' in df.columns:
+        return df
+
+    df.loc[(df['lut6'] > 0) & (df['concurrent_lut6s'] > 0), 'lut6_concurrency'] = df['concurrent_lut6s'] / df['lut6']
+    return df
+
+
+def apply_lut56_to_adder_ratio(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Returns "lut56/adder" as ("lut5" + "lut6") / "adder"
+    """
+    
+    # sanity checks
+    assert 'lut5' in df.columns
+    assert 'lut6' in df.columns
+    assert 'adder' in df.columns
+
+    df['lut56/adder'] = 0.0
+    df.loc[(df['lut5'] > 0) & (df['lut6'] > 0) & (df['adder'] > 0), 'lut56/adder'] = (df['lut5'] + df['lut6']) / df['adder']
+    return df
+
+def apply_lut56_concurrency(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Returns "lut56_concurrency" as ("concurrent_lut5s" + "concurrent_lut6s") / ("lut5" + "lut6")
+    Use only with impl.arch.stratix_10.lut_skip.LUTSkipArchFactory for non-zero columns.
+    """
+    df['lut56_concurrency'] = 0.0
+    
+    # sanity checks
+    if not 'concurrent_lut5s' in df.columns or not 'concurrent_lut6s' in df.columns or not 'lut5' in df.columns or not 'lut6' in df.columns:
+        return df
+
+    df.loc[(df['lut5'] > 0) & (df['concurrent_lut5s'] >= 0) & (df['lut6'] > 0) & (df['concurrent_lut6s'] >= 0), 'lut56_concurrency'] = (df['concurrent_lut5s'] + df['concurrent_lut6s']) / (df['lut5'] + df['lut6'])
+    return df
+
 def apply_adder_avg_util(df: pd.DataFrame) -> pd.DataFrame:
     """
     Returns "adder_avg_util" as "adder" / ("fle" * 2)
