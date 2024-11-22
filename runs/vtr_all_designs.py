@@ -5,7 +5,7 @@ from impl.exp.vtr import VtrExperiment
 from util.results import save_and_plot
 from util.plot import plot_xy
 
-from typing import Type
+from typing import Type, Callable
 import pandas as pd
 import os.path as path
 
@@ -19,6 +19,7 @@ def run_vtr_all_designs(
         filter_blocks: list[str] = ['clb', 'fle'],
         translations: dict[str, str] = {},
         group_cols_short_labels: dict[str, str] = {},
+        df_processing_fn: Callable[[pd.DataFrame], tuple[pd.DataFrame, list[str]]] = None,
         **runner_kwargs,
     ) -> None:
     """
@@ -35,6 +36,9 @@ def run_vtr_all_designs(
     * filter_blocks:list[str], list of Pb type blocks to extract from VPR. All will be baseline normalized (unless also in avoid_norm) and plotted.
     * translations:dict[str, str], dictionary mapping columns -> long names. If not present in the dictionary, then the column name is re-used. Default: empty dictionary
     * group_cols_short_labels:dict[str, str], short translations for parameter keys (e.g., 'sparsity': 's').
+    * df_processing_fn: (pd.DataFrame) -> (pd.DataFrame, list[str]), function called on each result DataFrame to add any derived metrics. Returns (new DataFrame, keys to add to filter_results).  Default: None
+    
+    Remaining keyword arguments are passed directly to Runner.run_all_threaded().
     """
 
     # Define variables
@@ -54,6 +58,15 @@ def run_vtr_all_designs(
         ),
         **runner_kwargs
     )
+
+    if df_processing_fn is not None:
+        for exp_dir, df in results.items():
+            df, new_filters = df_processing_fn(df)
+            for key in new_filters:
+                if key not in filter_results:
+                    filter_results.append(key)
+
+            results[exp_dir] = df
 
     # define plot function
     def plot_fn(save_dir: str, filesafe_name: str, df: pd.DataFrame) -> None:
