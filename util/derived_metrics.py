@@ -49,7 +49,8 @@ def apply_lut5_to_adder_ratio(df: pd.DataFrame) -> pd.DataFrame:
     assert 'lut5' in df.columns
     assert 'adder' in df.columns
 
-    df['lut5/adder'] = df['lut5'] / df['adder']
+    df['lut5/adder'] = 0.0
+    df.loc[(df['lut5'] > 0) & (df['adder'] > 0), 'lut5/adder'] = df['lut5'] / df['adder']
     return df
 
 def apply_lut5_concurrency(df: pd.DataFrame) -> pd.DataFrame:
@@ -75,7 +76,8 @@ def apply_lut6_to_adder_ratio(df: pd.DataFrame) -> pd.DataFrame:
     assert 'lut6' in df.columns
     assert 'adder' in df.columns
 
-    df['lut6/adder'] = df['lut6'] / df['adder']
+    df['lut6/adder'] = 0.0
+    df.loc[(df['lut6'] > 0) & (df['adder'] > 0), 'lut6/adder'] = df['lut6'] / df['adder']
     return df
 
 def apply_lut6_concurrency(df: pd.DataFrame) -> pd.DataFrame:
@@ -104,7 +106,7 @@ def apply_lut56_to_adder_ratio(df: pd.DataFrame) -> pd.DataFrame:
     assert 'adder' in df.columns
 
     df['lut56/adder'] = 0.0
-    df.loc[(df['lut5'] > 0) & (df['lut6'] > 0) & (df['adder'] > 0), 'lut56/adder'] = (df['lut5'] + df['lut6']) / df['adder']
+    df.loc[(df['lut5'] + df['lut6'] > 0) & (df['adder'] > 0), 'lut56/adder'] = (df['lut5'] + df['lut6']) / df['adder']
     return df
 
 def apply_lut56_concurrency(df: pd.DataFrame) -> pd.DataFrame:
@@ -118,7 +120,7 @@ def apply_lut56_concurrency(df: pd.DataFrame) -> pd.DataFrame:
     if not 'concurrent_lut5s' in df.columns or not 'concurrent_lut6s' in df.columns or not 'lut5' in df.columns or not 'lut6' in df.columns:
         return df
 
-    df.loc[(df['lut5'] > 0) & (df['concurrent_lut5s'] >= 0) & (df['lut6'] > 0) & (df['concurrent_lut6s'] >= 0), 'lut56_concurrency'] = (df['concurrent_lut5s'] + df['concurrent_lut6s']) / (df['lut5'] + df['lut6'])
+    df.loc[(df['lut5'] + df['lut6'] > 0) & (df['concurrent_lut5s'] >= 0) & (df['concurrent_lut6s'] >= 0), 'lut56_concurrency'] = (df['concurrent_lut5s'] + df['concurrent_lut6s']) / (df['lut5'] + df['lut6'])
     return df
 
 def apply_adder_avg_util(df: pd.DataFrame) -> pd.DataFrame:
