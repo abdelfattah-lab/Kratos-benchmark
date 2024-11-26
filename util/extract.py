@@ -288,8 +288,7 @@ def extract_info_vtr(path='.', extract_blocks_list=['clb', 'fle']) -> dict:
                 return ret
 
             for key in extract_blocks_list:
-                val = traverse_tree(tree, key.split('.'))
-                result_dict[key] = val if val > 0 else -1
+                result_dict[key] = traverse_tree(tree, key.split('.'))
 
         # extract flow status
         if line.startswith('VPR succeeded'):
