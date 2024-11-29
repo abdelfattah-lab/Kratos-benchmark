@@ -1,28 +1,34 @@
-from structure.design import StandardizedSdcDesign
+from structure.design import PluginDesign
+from structure.plugin import Plugin
 from util.flow import reset_seed, generate_flattened_bit
 from structure.consts.shared_defaults import DEFAULTS_TCL, DEFAULTS_WRAPPER
 from structure.consts.shared_requirements import REQUIRED_KEYS_GEMM
 from structure.consts.quartus import DEVICE_FAMILY, DEVICE_NAME, TURN_OFF_DSPS
 
-class GemmTFuDesign(StandardizedSdcDesign):
+class GemmTFuDesign(PluginDesign):
     """
     GEMMT Fully Unrolled design.
     """
 
-    def __init__(self, impl: str = 'mm_reg_full', module_dir: str = 'gemmt', wrapper_module_name: str = 'mm_reg_full_wrapper'):
-        super().__init__(impl, module_dir, wrapper_module_name)
+    def __init__(self, impl: str = 'mm_reg_full', module_dir: str = 'gemmt', wrapper_module_name: str = 'mm_reg_full_wrapper', plugin: Plugin|None = None):
+        super().__init__(impl, module_dir, wrapper_module_name, plugin)
 
     def get_name(self, tree_base:int, data_width: int, row_num: int, col_num: int, length: int, constant_weight: bool = True, sparsity: float = 0.0, **kwargs):
         """
         Name generation 
         """
-        return f'i.{self.impl}_tb.{tree_base}_d.{data_width}_r.{row_num}_c.{col_num}_l.{length}_c.{constant_weight}_s.{sparsity}'
+        plugin_name_insert = f"+{self.plugin.get_name(**kwargs)}" if not self.plugin is None else ""
+        return f'i.{self.impl}{plugin_name_insert}_tb.{tree_base}_d.{data_width}_r.{row_num}_c.{col_num}_l.{length}_c.{constant_weight}_s.{sparsity}'
 
     def verify_params(self, params: dict[str, any]) -> dict[str, any]:
         """
         Verification of parameters for GEMMT Fully Unrolled.
         """
-        return self.verify_required_keys(DEFAULTS_WRAPPER, REQUIRED_KEYS_GEMM, params)
+        design_params = self.verify_required_keys(DEFAULTS_WRAPPER, REQUIRED_KEYS_GEMM, params)
+
+        if self.plugin is None:
+            return design_params
+        return self.plugin.check_params(design_params)
 
     def gen_tcl(self, wrapper_file_name: str, search_path: str, **kwargs) -> str:
         """
@@ -104,7 +110,18 @@ project_close
             constant_bits = ''
             x_in = 'weights'
 
+        has_plugin = self.plugin is not None
+        plugin_includes = ""
+        plugin_pins = ""
+        plugin_module = ""
+
+        if has_plugin:
+            plugin_includes = self.plugin.get_includes(**kwargs)
+            plugin_pins = self.plugin.get_pins(**kwargs)
+            plugin_module = self.plugin.get_module('clk', **kwargs)
+
         template = f'''`include "{self.module_dir}/{self.impl}.v"
+{plugin_includes}
 
 module {self.wrapper_module_name}
 #(
@@ -129,7 +146,9 @@ module {self.wrapper_module_name}
 
     // opaque
     input   logic    [7:0]                  opaque_in, 
-    output  logic    [7:0]                  opaque_out 
+    output  logic    [7:0]                  opaque_out{',' if has_plugin else ''}
+
+    {plugin_pins}
 );
 
     {constant_bits}
@@ -145,6 +164,7 @@ module {self.wrapper_module_name}
         .opaque_out(opaque_out)
     );
     
+    {plugin_module}
 endmodule
 '''
 

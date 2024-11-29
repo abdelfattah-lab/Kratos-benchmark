@@ -1,24 +1,26 @@
-from structure.design import StandardizedSdcDesign
+from structure.design import PluginDesign
+from structure.plugin import Plugin
 from util.flow import reset_seed, gen_long_constant_bits
 from structure.consts.shared_defaults import DEFAULTS_TCL, DEFAULTS_WRAPPER_CONV
 from structure.consts.shared_requirements import REQUIRED_KEYS_CONV2D_STRIDE
 
 from structure.consts.quartus import DEVICE_FAMILY, DEVICE_NAME, TURN_OFF_DSPS
 
-class Conv2dFuDesign(StandardizedSdcDesign):
+class Conv2dFuDesign(PluginDesign):
     """
     Conv-2D Fully Unrolled design.
     """
 
-    def __init__(self, impl: str = 'conv_reg_full', module_dir: str = 'conv_2d', wrapper_module_name: str = 'conv_reg_full_wrapper'):
-        super().__init__(impl, module_dir, wrapper_module_name)
+    def __init__(self, impl: str = 'conv_reg_full', module_dir: str = 'conv_2d', wrapper_module_name: str = 'conv_reg_full_wrapper', plugin: Plugin|None = None):
+        super().__init__(impl, module_dir, wrapper_module_name, plugin)
 
     def get_name(self, tree_base: int, data_width: int, img_w: int, img_h: int, img_d: int, fil_w: int, fil_h: int, res_d: int, stride_w: int, stride_h: int,
                     constant_weight: bool, sparsity: float, buffer_stages: int, separate_filters: bool, **kwargs):
         """
         Name generation 
         """
-        return f'i.{self.impl}_tb.{tree_base}_d.{data_width}_w.{img_w}_h.{img_h}_d.{img_d}_fw.{fil_w}_fh.{fil_h}_rd.{res_d}_sw.{stride_w}_sh.{stride_h}_c.{constant_weight}_s.{sparsity}_bf.{buffer_stages}_sf.{separate_filters}'
+        plugin_name_insert = f"+{self.plugin.get_name(**kwargs)}" if not self.plugin is None else ""
+        return f'i.{self.impl}{plugin_name_insert}_tb.{tree_base}_d.{data_width}_w.{img_w}_h.{img_h}_d.{img_d}_fw.{fil_w}_fh.{fil_h}_rd.{res_d}_sw.{stride_w}_sh.{stride_h}_c.{constant_weight}_s.{sparsity}_bf.{buffer_stages}_sf.{separate_filters}'
 
     def verify_params(self, params: dict[str, any]) -> dict[str, any]:
         """
@@ -28,7 +30,11 @@ class Conv2dFuDesign(StandardizedSdcDesign):
         # remove unused keys
         del defaults['kernel_only']
         
-        return self.verify_required_keys(defaults, REQUIRED_KEYS_CONV2D_STRIDE, params)
+        design_params = self.verify_required_keys(defaults, REQUIRED_KEYS_CONV2D_STRIDE, params)
+
+        if self.plugin is None:
+            return design_params
+        return self.plugin.check_params(design_params)
 
     def gen_tcl(self, wrapper_file_name: str, search_path: str, **kwargs) -> str:
         """
@@ -114,7 +120,18 @@ project_close
             constant_bits = ''
             fil_in = 'fil'
 
+        has_plugin = self.plugin is not None
+        plugin_includes = ""
+        plugin_pins = ""
+        plugin_module = ""
+
+        if has_plugin:
+            plugin_includes = self.plugin.get_includes(**kwargs)
+            plugin_pins = self.plugin.get_pins(**kwargs)
+            plugin_module = self.plugin.get_module('clk', **kwargs)
+
         template = f'''`include "{self.module_dir}/{self.impl}.v"
+{plugin_includes}
 
 module {self.wrapper_module_name}
 #(
@@ -166,7 +183,9 @@ module {self.wrapper_module_name}
     output  logic    [RESULT_D*RESULT_H*RESULT_W*DATA_WIDTH*4-1:0]          result_data_out,
     // opaque
     input   logic    [7:0]                                  opaque_in, 
-    output  logic    [7:0]                                  opaque_out 
+    output  logic    [7:0]                                  opaque_out{',' if has_plugin else ''}
+
+    {plugin_pins}
 );
 
     // const fil
@@ -183,6 +202,8 @@ module {self.wrapper_module_name}
         .opaque_in(opaque_in),
         .opaque_out(opaque_out)
     );
+
+    {plugin_module}
 endmodule
 '''
         return template

@@ -1,4 +1,5 @@
 from structure.util import ParamsChecker, DynamicallyNamed
+from structure.plugin import Plugin
 
 class Design(DynamicallyNamed, ParamsChecker):
     """
@@ -51,3 +52,11 @@ class StandardizedSdcDesign(Design):
         use_params = self.autofill_defaults(DEFAULTS_SDC, kwargs)
         template = f"create_clock -period {use_params['clock']} [get_ports clk]"
         return template
+    
+class PluginDesign(StandardizedSdcDesign):
+    """
+    Design that can take in and use a Plugin.
+    """
+    def __init__(self, impl: str, module_dir: str, wrapper_module_name: str, plugin: Plugin|None = None):
+        super().__init__(impl, module_dir, wrapper_module_name)
+        self.plugin = plugin

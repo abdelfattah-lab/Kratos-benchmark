@@ -1,29 +1,35 @@
-from structure.design import StandardizedSdcDesign
+from structure.design import PluginDesign
+from structure.plugin import Plugin
 from util.flow import reset_seed, generate_flattened_bit
 from structure.consts.shared_defaults import DEFAULTS_TCL, DEFAULTS_WRAPPER
 from structure.consts.shared_requirements import REQUIRED_KEYS_GEMM
 
 from structure.consts.quartus import DEVICE_FAMILY, DEVICE_NAME, TURN_OFF_DSPS
 
-class GemmTRpDesign(StandardizedSdcDesign):
+class GemmTRpDesign(PluginDesign):
     """
     GEMMT Row-Parallel design.
     """
 
-    def __init__(self, impl: str = 'mm_bram_parallel', module_dir: str = 'gemmt', wrapper_module_name: str = 'mm_bram_parallel_wrapper'):
-        super().__init__(impl, module_dir, wrapper_module_name)
+    def __init__(self, impl: str = 'mm_bram_parallel', module_dir: str = 'gemmt', wrapper_module_name: str = 'mm_bram_parallel_wrapper', plugin: Plugin|None = None):
+        super().__init__(impl, module_dir, wrapper_module_name, plugin)
 
     def get_name(self, tree_base: int, data_width: int, row_num: int, col_num: int, length: int, constant_weight: bool = True, sparsity: float = 0.0, **kwargs):
         """
         Name generation 
         """
-        return f'i.{self.impl}_tb.{tree_base}_d.{data_width}_r.{row_num}_c.{col_num}_l.{length}_c.{constant_weight}_s.{sparsity}'
+        plugin_name_insert = f"+{self.plugin.get_name(**kwargs)}" if not self.plugin is None else ""
+        return f'i.{self.impl}{plugin_name_insert}_tb.{tree_base}_d.{data_width}_r.{row_num}_c.{col_num}_l.{length}_c.{constant_weight}_s.{sparsity}'
 
     def verify_params(self, params: dict[str, any]) -> dict[str, any]:
         """
         Verification of parameters for GEMMT Row-Parallel.
         """
-        return self.verify_required_keys(DEFAULTS_WRAPPER, REQUIRED_KEYS_GEMM, params)
+        design_params = self.verify_required_keys(DEFAULTS_WRAPPER, REQUIRED_KEYS_GEMM, params)
+
+        if self.plugin is None:
+            return design_params
+        return self.plugin.check_params(design_params)
 
     def gen_tcl(self, wrapper_file_name: str, search_path: str, **kwargs) -> str:
         """
@@ -110,8 +116,20 @@ project_close
             constant_bits = ''
             x_in = 'weights'
 
+        has_plugin = self.plugin is not None
+        plugin_includes = ""
+        plugin_pins = ""
+        plugin_module = ""
+
+        if has_plugin:
+            plugin_includes = self.plugin.get_includes(**kwargs)
+            plugin_pins = self.plugin.get_pins(**kwargs)
+            plugin_module = self.plugin.get_module('clk', **kwargs)
+
         template_top = f'''`include "{self.module_dir}/{self.impl}.v"
 `include "vc/vc_sram.v"
+{plugin_includes}
+
 module {self.wrapper_module_name}
 #(
     parameter DATA_WIDTH = {data_width},
@@ -137,7 +155,9 @@ module {self.wrapper_module_name}
     input   logic   [LENGTH-1:0]                   src_wr_en       ,
 
     input   logic  [ROW_ADDR_WIDTH*COL_NUM-1:0]     result_rdaddr  ,
-    output  logic  [DATA_WIDTH*4*COL_NUM-1:0]         result_data_out
+    output  logic  [DATA_WIDTH*4*COL_NUM-1:0]         result_data_out{',' if has_plugin else ''}
+
+    {plugin_pins}
 );
     localparam RES_WIDTH = DATA_WIDTH*4;
 
@@ -193,6 +213,8 @@ module {self.wrapper_module_name}
         .row_wraddr(result_wraddr),
         .row_wr_en(result_wr_en)
     );
+
+    {plugin_module}
 endmodule
 '''
 

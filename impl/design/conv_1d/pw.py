@@ -1,24 +1,26 @@
-from structure.design import StandardizedSdcDesign
+from structure.design import PluginDesign
+from structure.plugin import Plugin
 from util.flow import reset_seed, gen_long_constant_bits
 from structure.consts.shared_defaults import DEFAULTS_TCL, DEFAULTS_WRAPPER_CONV
 from structure.consts.shared_requirements import REQUIRED_KEYS_CONV1D_STRIDE
 
 from structure.consts.quartus import DEVICE_FAMILY, DEVICE_NAME, TURN_OFF_DSPS
 
-class Conv1dPwDesign(StandardizedSdcDesign):
+class Conv1dPwDesign(PluginDesign):
     """
     Conv-1D Pixel-Wise design.
     """
 
-    def __init__(self, impl: str = 'conv_bram_1d', module_dir: str = 'conv_1d', wrapper_module_name: str = 'conv_bram_1d_wrapper'):
-        super().__init__(impl, module_dir, wrapper_module_name)
+    def __init__(self, impl: str = 'conv_bram_1d', module_dir: str = 'conv_1d', wrapper_module_name: str = 'conv_bram_1d_wrapper', plugin: Plugin|None = None):
+        super().__init__(impl, module_dir, wrapper_module_name, plugin)
 
     def get_name(self, tree_base: int, data_width: int, img_w: int, img_d: int, fil_w: int, res_d: int, stride_w: int,
                     constant_weight: bool, sparsity: float, **kwargs):
         """
         Name generation 
         """
-        return f'i.{self.impl}_tb.{tree_base}_d.{data_width}_w.{img_w}_d.{img_d}_fw.{fil_w}_rd.{res_d}_sw.{stride_w}_c.{constant_weight}_s.{sparsity}'
+        plugin_name_insert = f"+{self.plugin.get_name(**kwargs)}" if not self.plugin is None else ""
+        return f'i.{self.impl}{plugin_name_insert}_tb.{tree_base}_d.{data_width}_w.{img_w}_d.{img_d}_fw.{fil_w}_rd.{res_d}_sw.{stride_w}_c.{constant_weight}_s.{sparsity}'
 
     def verify_params(self, params: dict[str, any]) -> dict[str, any]:
         """
@@ -29,7 +31,11 @@ class Conv1dPwDesign(StandardizedSdcDesign):
         del defaults['kernel_only']
         del defaults['buffer_stages']
 
-        return self.verify_required_keys(defaults, REQUIRED_KEYS_CONV1D_STRIDE, params)
+        design_params = self.verify_required_keys(defaults, REQUIRED_KEYS_CONV1D_STRIDE, params)
+
+        if self.plugin is None:
+            return design_params
+        return self.plugin.check_params(design_params)
     
     def gen_tcl(self, wrapper_file_name: str, search_path: str, **kwargs) -> str:
         """
@@ -118,8 +124,20 @@ project_close
             constant_bits = ''
             fil_in = 'fil'
 
+        has_plugin = self.plugin is not None
+        plugin_includes = ""
+        plugin_pins = ""
+        plugin_module = ""
+
+        if has_plugin:
+            plugin_includes = self.plugin.get_includes(**kwargs)
+            plugin_pins = self.plugin.get_pins(**kwargs)
+            plugin_module = self.plugin.get_module('clk', **kwargs)
+
         template = f'''`include "{self.module_dir}/{self.impl}.v"
 `include "vc/vc_sram.v"
+{plugin_includes}
+
 module {self.wrapper_module_name}
 #(
     parameter DATA_WIDTH = {data_width},
@@ -156,7 +174,9 @@ module {self.wrapper_module_name}
 
     // result
     input   logic   [RESULT_RAM_ADDR_WIDTH*RESULT_D-1:0]     result_rdaddr,
-    output  logic   [DATA_WIDTH*4*RESULT_D-1:0]              result_rddata
+    output  logic   [DATA_WIDTH*4*RESULT_D-1:0]              result_rddata{',' if has_plugin else ''}
+
+    {plugin_pins}
 );
     localparam RES_WIDTH = DATA_WIDTH*4;
     {constant_bits} 
@@ -219,8 +239,7 @@ module {self.wrapper_module_name}
         end
     endgenerate
 
-
-
+    {plugin_module}
 endmodule
 '''
         return template
