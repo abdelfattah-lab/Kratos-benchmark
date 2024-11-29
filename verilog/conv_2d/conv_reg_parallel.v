@@ -125,15 +125,17 @@ module conv_reg_parallel
                 logic   [DATA_WIDTH-1:0]    input_flattened     [0:IMG_D * FILTER_H * FILTER_W - 1];
                 logic   [DATA_WIDTH-1:0]    weight_flattened    [0:IMG_D * FILTER_H * FILTER_W - 1];
 
-                logic   [DATA_WIDTH * IMG_D * FILTER_H * FILTER_W - 1:0] input_flattened_row;
-                logic   [DATA_WIDTH * IMG_D * FILTER_H * FILTER_W - 1:0] weight_flattened_col;
+                // logic   [DATA_WIDTH * IMG_D * FILTER_H * FILTER_W - 1:0] input_flattened_row;
+                // logic   [DATA_WIDTH * IMG_D * FILTER_H * FILTER_W - 1:0] weight_flattened_col;
 
                 multiply_core_evo_withaddr # (DATA_WIDTH, IMG_D * FILTER_H * FILTER_W, RESULT_H_ADDR_WIDTH, 1, TREE_BASE) mulcore
                 (
                     .clk(clk),
                     .reset(reset),
-                    .row(input_flattened_row),
-                    .col(weight_flattened_col),
+                    .row(input_flattened),
+                    .col(weight_flattened),
+                    // .row(input_flattened_row),
+                    // .col(weight_flattened_col),
 
                     .addr_i_in(result_h_wraddr_delayed),
                     .addr_k_in(),
@@ -151,18 +153,19 @@ module conv_reg_parallel
                         for (r = 0; r < FILTER_W; r = r + 1) begin : filter_w_block
                             // assign filter_data_flattened[i * FILTER_H * FILTER_W + j * FILTER_W + k] = fil[(resd * IMG_D * FILTER_H * FILTER_W + i * FILTER_H * FILTER_W + j * FILTER_W + k) * DATA_WIDTH +: DATA_WIDTH];
 
-                            // assign input_flattened[p * FILTER_H * FILTER_W + q * FILTER_W + r] = img_data_sr_out[p][j * STRIDE_W + r][FILTER_H - 1 - q];
                             assign input_flattened[p * FILTER_H * FILTER_W + q * FILTER_W + r] = img_data_sr_out[p][j * STRIDE_W + r][FILTER_H - 1 - q];
                             assign weight_flattened[p * FILTER_H * FILTER_W + q * FILTER_W + r] = fil[(i * IMG_D * FILTER_H * FILTER_W + p * FILTER_H * FILTER_W + q * FILTER_W + r) * DATA_WIDTH +: DATA_WIDTH];
+                            // assign input_flattened_row[(p * FILTER_H * FILTER_W + q * FILTER_W + r) * DATA_WIDTH +: DATA_WIDTH] = img_data_sr_out[p][j * STRIDE_W + r][FILTER_H - 1 - q];
+                            // assign weight_flattened_col[(p * FILTER_H * FILTER_W + q * FILTER_W + r) * DATA_WIDTH +: DATA_WIDTH] = fil[(i * IMG_D * FILTER_H * FILTER_W + p * FILTER_H * FILTER_W + q * FILTER_W + r) * DATA_WIDTH +: DATA_WIDTH];
                         end
                     end
                 end
 
-                // connect flattened wires to row/col
-                for (p = 0; p < IMG_D * FILTER_H * FILTER_W; p = p + 1) begin : compress_rowcol_block
-                    assign input_flattened_row[p * DATA_WIDTH +: DATA_WIDTH] = input_flattened[p];
-                    assign weight_flattened_col[p * DATA_WIDTH +: DATA_WIDTH] = weight_flattened[p];
-                end
+                // // connect flattened wires to row/col
+                // for (p = 0; p < IMG_D * FILTER_H * FILTER_W; p = p + 1) begin : compress_rowcol_block
+                //     assign input_flattened_row[p * DATA_WIDTH +: DATA_WIDTH] = input_flattened[p];
+                //     assign weight_flattened_col[p * DATA_WIDTH +: DATA_WIDTH] = weight_flattened[p];
+                // end
             end
         end
     endgenerate
