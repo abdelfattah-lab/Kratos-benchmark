@@ -121,6 +121,7 @@ def plot_xy(
         subplots_df_modifier: Callable[[pd.DataFrame], pd.DataFrame] = None,
         y_axis_col_secondary: str = None,
         x_axis_label: str | list[str] = None,
+        rotate_x_axis_labels: bool = False,
         y_axis_label: str | list[str] = None, 
         y_axis_label_secondary: str = None,
         subplot_size_inches: tuple[int, int] = (6, 4), 
@@ -144,6 +145,7 @@ def plot_xy(
     * subplots_df_modifier:(df: DataFrame) -> DataFrame, if provided, then apply this function per DataFrame group as partitioned by subplots_identifiers. Default: None
     * y_axis_col_secondary:str, if provided, then a new line is created with this as right y-axis value. Default: None
     * *_axis_label*:str, provide the label to use for each axis. If None is provided, then it defaults to the column name. Default: None
+    * rotate_x_axis_labels:bool, rotate the x-axis labels to prevent overlap. Use if x-axis labels are long, e.g., strings. Default: False
     * subplot_size_inches:(int, int), size of each subplot, in inches. Default: (6, 4)
     * save_name:str, if provided, then plot image is saved at the provided path; else the result is just displayed. Default: None
     * short_labels:dict[str, str], if provided, then labels are created using the provided <key>: <value to use>; or else keys will be truncated to the first 3 characters by default.
@@ -395,7 +397,8 @@ def plot_xy(
             if is_norm:
                 ylim_bottom = max(0, ylim_bottom) if ylim_bottom < 1 else min(1-ylim_diff, ylim_bottom) # clamp to 0 or 1-ylim_diff
                 ylim_top = max(1+ylim_diff, ylim_top) # clamp to 1+ylim_diff
-            ax.set_ylim(bottom=ylim_bottom, top=ylim_top)
+            if ylim_bottom != ylim_top:
+                ax.set_ylim(bottom=ylim_bottom, top=ylim_top)
 
             # add normalization line
             if is_norm:
@@ -403,7 +406,8 @@ def plot_xy(
 
             # set ticks (if bar)
             if is_bar:
-                ax.set_xticks(bar_x, sorted(df[x_axis_col].unique().tolist()))
+                xticks_kwargs = dict(rotation=45, ha='right') if rotate_x_axis_labels else {}
+                ax.set_xticks(bar_x, sorted(df[x_axis_col].unique().tolist()), **xticks_kwargs)
             
             # set labels
             ax.set_xlabel(xlabel=x_axis_label)
