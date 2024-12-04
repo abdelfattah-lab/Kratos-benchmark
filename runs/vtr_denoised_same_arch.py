@@ -10,7 +10,7 @@ from util.results import save_and_plot
 from util.plot import plot_xy
 from util.search import query_df
 
-from typing import Type
+from typing import Type, Callable
 import os.path as path
 from os import sep
 import pandas as pd
@@ -30,7 +30,10 @@ def run_vtr_denoised_same_arch(
         seeds: tuple[int, int, int] = (1239, 5741, 1473),
         merge_designs: bool = False,
         avoid_norm: list[str] = [],
+        avoid_plot: list[str] = [],
         translations: dict[str, str] = {},
+        df_processing_fn: Callable[[pd.DataFrame], tuple[pd.DataFrame, list[str]]] = None,
+        rotate_x_axis_labels: bool = False,
         **runner_kwargs
     ) -> None:
     """
@@ -55,7 +58,10 @@ def run_vtr_denoised_same_arch(
     * seeds: (int, int, int), a tuple of 3 seeds to use for averaging.
     * merge_designs:bool, will take the geometric mean of all designs as the final result and generate an additional 'merged' result if True. Default: False
     * avoid_norm:list[str], list of columns that should not be normalized (i.e., the value stays absolute). Default: empty list
+    * avoid_plot:list[str], list of columns that should not be plotted (i.e., required by another derived metric, but should not be presented). Default: empty list
     * translations:dict[str, str], dictionary mapping columns -> long names. If not present in the dictionary, then the column name is re-used. Default: empty dictionary
+    * df_processing_fn: (pd.DataFrame) -> (pd.DataFrame, list[str]), function called on each mean DataFrame from 3 seeds to add any derived metrics. Returns (new DataFrame, keys to add to filter_results).  Default: None
+    * rotate_x_axis_labels: bool, rotate the x-axis labels to prevent overlap. Use if x-axis labels are long, e.g., strings. Default: False
     
     Remaining keyword arguments are passed directly to Runner.run_all_threaded().
     """
@@ -110,6 +116,15 @@ def run_vtr_denoised_same_arch(
     merged = None # used if merge_designs is True
     for exp_dir, df in df_dict.items():
         seed_mean = df.groupby(by=exp_filter_params).mean().reset_index()
+
+        # add post-processing (if any)
+        if df_processing_fn is not None:
+            seed_mean, new_keys = df_processing_fn(seed_mean)
+            # added this way to preserve existing order
+            for df_key in new_keys:
+                if df_key not in filter_results:
+                    filter_results.append(df_key)
+
         if merge_designs:
             # merge all DataFrames into one DataFrame
             if merged is None:
@@ -134,7 +149,6 @@ def run_vtr_denoised_same_arch(
 
     # baseline normalization and post-processing
     for key, df in mean_dict.items():
-        print(f"-- normalizing {key}")
         # normalize within DataFrame, in groups
         def normalize_group(group):
             # normalize within each group
@@ -158,6 +172,8 @@ def run_vtr_denoised_same_arch(
             df.to_csv(path.join(save_dir, f"{key.replace('/', '_')}_raw.csv"))
 
     # define plot function
+    filter_results = [x for x in filter_results if x not in avoid_plot]
+    print(filter_results)
     def plot_fn(save_dir: str, filesafe_name: str, df: pd.DataFrame) -> None:
         plot_xy(df, [compare_param_key], x_axis, filter_results,
                 x_axis_label=[translations.get(c, c) for c in x_axis],
@@ -169,6 +185,7 @@ def run_vtr_denoised_same_arch(
                 plot_type_2d='bar',
                 group_order=compare_param_order,
                 normalized_y_axes=list(set(filter_results) - set(avoid_norm)),
+                rotate_x_axis_labels=rotate_x_axis_labels,
                 )
     
     # save into results directory

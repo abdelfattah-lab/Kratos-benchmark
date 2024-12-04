@@ -20,6 +20,7 @@ def run_vtr_all_designs(
         translations: dict[str, str] = {},
         group_cols_short_labels: dict[str, str] = {},
         df_processing_fn: Callable[[pd.DataFrame], tuple[pd.DataFrame, list[str]]] = None,
+        rotate_x_axis_labels: bool = False,
         **runner_kwargs,
     ) -> None:
     """
@@ -37,6 +38,7 @@ def run_vtr_all_designs(
     * translations:dict[str, str], dictionary mapping columns -> long names. If not present in the dictionary, then the column name is re-used. Default: empty dictionary
     * group_cols_short_labels:dict[str, str], short translations for parameter keys (e.g., 'sparsity': 's').
     * df_processing_fn: (pd.DataFrame) -> (pd.DataFrame, list[str]), function called on each result DataFrame to add any derived metrics. Returns (new DataFrame, keys to add to filter_results).  Default: None
+    * rotate_x_axis_labels: bool, rotate the x-axis labels to prevent overlap. Use if x-axis labels are long, e.g., strings. Default: False
     
     Remaining keyword arguments are passed directly to Runner.run_all_threaded().
     """
@@ -74,7 +76,9 @@ def run_vtr_all_designs(
                 x_axis_label=[translations.get(c, c) for c in x_axis],
                 y_axis_label=[f"{translations.get(c, c)}" for c in filter_results],
                 save_path=path.join(save_dir, f"{filesafe_name}_graphs.png"),
-                short_labels=group_cols_short_labels)
+                short_labels=group_cols_short_labels,
+                rotate_x_axis_labels=rotate_x_axis_labels,
+                )
     
     # save into results directory
     save_and_plot(results, plot_fn=plot_fn)
