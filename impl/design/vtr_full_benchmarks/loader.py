@@ -14,10 +14,10 @@ class VtrBenchmarkLoaderDesign(StandardizedSdcDesign):
         super().__init__('', '', '')
 
     def verify_params(self, params: dict[str, any]) -> dict[str, any]:
-        return self.verify_required_keys(DEFAULTS, ['impl'], params)
+        return self.verify_required_keys(DEFAULTS, ['subset', 'impl'], params)
     
-    def get_name(self, impl: str, **kwargs):
-        return f"vtr-bm-{impl}"
+    def get_name(self, subset: str, impl: str, **kwargs):
+        return f"{subset}-{impl}"
     
     def gen_wrapper(self, verilog_dir: str, impl: str, **kwargs):
         assert os.path.exists(verilog_dir)

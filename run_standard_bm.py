@@ -7,11 +7,13 @@ import util.derived_metrics as derived_metrics
 # Stratix 10
 from impl.arch.stratix_10.base import BaseArchFactory
 from impl.arch.stratix_10.lut_skip import LUTSkipArchFactory
+from impl.arch.stratix_10.fair.base import BaseArchFactory
+from impl.arch.stratix_10.fair.lut_skip import LUTSkipArchFactory
 from impl.arch.stratix_10.lut_skip_1d import LUTSkip1dArchFactory
 from impl.arch.stratix_10.lut_skip_6 import LUTSkip6ArchFactory
 
 # VTR Standard Benchmark Loader parameters
-from runs.benchmarks.vtr_full_benchmarks import get_all_vtr_bm_params
+import runs.benchmarks.vtr_full_benchmarks as vtr_bm
 
 # VTR Standard Benchmark Loader
 from impl.design.vtr_full_benchmarks.loader import VtrBenchmarkLoaderDesign
@@ -48,7 +50,9 @@ VARIABLE_ARCH_PARAMS = dict(
 
 DESIGN_LIST = [
     # VTR Standard benchmarks
-    (VtrBenchmarkLoaderDesign(), get_all_vtr_bm_params(BASE_PARAMS)),
+    # (VtrBenchmarkLoaderDesign(), vtr_bm.get_all_vtr_bm_params(BASE_PARAMS)),
+    # Koios benchmarks
+    (VtrBenchmarkLoaderDesign(), vtr_bm.get_all_koios_params(BASE_PARAMS)),
 ]
 
 # add derived metrics:
@@ -96,12 +100,13 @@ run_vtr_denoised_v1(
     # new_arch=LUTSkip1dArchFactory,
     # new_arch=LUTSkip6ArchFactory,
     base_arch=BaseArchFactory,
+    # base_arch=LUTSkipArchFactory,
     design_list=DESIGN_LIST,
     variable_arch_params=VARIABLE_ARCH_PARAMS,
     x_axis=['impl'],
     filter_params_baseline=['impl'],
     filter_params_add=['per_fle_area'],
-    group_cols=[],
+    group_cols=['per_fle_area'],
     group_cols_short_labels=dict(),
     filter_results=['fmax', 'cpd', 'twl', 
                     'concurrent_lut5s', 'concurrent_lut6s',
@@ -126,10 +131,11 @@ run_vtr_denoised_v1(
                 ],
     translations=TRANSLATIONS_GRAPH,
     df_processing_fn=add_derived_metrics,
-    merge_designs=True,
-    num_parallel_tasks=12,
-    verbose=True,
-    desc='(Narwhal) Base vs. LUT Skip[6], all VTR benchmarks',
+    rotate_x_axis_labels=True,
+    merge_designs=False,
+    num_parallel_tasks=1,
+    # verbose=True,
+    desc='(Narwhal) Base vs. LUT Skip, all Koios benchmarks',
     tele_batch=25,
-    # notify_via_tele=False,
+    notify_via_tele=False,
 )
