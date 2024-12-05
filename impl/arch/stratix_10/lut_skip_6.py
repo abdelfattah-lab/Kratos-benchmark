@@ -50,6 +50,7 @@ TEMPLATE = """<!--
     - COFFE modelling was done at fixed routing channel width of 400, so this should be specified accordingly with 'route_chan_width 400' in VPR.
     - Re-ordered direct LAB-LAB connections.
     - Added local interconnect and 2:1 MUXing directly to adders.
+    - Re-configured ALM with only the fracturable 6-LUT having multiple modes.
 -->
 <architecture>
   <!-- 
