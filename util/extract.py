@@ -306,7 +306,7 @@ def extract_info_vtr(path='.', extract_blocks_list=['clb', 'fle']) -> dict:
 
             if result_dict['cpd'] > 0 and result_dict['fmax'] < 0:
                 # fail-safe: get Fmax from CPD if not shown in report
-                result_dict['fmax'] = 1 / (result_dict['cpd']) 
+                result_dict['fmax'] = 1000 / (result_dict['cpd']) 
 
         # extract route channel width
         if line.startswith('Circuit successfully routed with a channel width factor of'):
