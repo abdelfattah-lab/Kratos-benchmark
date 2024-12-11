@@ -1,9 +1,13 @@
 from structure.design import PluginDesign
 from structure.plugin import Plugin
 from util.flow import reset_seed, generate_flattened_bit
+from util.bit_gen import gen_verilog_random_hex_constant
 from structure.consts.shared_defaults import DEFAULTS_TCL, DEFAULTS_WRAPPER
 from structure.consts.shared_requirements import REQUIRED_KEYS_GEMM
+
 from structure.consts.quartus import DEVICE_FAMILY, DEVICE_NAME, TURN_OFF_DSPS
+
+import math
 
 class GemmTFuDesign(PluginDesign):
     """
@@ -169,3 +173,33 @@ endmodule
 '''
 
         return template
+    
+    def _get_mat_sizes(self, data_width, row_num, col_num, length):
+        mat_in_size = data_width * row_num * length
+        mat_out_size = data_width * 4 * row_num * col_num
+
+        return mat_in_size, mat_out_size
+    
+    def gen_tb_params(self, data_width, row_num, col_num, length, **kwargs):
+        mat_in_size, mat_out_size = self._get_mat_sizes(data_width, row_num, col_num, length)
+
+        cycles = 1 + math.ceil(math.log2(length)) + 1
+        return dict(
+            cycles=dict(
+                reset=cycles * 3,
+                hold=cycles,
+            ),
+            pins=dict(
+                clk='clk',
+                input=[
+                    ('mat_in', mat_in_size),
+                ],
+                output=[
+                    ('mat_out', mat_out_size),
+                ],
+            )
+        )
+    
+    def gen_test_case(self, data_width, row_num, col_num, length, **kwargs):
+        mat_in_size, _ = self._get_mat_sizes(data_width, row_num, col_num, length)
+        return f"mat_in = {gen_verilog_random_hex_constant(mat_in_size)};"

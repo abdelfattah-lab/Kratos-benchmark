@@ -29,12 +29,22 @@ class Design(DynamicallyNamed, ParamsChecker):
         """
         self.raise_unimplemented("gen_tcl")
 
-    def gen_wrapper(self, **kwargs):
+    def gen_wrapper(self, **kwargs) -> str:
         """
         Generate a wrapper file.
         """
         self.raise_unimplemented("gen_wrapper")
-
+    
+    def gen_tb_params(self, **kwargs) -> dict[str, dict[str, any]]:
+        """
+        Generate 'tb_params' for structure.test.VerilogImplTester.
+        """
+        self.raise_unimplemented("gen_tb_params")
+    
+    def gen_test_case(self, **kwargs) -> str:
+        """
+        Generate a test case for structure.test.VerilogImplTester.verify().
+        """
 
 DEFAULTS_SDC = {
     'clock': 1

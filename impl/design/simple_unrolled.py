@@ -4,6 +4,8 @@ from structure.consts.shared_requirements import REQUIRED_KEYS_SIMPLE_UNROLLED
 
 from structure.consts.quartus import DEVICE_FAMILY, DEVICE_NAME, TURN_OFF_DSPS
 
+from util.bit_gen import gen_verilog_random_hex_constant
+
 class SimpleUnrolledDesign(StandardizedSdcDesign):
     def __init__(self, impl: str = 'simple_unrolled', module_dir: str = 'simple_unrolled', wrapper_module_name: str = 'simple_unrolled_wrapper'):
         super().__init__(impl, module_dir, wrapper_module_name)
@@ -101,3 +103,19 @@ endmodule
 """
 
         return template
+    
+    def gen_tb_params(self, data_width, **kwargs):
+        return dict(
+            cycles=dict(
+                reset=1,
+                hold=1,
+            ),
+            pins=dict(
+                clk='clk',
+                input=[('a', data_width)],
+                output=[('s', 2 * data_width)],   
+            )
+        )
+    
+    def gen_test_case(self, data_width, **kwargs):
+        return f"a = {gen_verilog_random_hex_constant(data_width)};"
