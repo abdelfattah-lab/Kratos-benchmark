@@ -1,10 +1,13 @@
 from structure.design import PluginDesign
 from structure.plugin import Plugin
 from util.flow import reset_seed, gen_long_constant_bits
+from util.bit_gen import gen_verilog_random_hex_constant
 from structure.consts.shared_defaults import DEFAULTS_TCL, DEFAULTS_WRAPPER_CONV
 from structure.consts.shared_requirements import REQUIRED_KEYS_CONV2D_STRIDE
 
 from structure.consts.quartus import DEVICE_FAMILY, DEVICE_NAME, TURN_OFF_DSPS
+
+import math
 
 class Conv2dFuDesign(PluginDesign):
     """
@@ -207,3 +210,33 @@ module {self.wrapper_module_name}
 endmodule
 '''
         return template
+    
+    def _get_data_sizes(self, data_width, img_w, img_h, img_d, fil_w, fil_h, res_d, stride_w, stride_h):
+        data_in_size = data_width * img_d * img_w * img_h
+        data_out_size = data_width * 4 * res_d * (int((img_w - fil_w) / stride_w) + 1) * (int((img_h - fil_h) / stride_h) + 1)
+
+        return data_in_size, data_out_size
+
+    def gen_tb_params(self, data_width, img_w, img_h, img_d, fil_w, fil_h, res_d, stride_w, stride_h, **kwargs):
+        data_in_size, data_out_size = self._get_data_sizes(data_width, img_w, img_h, img_d, fil_w, fil_h, res_d, stride_w, stride_h)
+
+        cycles = 1 + math.ceil(math.log2(fil_w * fil_h * img_d)) + 1
+        return dict(
+            cycles=dict(
+                reset=cycles * 3,
+                hold=cycles,
+            ),
+            pins=dict(
+                clk='clk',
+                input=[
+                    ('img_data_in', data_in_size),
+                ],
+                output=[
+                    ('result_data_out', data_out_size),
+                ],
+            )
+        )        
+    
+    def gen_test_case(self, data_width, img_w, img_h, img_d, fil_w, fil_h, res_d, stride_w, stride_h, **kwargs):
+        data_in_size, _ = self._get_data_sizes(data_width, img_w, img_h, img_d, fil_w, fil_h, res_d, stride_w, stride_h)
+        return f"img_data_in = {gen_verilog_random_hex_constant(data_in_size)};"

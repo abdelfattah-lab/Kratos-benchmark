@@ -1,7 +1,8 @@
 """
-Searching a pandas DataFrame.
+General search functions.
 """
 import pandas as pd
+import os
 
 def query_df(df: pd.DataFrame, search_kwargs: dict[str, any]) -> pd.DataFrame | None:
     """
@@ -29,3 +30,21 @@ def query_df(df: pd.DataFrame, search_kwargs: dict[str, any]) -> pd.DataFrame | 
         return None
     
     return None if result.empty else result
+
+def find_first_file_with_suffix(dir: str, suffix: str) -> str | None:
+    """
+    Returns absolute path of the first file in the directory with the required suffix, or None if no file is found.
+
+    Required arguments:
+    * dir: str, directory to search.
+    * suffix: str, suffix to use.
+    """
+    # sanity check
+    if not os.path.exists(dir):
+        raise ValueError(f"{dir} does not exist!")
+    
+    for filename in os.listdir(dir):
+        if filename.endswith(suffix):
+            return os.path.join(dir, filename)
+    
+    return None

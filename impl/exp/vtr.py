@@ -1,8 +1,10 @@
 from structure.exp import Experiment
+from structure.test import VerilogImplTester
 from structure.consts.shared_defaults import DEFAULTS_EXP_VTR
 from structure.consts.shared_requirements import REQUIRED_KEYS_EXP_VERILOG
 from util.extract import extract_info_vtr
 from util.flow import start_dependent_process
+from util.search import find_first_file_with_suffix
 
 import os
 import subprocess
@@ -42,6 +44,8 @@ class VtrExperiment(Experiment):
         dry_run: if True, only generate files, do not run VTR
         clean: if True, zip the temp files after VTR finishes to save space
         ending: ending stage of VTR, if None, run the whole flow, options: 'parmys', 'vpr'
+        verify: verification stage of VTR; ignore if None. Options: 'synthesis' - post-synthesis, 'impl' - post-implementation.  
+        verify_tester: an instance of a VerilogImplTester. Must be provided if verification is to be done.
         seed: random seed for VTR
         allow_skipping: if True, then the experiment is skipped if the folder already exists with valid results
         allow_skip_existing: if True, then the experiment is skipped if the folder already exists, regardless of valid results. Will only apply if allow_skipping is True.
@@ -73,6 +77,14 @@ class VtrExperiment(Experiment):
             if (allow_skip_existing and os.path.exists(self.vtr_output_dir)) or self.get_result().get('status', False):
                 return
         
+        # Check for verification run
+        self.verify = self.exp_params.get('verify', None)
+        self.verify_tester: VerilogImplTester = self.exp_params.get('verify_tester', None)
+        if self.verify not in [None, 'synthesis', 'impl']:
+            raise ValueError(f"Unrecognised 'verify' argument: {self.verify}!")
+        if self.verify is not None and self.verify_tester is None:
+            raise ValueError('verify_tester must be provided if verify stage is specified!')
+
         # get variables
         clean = self.exp_params.get('clean', True)
         ending = self.exp_params['ending']
@@ -86,7 +98,8 @@ class VtrExperiment(Experiment):
 
         # generate wrapper file
         wrapper_file_name = 'design.v'
-        with open(os.path.join(self.exp_dir, wrapper_file_name), 'w') as f:
+        self.wrapper_file_path = os.path.join(self.exp_dir, wrapper_file_name)
+        with open(self.wrapper_file_path, 'w') as f:
             f.write(self.design.gen_wrapper(**self.design_params))
 
         # generate architecture file
@@ -103,10 +116,10 @@ class VtrExperiment(Experiment):
             return
 
         # Find VTR and define command
-        vtr_root = os.environ.get('VTR_ROOT')
-        if vtr_root is None:
+        self.vtr_root = os.environ.get('VTR_ROOT')
+        if self.vtr_root is None:
             raise RuntimeError('VTR_ROOT not found in environment variables; unable to execute VTR.')
-        vtr_script_path = os.path.join(vtr_root, 'vtr_flow/scripts/run_vtr_flow.py')
+        vtr_script_path = os.path.join(self.vtr_root, 'vtr_flow/scripts/run_vtr_flow.py')
         cmd = ['python', vtr_script_path, wrapper_file_name, arch_file_name,
                '-parser', 'system-verilog', 
                '--sweep_constant_primary_outputs', 'on', # remove LUTs that drive constant '0's
@@ -128,6 +141,9 @@ class VtrExperiment(Experiment):
             cmd += ['-ending_stage', ending]
 
         # Add VPR commands
+        if self.verify == 'impl':
+            cmd += ['--gen_post_synthesis_netlist', 'on']
+
         if route_chan_width >= 0:
             # set route channel width
             cmd += ['--route_chan_width', str(int(route_chan_width))]
@@ -157,6 +173,27 @@ class VtrExperiment(Experiment):
         net_path = os.path.join(self.vtr_output_dir, 'design.net')
         if os.path.exists(net_path):
             self._generate_netstats_json(ET.parse(net_path).getroot(), self.vtr_output_dir)
+
+        # verify netlists if required
+        if self.verify is not None:
+            post_module_suffix = '_post_synthesis.v' if self.verify == 'impl' else '_post_yosys.v'
+            post_module_path = find_first_file_with_suffix(self.vtr_output_dir, post_module_suffix)
+            if post_module_path is None:
+                raise ValueError(f"Cannot find module to verify with suffix '{post_module_suffix}' in directory '{self.vtr_output_dir}'!")
+            verification_output = self.verify_tester.verify(
+                tb_params=self.design.gen_tb_params(**self.design_params),
+                test_case_generator=lambda: self.design.gen_test_case(**self.design_params),
+                working_dir=self.vtr_output_dir,
+                pre_module_path=self.wrapper_file_path,
+                post_module_path=post_module_path,
+                include_dir=self.verilog_search_dir,
+                add_verilog_file_paths=[
+                    os.path.join(self.vtr_root, 'vtr_flow', 'primitives_no_specify.v'), # VTR primitives
+                ],
+            )
+            
+            with open(os.path.join(self.vtr_output_dir, 'verify.json'), 'w') as f:
+                json.dump(verification_output, f)
 
     def _generate_netstats_json(self, net_root: ET.Element, output_dir: str) -> dict[str, any]:
         """
@@ -232,5 +269,17 @@ class VtrExperiment(Experiment):
                                 netstats = self._generate_netstats_json(ET.parse(net_file).getroot(), self.vtr_output_dir)
 
         self.result = { **extract_info_vtr(self.vtr_output_dir, **kwargs), **netstats }
+
+        # add verification result
+        if self.verify is not None:
+            verify_json_path = os.path.join(self.vtr_output_dir, 'verify.json')
+            is_verified = False
+            if os.path.exists(verify_json_path):
+                with open(verify_json_path, 'r') as verify_json_file:
+                    is_verified = json.load(verify_json_file)['verified']
+
+            self.result['status'] = self.result['status'] & is_verified
+            self.result['verified'] = is_verified
+
         return self.result
 
