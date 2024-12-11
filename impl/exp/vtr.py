@@ -70,7 +70,7 @@ class VtrExperiment(Experiment):
 
         # Check for viable result (i.e., it has been run in the past)
         if (not dry_run) and allow_skipping:
-            if allow_skip_existing or self.get_result().get('status', False):
+            if (allow_skip_existing and os.path.exists(self.vtr_output_dir)) or self.get_result().get('status', False):
                 return
         
         # get variables
@@ -142,7 +142,7 @@ class VtrExperiment(Experiment):
         self.stdout_file = open(os.path.join(self.exp_dir, self.exp_params['stdout_file']), 'w')
         self.stderr_file = open(os.path.join(self.exp_dir, self.exp_params['stderr_file']), 'w')
 
-        # start VTR on subprocess        
+        # start VTR on subprocess
         self.process = start_dependent_process(cmd, stdout=self.stdout_file, stderr=self.stderr_file, cwd=self.exp_dir)
 
         # start post-processing thread
