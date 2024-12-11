@@ -72,11 +72,6 @@ class VtrExperiment(Experiment):
         self.verilog_search_dir = self.exp_params['verilog_search_dir']
         self.vtr_output_dir = os.path.join(self.exp_dir, 'temp') # VTR output directory
 
-        # Check for viable result (i.e., it has been run in the past)
-        if (not dry_run) and allow_skipping:
-            if (allow_skip_existing and os.path.exists(self.vtr_output_dir)) or self.get_result().get('status', False):
-                return
-        
         # Check for verification run
         self.verify = self.exp_params.get('verify', None)
         self.verify_tester: VerilogImplTester = self.exp_params.get('verify_tester', None)
@@ -84,6 +79,11 @@ class VtrExperiment(Experiment):
             raise ValueError(f"Unrecognised 'verify' argument: {self.verify}!")
         if self.verify is not None and self.verify_tester is None:
             raise ValueError('verify_tester must be provided if verify stage is specified!')
+
+        # Check for viable result (i.e., it has been run in the past)
+        if (not dry_run) and allow_skipping:
+            if (allow_skip_existing and os.path.exists(self.vtr_output_dir)) or self.get_result().get('status', False):
+                return
 
         # get variables
         clean = self.exp_params.get('clean', True)
