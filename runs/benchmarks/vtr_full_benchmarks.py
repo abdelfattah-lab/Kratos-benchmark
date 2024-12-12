@@ -55,25 +55,28 @@ def get_all_koios_params(base_params: dict[str, any], exp_root_dir: str = 'vtr_f
         'verilog_dir': os.path.join(get_vtr_verilog_dir(), 'koios'),
         'subset': 'koios',
         'impl': [
-            'dla_like',
-            'clstm_like',
-            'deepfreeze',
-            'tdarknet_like',
-            'bwave_like',
+            'dla_like.large',
+            'clstm_like.large',
+            # 'deepfreeze', # in another directory
+            'tdarknet_like.large',
+            'bwave_like.fixed.large',
+            # 'bwave_like.float.large', # too big
+            'bwave_like.float.small',
             'lstm',
             'bnn',
             'lenet',
-            'dnnweaver',
-            'tpu_like',
+            # 'dnnweaver', # broken
+            'tpu_like.large.os',
+            'tpu_like.large.ws',
             'gemm_layer',
-            'attention_layer',
+            # 'attention_layer', # broken
             'conv_layer',
+            'conv_layer_hls',
             'robot_rl',
             'reduction_layer',
             'spmv',
             'eltwise_layer',
             'softmax',
-            'conv_layer_hls',
-            'proxy',
+            # 'proxy', # in another directory
         ],
     })
