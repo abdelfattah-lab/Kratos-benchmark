@@ -99,5 +99,5 @@ run_vtr_all_designs(
     num_parallel_tasks=16,
     verbose=True,
     desc='tiny_run',
-    tele_batch=5,
+    notify_batch=5,
 )

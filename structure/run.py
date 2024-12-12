@@ -2,7 +2,7 @@ from structure.exp import Experiment, ExperimentFactory
 from structure.arch import ArchFactory
 from structure.design import Design
 from util.formatting import pretty, gen_time_elapsed
-from util.external_notifs import telegram_notify
+from util.external_notifs import notification_backend
 
 import os
 from timeit import default_timer as timer
@@ -45,8 +45,8 @@ class Runner():
             only_store_successes: bool = True,
             verbose: bool = False,
             track_run_time: bool = True,
-            notify_via_tele: bool = True,
-            tele_batch: int = 50,
+            notify: str = '',
+            notify_batch: int = 50,
             desc: str = 'run', 
             num_parallel_tasks: int = 1,
             runner_err_file: str = 'runner.err',
@@ -62,8 +62,8 @@ class Runner():
         * only_store_successes:bool, will not add to results if the experiment failed. Default: True
         * verbose:bool, prints detailed report of each result if True. Default: False
         * track_run_time:bool, will track total run time and print at the end if True. Default: True
-        * notify_via_tele:bool, will send failure/batched success updates to the specified Telegram bot and chat ID (refer to util.external_notifs) if True. Default: True
-        * tele_batch:int, (only valid if notify_via_tele is True) send an update every ? experiments run. Failures are sent individually. Default: 50
+        * notify:string, will send failure/batched success updates to the specified notifier. Default: '' means no notifications.
+        * notify_batch:int, (only valid if notify is True) send an update every ? experiments run. Failures are sent individually. Default: 50
         * desc:str, description of run
         * num_parallel_tasks:int, maximum number of simultaneous threads allowed in the thread pool.
         * runner_err_file:str, name of error file created by runner if an exception occurs while running the Experiment. Created in the Experiment folder.
@@ -74,8 +74,8 @@ class Runner():
         @returns a dictionary of (experiment root directory): (Pandas DataFrame with filtered parameters and results).
         """
         # sanity checks.
-        if notify_via_tele and tele_batch <= 0:
-            raise ValueError("tele_batch must be an integer value of at least 1!")
+        if notify and notify_batch <= 0:
+            raise ValueError("notify_batch must be an integer value of at least 1!")
 
         # print experiment count.
         total_count = len(self.experiments)
@@ -132,7 +132,7 @@ class Runner():
                     successes += 1
 
                 # notify Telegram if enabled
-                if notify_via_tele and ((is_success and result_no % tele_batch == 0) or not is_success):
+                if notify and ((is_success and result_no % notify_batch == 0) or not is_success):
                     msg = f"Run '{desc}': "
                     if is_success:
                         msg += f"{result_no}/{total_count} experiment(s) run, {successes} succeeded."
@@ -144,7 +144,7 @@ class Runner():
                         est_time_left = time_diff / result_no * (total_count - result_no)
                         msg += f"\n(Estimated time left: {gen_time_elapsed(est_time_left)})"
                     
-                    telegram_notify(msg)
+                    notification_backend(notify, msg)
 
                 if not only_store_successes or is_success:
                     if exp.root_dir in results:
@@ -186,7 +186,7 @@ class Runner():
         summary += "\n" + "*" * len_top_line
 
         print(summary)
-        if notify_via_tele:
-            telegram_notify(summary)
+        if notify:
+            notification_backend(notify, summary)
 
         return { k: pd.DataFrame.from_records(v) for k, v in results.items() }

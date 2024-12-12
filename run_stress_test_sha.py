@@ -123,7 +123,6 @@ def get_max_N(arch: ArchFactory) -> list[dict[str, any]]:
             result_kwargs=dict(
                 extract_blocks_list=FILTER_BLOCKS,
             ),
-            notify_via_tele=False,
         )
         runner.clear_experiments()
         if len(results) == 0:
