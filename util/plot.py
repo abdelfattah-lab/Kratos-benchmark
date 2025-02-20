@@ -28,6 +28,8 @@ COLOR_LIST_DEFAULT = [
     ['#78c679', '#c2e699', '#238443']
 ]
 
+DEFAULT_DPI = 150
+
 def plot_trend(mat_list: list[np.ndarray], labels: list[str], color_list=COLOR_LIST_DEFAULT, xlabel='', ylabel='', title='', save_name=''):
     assert len(mat_list) == len(labels)
 
@@ -64,7 +66,7 @@ def plot_trend(mat_list: list[np.ndarray], labels: list[str], color_list=COLOR_L
     plt.legend()
     plt.tight_layout()
     if (save_name is not None) and (save_name != ''):
-        plt.savefig(save_name, dpi=600)
+        plt.savefig(save_name, dpi=DEFAULT_DPI)
 
     # plt.show()
     plt.clf()
@@ -107,7 +109,7 @@ def plot_result_3d(axis1, axis2, datapoints, description1='', description2='', d
     ax.set_title(title)
     # save the figure in png with white background and high resolution
     if save_name != '':
-        plt.savefig(save_name, bbox_inches='tight', pad_inches=1, transparent=False, dpi=600)
+        plt.savefig(save_name, bbox_inches='tight', pad_inches=1, transparent=False, dpi=DEFAULT_DPI)
 
     plt.clf()
     plt.close(fig)
@@ -397,7 +399,7 @@ def plot_xy(
             if is_norm:
                 ylim_bottom = max(0, ylim_bottom) if ylim_bottom < 1 else min(1-ylim_diff, ylim_bottom) # clamp to 0 or 1-ylim_diff
                 ylim_top = max(1+ylim_diff, ylim_top) # clamp to 1+ylim_diff
-            if ylim_bottom != ylim_top:
+            if ylim_bottom != ylim_top and ylim_bottom != np.nan and ylim_bottom != np.inf and ylim_top != np.nan and ylim_top != np.inf:
                 ax.set_ylim(bottom=ylim_bottom, top=ylim_top)
 
             # add normalization line
@@ -426,5 +428,5 @@ def plot_xy(
     if is_3d:
         main_fig.tight_layout()
     if save_path is not None:
-        main_fig.savefig(save_path, bbox_inches='tight', dpi=600)
+        main_fig.savefig(save_path, bbox_inches='tight', dpi=DEFAULT_DPI)
     plt.close()
