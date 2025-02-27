@@ -987,3 +987,6 @@ class BaseArchFactory(ArchFactory, ParamsChecker):
             layout_sizing_start=layout_sizing_start,
             layout_sizing_end=layout_sizing_end,
         )
+    
+    def get_netstats(self, root):
+        return dict(concurrent_lut5s=0)

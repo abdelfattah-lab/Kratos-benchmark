@@ -1,11 +1,16 @@
 """
 Taken from https://github.com/verilog-to-routing/vtr-verilog-to-routing/blob/master/vtr_flow/arch/COFFE_22nm/stratix10_arch.xml, as-is.
 
-!NOTE: should be used with a fixed routing channel width of 400.
+Modified:
+- Breakable carry chains (set cin_mux_stride = 0 to revert to original)
+- LUT skipping in arithmetic mode, and passing adder outputs directly into sneak paths
 """
 
 from structure.arch import ArchFactory
 from structure.util import ParamsChecker
+import util.netstats as ns
+
+from lxml.etree import Element
 
 TEMPLATE = """<!--
     This is the architecture file for a Stratix-10-like *arithmetic* Architecture discussed in [1].
@@ -39,10 +44,11 @@ TEMPLATE = """<!--
     [1] M. Eldafrawy, A. Boutros, S. Yazdanshenas, and V. Betz, "FPGA Logic Block Architectures for
         Efficient Deep Learning Inference," in Transactions on Reconfigurable Technology and Systems
         (TRETS), 2020
-    
+
     Further extensions by Junius:
     - COFFE modelling was done at fixed routing channel width of 400, so this should be specified accordingly with 'route_chan_width 400' in VPR.
-    - Re-ordered direct LAB-LAB connections to match LUT Skip architecture.
+    - Re-ordered direct LAB-LAB connections.
+    - Added local interconnect and 2:1 MUXing directly to adders.
 -->
 <architecture>
   <!-- 
@@ -210,8 +216,8 @@ TEMPLATE = """<!--
     <connection_block input_switch_name="ipin_cblock"/>
   </device>
   <switchlist>
-    <switch type="mux" name="0" R="0.0" Cin="0.0" Cout="0.0" Tdel="238.1e-12" mux_trans_size="1.741" buf_size="27.005"/>
-    <switch type="mux" name="ipin_cblock" R="0.0" Cout="0.0" Cin="0.0" Tdel="148.4e-12" mux_trans_size="1.256" buf_size="11.525"/>
+    <switch type="mux" name="0" R="0.0" Cin="0.0" Cout="0.0" Tdel="244.7e-12" mux_trans_size="1.741" buf_size="26.852"/>
+    <switch type="mux" name="ipin_cblock" R="0.0" Cout="0.0" Cin="0.0" Tdel="152e-12" mux_trans_size="1.256" buf_size="11.525"/>
   </switchlist>
   <segmentlist>
     <segment freq="1.000000" length="4" type="unidir" Rmetal="0.0" Cmetal="0.0">
@@ -299,6 +305,7 @@ TEMPLATE = """<!--
             -->
         <pb_type name="fle" num_pb="10">
           <input name="in" num_pins="8"/>
+          <input name="in_direct" num_pins="4"/>
           <input name="cin" num_pins="1"/>
           <output name="out" num_pins="4"/>
           <output name="cout" num_pins="1"/>
@@ -317,10 +324,154 @@ TEMPLATE = """<!--
           <mode name="n2_lut5">
             <pb_type name="ble5" num_pb="2">
               <input name="in" num_pins="5"/>
+              <input name="in_direct" num_pins="2"/>
               <input name="cin" num_pins="1"/>
               <output name="out" num_pins="2"/>
               <output name="cout" num_pins="1"/>
               <clock name="clk" num_pins="1"/>
+              <mode name="arithmetic">
+                <pb_type name="arithmetic" num_pb="1">
+                  <input name="in" num_pins="5"/>
+                  <input name="in_direct" num_pins="2"/>
+                  <input name="cin" num_pins="1"/>
+                  <output name="out" num_pins="2"/>
+                  <output name="cout" num_pins="1"/>
+                  <clock name="clk" num_pins="1"/>
+                  <!-- Special dual-LUT mode that drives adder only -->
+                  <pb_type name="dual_lut4s" num_pb="1">
+                    <!-- this can be used as a single 5-LUT or 2 4-LUTs sharing all 4 inputs.
+                      Output pins will not be active at the same time. -->
+                    <input name="in" num_pins="5"/>
+                    <output name="lut5_out" num_pins="1"/>
+                    <output name="lut4_out" num_pins="2"/>
+                    <mode name="as_lut5">
+                      <pb_type name="lut5" blif_model=".names" num_pb="1" class="lut">
+                      <input name="in" num_pins="5" port_class="lut_in"/>
+                      <output name="out" num_pins="1" port_class="lut_out"/>
+                      <!-- LUT timing using delay matrix -->
+                      <!-- These are the physical delay inputs on a Stratix 10 LUT but because VPR cannot do LUT rebalancing,
+                              we instead take the average of these numbers to get more stable results
+                              note that those are the same delays for inputs A - E as the ones used for the 6-LUT, however, we have 
+                              subtracted the delay of the last mux stage to get the delay of inputs A - E till the 5-LUT output
+                              196.08e-12
+                              197.90e-12
+                              142.81e-12
+                              139.70e-12
+                              69.70e-12
+                            -->
+                        <delay_matrix type="max" in_port="lut5.in" out_port="lut5.out">
+                            149.24e-12
+                            149.24e-12
+                            149.24e-12
+                            149.24e-12
+                            149.24e-12
+                        </delay_matrix>
+                      </pb_type>
+                      <interconnect>
+                        <direct name="lut5_in" input="dual_lut4s.in" output="lut5.in"/>
+                        <direct name="lut5_out" input="lut5.out" output="dual_lut4s.lut5_out"/>
+                      </interconnect>
+                    </mode>
+                    <mode name="as_dual_lut4s">
+                      <pb_type name="lut4" blif_model=".names" num_pb="2" class="lut">
+                        <input name="in" num_pins="4" port_class="lut_in"/>
+                        <output name="out" num_pins="1" port_class="lut_out"/>
+                        <!-- LUT timing using delay matrix -->
+                        <!-- These are the physical delay inputs on a Stratix 10 LUT but because VPR cannot do LUT rebalancing,
+                              we instead take the average of these numbers to get more stable results
+                              note that those are the same delays for inputs A - D as the ones used for the 6-LUT, however, we have 
+                              subtracted the delay of the last 2 mux stages to get the delay of inputs A - D till the 4-LUT output
+                                160.36e-12
+                                162.18e-2
+                                107.09e-12
+                                103.98e-12
+                              -->
+                        <delay_matrix type="max" in_port="lut4.in" out_port="lut4.out">
+                            133.40e-12
+                            133.40e-12
+                            133.40e-12
+                            133.40e-12
+                        </delay_matrix>
+                      </pb_type>
+                      <interconnect>
+                        <direct name="lut4_in1" input="dual_lut4s.in[3:0]" output="lut4[0].in"/>
+                        <direct name="lut4_in2" input="dual_lut4s.in[3:0]" output="lut4[1].in"/>
+                        <direct name="lut4_outs" input="lut4.out" output="dual_lut4s.lut4_out"/>
+                      </interconnect>
+                    </mode>
+                  </pb_type>
+                  <pb_type name="adder" blif_model=".subckt adder" num_pb="1">
+                    <input name="a" num_pins="1"/>
+                    <input name="b" num_pins="1"/>
+                    <input name="cin" num_pins="1"/>
+                    <output name="cout" num_pins="1"/>
+                    <output name="sumout" num_pins="1"/>
+                    <delay_constant max="48.65e-12" in_port="adder.a" out_port="adder.sumout"/>
+                    <delay_constant max="48.65e-12" in_port="adder.b" out_port="adder.sumout"/>
+                    <delay_constant max="46.60e-12" in_port="adder.cin" out_port="adder.sumout"/>
+                    <delay_constant max="34.96e-12" in_port="adder.a" out_port="adder.cout"/>
+                    <delay_constant max="34.96e-12" in_port="adder.b" out_port="adder.cout"/>
+                    <delay_constant max="19.95e-12" in_port="adder.cin" out_port="adder.cout"/>
+                  </pb_type>
+                  <pb_type name="ff" blif_model=".latch" num_pb="2" class="flipflop">
+                    <input name="D" num_pins="1" port_class="D"/>
+                    <output name="Q" num_pins="1" port_class="Q"/>
+                    <clock name="clk" num_pins="1" port_class="clock"/>
+                    <T_setup value="18.91e-12" port="ff.D" clock="clk"/>
+                    <T_clock_to_Q max="60.32e-12" port="ff.Q" clock="clk"/>
+                  </pb_type>
+                  <interconnect>
+                    <direct name="ff_clock1" input="arithmetic.clk" output="ff[0].clk"/>
+                    <direct name="ff_clock2" input="arithmetic.clk" output="ff[1].clk"/>
+                    <direct name="lut4_in1" input="arithmetic.in" output="dual_lut4s.in"/>
+
+                    <!-- add 2-1 mux from 4-LUTs to adder inputs. -->
+                    <mux name="lut_to_add1" input="dual_lut4s.lut4_out[0] arithmetic.in_direct[0]" output="adder.a">
+                      <delay_constant max="68.88e-12" in_port="dual_lut4s.lut4_out[0]" out_port="adder.a"/>
+                      <delay_constant max="68.88e-12" in_port="arithmetic.in_direct[0]" out_port="adder.a"/>
+                    </mux>
+                    <mux name="lut_to_add2" input="dual_lut4s.lut4_out[1] arithmetic.in_direct[1]" output="adder.b">
+                      <delay_constant max="68.88e-12" in_port="dual_lut4s.lut4_out[1]" out_port="adder.b"/>
+                      <delay_constant max="68.88e-12" in_port="arithmetic.in_direct[1]" out_port="adder.b"/>
+                    </mux>
+                    
+                    <direct name="add_to_ff" input="adder.sumout" output="ff[0].D">
+                      <delay_constant max="15.58e-12" in_port="adder.sumout" out_port="ff[0].D"/>
+                      <pack_pattern name="arith_ff" in_port="adder.sumout" out_port="ff[0].D"/>
+                    </direct>
+                    <direct name="lut5_to_ff" input="dual_lut4s.lut5_out" output="ff[1].D">
+                      <pack_pattern name="lut5_ff" in_port="dual_lut4s.lut5_out" out_port="ff[1].D"/>
+                    </direct>
+                    
+                    <direct name="carry_in" input="arithmetic.cin" output="adder.cin">
+                      <pack_pattern name="chain_arith" in_port="arithmetic.cin" out_port="adder.cin"/>
+                    </direct>
+                    <direct name="carry_out" input="adder.cout" output="arithmetic.cout">
+                      <pack_pattern name="chain_arith" in_port="adder.cout" out_port="arithmetic.cout"/>
+                    </direct>
+                    <complete name="sumout" input="ff[0].Q adder.sumout" output="arithmetic.out">
+                      <delay_constant max="61.34e-12" in_port="adder.sumout" out_port="arithmetic.out"/>
+                      <delay_constant max="43.49e-12" in_port="ff[0].Q" out_port="arithmetic.out"/>
+                    </complete>
+                    <complete name="lut5_out" input="ff[1].Q dual_lut4s.lut5_out" output="arithmetic.out">
+                      <delay_constant max="43.49e-12" in_port="dual_lut4s.lut5_out" out_port="arithmetic.out"/>
+                      <delay_constant max="43.49e-12" in_port="ff[1].Q" out_port="arithmetic.out"/>
+                    </complete>
+                  </interconnect>
+                </pb_type>
+                <interconnect>
+                  <direct name="direct1" input="ble5.in" output="arithmetic.in"/>
+                  <direct name="in_direct" input="ble5.in_direct" output="arithmetic.in_direct"/>
+                  <direct name="carry_in" input="ble5.cin" output="arithmetic.cin">
+                    <pack_pattern name="chain_arith" in_port="ble5.cin" out_port="arithmetic.cin"/>
+                  </direct>
+                  <direct name="carry_out" input="arithmetic.cout" output="ble5.cout">
+                    <pack_pattern name="chain_arith" in_port="arithmetic.cout" out_port="ble5.cout"/>
+                  </direct>
+                  <direct name="direct2" input="ble5.clk" output="arithmetic.clk"/>
+                  <direct name="direct3" input="arithmetic.out" output="ble5.out"/>
+                </interconnect>
+              </mode>
               <mode name="blut5">
                 <pb_type name="flut5" num_pb="1">
                   <input name="in" num_pins="5"/>
@@ -362,7 +513,7 @@ TEMPLATE = """<!--
                       <delay_constant max="15.58e-12" in_port="flut5.in[0]" out_port="ff[0].D"/>
                     </direct>
                     <direct name="lut5_ff" input="lut5.out" output="ff[1].D">
-                      <pack_pattern name="ble5" in_port="lut5.out" out_port="ff[1].D"/>
+                      <pack_pattern name="ble5_ff" in_port="lut5.out" out_port="ff[1].D"/>
                     </direct>
                     <complete name="clock" input="flut5.clk" output="ff.clk"/>
                     <complete name="out_mux" input="ff.Q lut5.out" output="flut5.out">
@@ -377,88 +528,6 @@ TEMPLATE = """<!--
                   <direct name="direct3" input="flut5.out" output="ble5.out"/>
                 </interconnect>
               </mode>
-              <mode name="arithmetic">
-                <pb_type name="arithmetic" num_pb="1">
-                  <input name="in" num_pins="4"/>
-                  <input name="cin" num_pins="1"/>
-                  <output name="out" num_pins="2"/>
-                  <output name="cout" num_pins="1"/>
-                  <clock name="clk" num_pins="1"/>
-                  <!-- Special dual-LUT mode that drives adder only -->
-                  <pb_type name="lut4" blif_model=".names" num_pb="2" class="lut">
-                    <input name="in" num_pins="4" port_class="lut_in"/>
-                    <output name="out" num_pins="1" port_class="lut_out"/>
-                    <!-- LUT timing using delay matrix -->
-                    <!-- These are the physical delay inputs on a Stratix 10 LUT but because VPR cannot do LUT rebalancing,
-                           we instead take the average of these numbers to get more stable results
-                           note that those are the same delays for inputs A - D as the ones used for the 6-LUT, however, we have 
-                           subtracted the delay of the last 2 mux stages to get the delay of inputs A - D till the 4-LUT output
-                             160.36e-12
-                             162.18e-2
-                             107.09e-12
-                             103.98e-12
-                          -->
-                    <delay_matrix type="max" in_port="lut4.in" out_port="lut4.out">
-                            133.40e-12
-                            133.40e-12
-                            133.40e-12
-                            133.40e-12
-                        </delay_matrix>
-                  </pb_type>
-                  <pb_type name="adder" blif_model=".subckt adder" num_pb="1">
-                    <input name="a" num_pins="1"/>
-                    <input name="b" num_pins="1"/>
-                    <input name="cin" num_pins="1"/>
-                    <output name="cout" num_pins="1"/>
-                    <output name="sumout" num_pins="1"/>
-                    <delay_constant max="56.66e-12" in_port="adder.a" out_port="adder.sumout"/>
-                    <delay_constant max="56.66e-12" in_port="adder.b" out_port="adder.sumout"/>
-                    <delay_constant max="46.60e-12" in_port="adder.cin" out_port="adder.sumout"/>
-                    <delay_constant max="40.30e-12" in_port="adder.a" out_port="adder.cout"/>
-                    <delay_constant max="40.30e-12" in_port="adder.b" out_port="adder.cout"/>
-                    <delay_constant max="19.95e-12" in_port="adder.cin" out_port="adder.cout"/>
-                  </pb_type>
-                  <pb_type name="ff" blif_model=".latch" num_pb="1" class="flipflop">
-                    <input name="D" num_pins="1" port_class="D"/>
-                    <output name="Q" num_pins="1" port_class="Q"/>
-                    <clock name="clk" num_pins="1" port_class="clock"/>
-                    <T_setup value="18.91e-12" port="ff.D" clock="clk"/>
-                    <T_clock_to_Q max="60.32e-12" port="ff.Q" clock="clk"/>
-                  </pb_type>
-                  <interconnect>
-                    <direct name="clock" input="arithmetic.clk" output="ff.clk"/>
-                    <direct name="lut4_in1" input="arithmetic.in" output="lut4[0].in"/>
-                    <direct name="lut4_in2" input="arithmetic.in" output="lut4[1].in"/>
-                    <direct name="lut_to_add1" input="lut4[0:0].out" output="adder.a"/>
-                    <direct name="lut_to_add2" input="lut4[1:1].out" output="adder.b"/>
-                    <direct name="add_to_ff" input="adder.sumout" output="ff.D">
-                      <delay_constant max="15.58e-12" in_port="adder.sumout" out_port="ff.D"/>
-                      <pack_pattern name="adder_ff" in_port="adder.sumout" out_port="ff.D"/>
-                    </direct>
-                    <direct name="carry_in" input="arithmetic.cin" output="adder.cin">
-                      <pack_pattern name="chain" in_port="arithmetic.cin" out_port="adder.cin"/>
-                    </direct>
-                    <direct name="carry_out" input="adder.cout" output="arithmetic.cout">
-                      <pack_pattern name="chain" in_port="adder.cout" out_port="arithmetic.cout"/>
-                    </direct>
-                    <complete name="sumout" input="ff.Q adder.sumout" output="arithmetic.out">
-                      <delay_constant max="61.34e-12" in_port="adder.sumout" out_port="arithmetic.out"/>
-                      <delay_constant max="43.49e-12" in_port="ff.Q" out_port="arithmetic.out"/>
-                    </complete>
-                  </interconnect>
-                </pb_type>
-                <interconnect>
-                  <direct name="direct1" input="ble5.in[3:0]" output="arithmetic.in"/>
-                  <direct name="carry_in" input="ble5.cin" output="arithmetic.cin">
-                    <pack_pattern name="chain" in_port="ble5.cin" out_port="arithmetic.cin"/>
-                  </direct>
-                  <direct name="carry_out" input="arithmetic.cout" output="ble5.cout">
-                    <pack_pattern name="chain" in_port="arithmetic.cout" out_port="ble5.cout"/>
-                  </direct>
-                  <direct name="direct2" input="ble5.clk" output="arithmetic.clk"/>
-                  <direct name="direct3" input="arithmetic.out" output="ble5.out"/>
-                </interconnect>
-              </mode>
             </pb_type>
             <interconnect>
               <!-- Shared inputs between the two 5-LUTs -->
@@ -466,26 +535,30 @@ TEMPLATE = """<!--
               <complete name="lut5_reg2" input="fle.in[1]" output="ble5[0].in[1] ble5[1].in[0]"/>
               <!-- Rest of the 5-LUT inputs -->
               <direct name="lut5_inputs_1" input="fle.in[4:2]" output="ble5[0].in[4:2]"/>
-              <direct name="lut5_inputs_22" input="fle.in[7:5]" output="ble5[1].in[4:2]"/>
+              <direct name="lut5_inputs_2" input="fle.in[7:5]" output="ble5[1].in[4:2]"/>
               <direct name="lut5_outputs_1" input="ble5[0].out" output="fle.out[1:0]"/>
               <direct name="lut5_outputs_2" input="ble5[1].out" output="fle.out[3:2]"/>
+              <!-- Direct inputs from crossbar -->
+              <direct name="lut5_direct1" input="fle.in_direct" output="ble5.in_direct"/>
+              
               <direct name="carry_in" input="fle.cin" output="ble5[0].cin">
-                <pack_pattern name="chain" in_port="fle.cin" out_port="ble5[0].cin"/>
+                <pack_pattern name="chain_arith" in_port="fle.cin" out_port="ble5[0].cin"/>
               </direct>
               <direct name="carry_out" input="ble5[1].cout" output="fle.cout">
-                <pack_pattern name="chain" in_port="ble5[1].cout" out_port="fle.cout"/>
+                <pack_pattern name="chain_arith" in_port="ble5[1].cout" out_port="fle.cout"/>
               </direct>
               <direct name="carry_link" input="ble5[0].cout" output="ble5[1].cin">
-                <pack_pattern name="chain" in_port="ble5[0].cout" out_port="ble5[1].cout"/>
+                <pack_pattern name="chain_arith" in_port="ble5[0].cout" out_port="ble5[1].cout"/>
               </direct>
               <complete name="clock" input="fle.clk" output="ble5[1:0].clk"/>
             </interconnect>
           </mode>
+          
           <!-- n2_lut5 -->
           {mode_lut6}
         </pb_type>
         <interconnect>
-          <!-- 50% sparsely populated local routing -->
+          <!-- 50% sparsely populated local routing, general ALMs -->
           <complete name="lutA" input="lab.I4 lab.I3" output="fle[9:0].in[0:0]">
             <delay_constant max="69.39e-12" in_port="lab.I4" out_port="fle.in[0:0]"/>
             <delay_constant max="69.39e-12" in_port="lab.I3" out_port="fle.in[0:0]"/>
@@ -518,6 +591,52 @@ TEMPLATE = """<!--
             <delay_constant max="69.39e-12" in_port="lab.I3" out_port="fle.in[7:7]"/>
             <delay_constant max="69.39e-12" in_port="lab.I2" out_port="fle.in[7:7]"/>
           </complete>
+          
+          <!-- 25% sparsely populated local routing, direct adder connections from LAB-LAB pins only -->
+          <!-- pins from right LAB -->
+          <complete name="directA_R" input="lab.I1[9:5] lab.I3[9:5]" output="fle[0:0].in_direct[3:0]">
+            <delay_constant max="76.33e-12" in_port="lab.I1[9:5]" out_port="fle[0:0].in_direct[3:0]"/>
+            <delay_constant max="76.33e-12" in_port="lab.I3[9:5]" out_port="fle[0:0].in_direct[3:0]"/>
+          </complete>
+          <complete name="directB_R" input="lab.I1[9:5] lab.I2[9:5]" output="fle[1:1].in_direct[3:0]">
+            <delay_constant max="76.33e-12" in_port="lab.I1[9:5]" out_port="fle[1:1].in_direct[3:0]"/>
+            <delay_constant max="76.33e-12" in_port="lab.I2[9:5]" out_port="fle[1:1].in_direct[3:0]"/>
+          </complete>
+          <complete name="directC_R" input="lab.I2[9:5] lab.I3[9:5]" output="fle[2:2].in_direct[3:0]">
+            <delay_constant max="76.33e-12" in_port="lab.I2[9:5]" out_port="fle[2:2].in_direct[3:0]"/>
+            <delay_constant max="76.33e-12" in_port="lab.I3[9:5]" out_port="fle[2:2].in_direct[3:0]"/>
+          </complete>
+          <complete name="directD_R" input="lab.I2[9:5] lab.I4[9:5]" output="fle[3:3].in_direct[3:0]">
+            <delay_constant max="76.33e-12" in_port="lab.I2[9:5]" out_port="fle[3:3].in_direct[3:0]"/>
+            <delay_constant max="76.33e-12" in_port="lab.I4[9:5]" out_port="fle[3:3].in_direct[3:0]"/>
+          </complete>
+          <complete name="directE_R" input="lab.I3[9:5] lab.I4[9:5]" output="fle[4:4].in_direct[3:0]">
+            <delay_constant max="76.33e-12" in_port="lab.I3[9:5]" out_port="fle[4:4].in_direct[3:0]"/>
+            <delay_constant max="76.33e-12" in_port="lab.I4[9:5]" out_port="fle[4:4].in_direct[3:0]"/>
+          </complete>
+          <!-- pins from left LAB -->
+          <complete name="directA_L" input="lab.I1[14:10] lab.I3[14:10]" output="fle[5:5].in_direct[3:0]">
+            <delay_constant max="76.33e-12" in_port="lab.I1[14:10]" out_port="fle[5:5].in_direct[3:0]"/>
+            <delay_constant max="76.33e-12" in_port="lab.I3[14:10]" out_port="fle[5:5].in_direct[3:0]"/>
+          </complete>
+          <complete name="directB_L" input="lab.I1[14:10] lab.I2[14:10]" output="fle[6:6].in_direct[3:0]">
+            <delay_constant max="76.33e-12" in_port="lab.I1[14:10]" out_port="fle[6:6].in_direct[3:0]"/>
+            <delay_constant max="76.33e-12" in_port="lab.I2[14:10]" out_port="fle[6:6].in_direct[3:0]"/>
+          </complete>
+          <complete name="directC_L" input="lab.I2[14:10] lab.I3[14:10]" output="fle[7:7].in_direct[3:0]">
+            <delay_constant max="76.33e-12" in_port="lab.I2[14:10]" out_port="fle[7:7].in_direct[3:0]"/>
+            <delay_constant max="76.33e-12" in_port="lab.I3[14:10]" out_port="fle[7:7].in_direct[3:0]"/>
+          </complete>
+          <complete name="directD_L" input="lab.I2[14:10] lab.I4[14:10]" output="fle[8:8].in_direct[3:0]">
+            <delay_constant max="76.33e-12" in_port="lab.I2[14:10]" out_port="fle[8:8].in_direct[3:0]"/>
+            <delay_constant max="76.33e-12" in_port="lab.I4[14:10]" out_port="fle[8:8].in_direct[3:0]"/>
+          </complete>
+          <complete name="directE_L" input="lab.I3[14:10] lab.I4[14:10]" output="fle[9:9].in_direct[3:0]">
+            <delay_constant max="76.33e-12" in_port="lab.I3[14:10]" out_port="fle[9:9].in_direct[3:0]"/>
+            <delay_constant max="76.33e-12" in_port="lab.I4[14:10]" out_port="fle[9:9].in_direct[3:0]"/>
+          </complete>
+          <!-- end: direct LAB-LAB crossbar -->
+
           <complete name="clks" input="lab.clk" output="fle[9:0].clk"/>
           <!-- This way of specifying direct connection to clb outputs is important because this architecture uses automatic spreading of opins.  
                      By grouping to output pins in this fashion, if a logic block is completely filled by 6-LUTs, 
@@ -529,17 +648,7 @@ TEMPLATE = """<!--
           <direct name="labouts3" input="fle[9:0].out[2]" output="lab.O[29:20]"/>
           <direct name="labouts4" input="fle[9:0].out[3]" output="lab.O[39:30]"/>
           <!-- Carry chain links -->
-          <direct name="carry_in" input="lab.cin" output="fle[0:0].cin">
-            <!-- corresponds to LAB-LAB cin driver. -->
-            <delay_constant max="19.95e-12" in_port="lab.cin" out_port="fle[0:0].cin"/>
-            <pack_pattern name="chain" in_port="lab.cin" out_port="fle[0:0].cin"/>
-          </direct>
-          <direct name="carry_out" input="fle[9:9].cout" output="lab.cout">
-            <pack_pattern name="chain" in_port="fle[9:9].cout" out_port="lab.cout"/>
-          </direct>
-          <direct name="carry_link" input="fle[8:0].cout" output="fle[9:1].cin">
-            <pack_pattern name="chain" in_port="fle[8:0].cout" out_port="fle[9:1].cin"/>
-          </direct>
+          {carry_chain_links}
         </interconnect>
       </pb_type>
       <interconnect>
@@ -550,10 +659,12 @@ TEMPLATE = """<!--
         <complete name="Input_feedback_I2" input="lab.O[24:20]" output="lab.I2"/>
         <complete name="Input_feedback_I3" input="lab.O[9:5]" output="lab.I3"/>
         <complete name="Input_feedback_I4" input="lab.O[29:25]" output="lab.I4"/>
+        
         <direct name="Input_I1" input="clb.I1" output="lab.I1"/>
         <direct name="Input_I2" input="clb.I2" output="lab.I2"/>
         <direct name="Input_I3" input="clb.I3" output="lab.I3"/>
         <direct name="Input_I4" input="clb.I4" output="lab.I4"/>
+        
         <direct name="output" input="lab.O" output="clb.O"/>
       </interconnect>
     </pb_type>
@@ -886,6 +997,37 @@ TEMPLATE = """<!--
 </architecture>
 """
 
+def gen_carry_chain_links(ble_count=10, mux_stride=1):
+    # mux inputs from FLE 2 - N
+    mux_ins = ''
+    if ble_count > 1:
+        mux_ins_strs = []
+        for x in range(1, ble_count):
+          is_mux = x % mux_stride == 0 if mux_stride > 0 else False
+          tag = 'mux' if is_mux else 'direct'
+          
+          # TO-DO: adjust mux delay
+          tag_delay = '15.58e-12' if is_mux else '0.01e-12'
+          
+          mux_delay_lab = f'<delay_constant max="{tag_delay}" in_port="lab.cin" out_port="fle[{x}:{x}].cin"/>\n            ' if is_mux else ''
+          mux_ins_strs.append(f"""          <{tag} name="cin{x}" input="{'lab.cin ' if is_mux else ''}fle[{x-1}:{x-1}].cout" output="fle[{x}:{x}].cin">
+            {mux_delay_lab}<delay_constant max="{tag_delay}" in_port="fle[{x-1}:{x-1}].cout" out_port="fle[{x}:{x}].cin"/>
+          </{tag}>
+""")
+          mux_ins = '\n'.join(mux_ins_strs)
+
+    return f"""
+          <direct name="carry_in" input="lab.cin" output="fle[0:0].cin">
+            <!-- corresponds to LAB-LAB cin driver. -->
+            <delay_constant max="20.18e-12" in_port="lab.cin" out_port="fle[0:0].cin"/>
+            <pack_pattern name="chain_arith" in_port="lab.cin" out_port="fle[0:0].cin"/>
+          </direct>
+{mux_ins}
+<direct name="couts" input="fle[{ble_count-1}:{ble_count-1}].cout" output="lab.cout">
+    <pack_pattern name="chain_arith" in_port="fle[{ble_count-1}:{ble_count-1}].cout" out_port="lab.cout"/>
+</direct>
+"""   
+
 def gen_lut6():
     return """<mode name="n1_lut6">
             <pb_type name="ble6" num_pb="1">
@@ -971,14 +1113,15 @@ def gen_layout_sizing(fixed_size: tuple[int, int]|None):
     return f'<fixed_layout name="fixed_arch_size" width="{w}" height="{h}">', '</fixed_layout>'
 
 DEFAULTS = {
-    'per_fle_area': 2167.3155, # LAB area / 10
+    'cin_mux_stride': 0, # insert a 2:1 MUX in the carry chain every ? ALMs.
     'enable_lut6': True, # turn on/off 6-LUT mode
+    'per_fle_area': 2248.0434, # LAB area / 10
     'fixed_size': None, # (w, h) of fixed size, None for auto sizing
 }
 
-class BaseArchFactory(ArchFactory, ParamsChecker):
-    def get_name(self, enable_lut6: bool, fixed_size: tuple[int, int]|None, **kwargs):
-        name = "type.s10-base"
+class LUTSkip3ArchFactory(ArchFactory, ParamsChecker):
+    def get_name(self, cin_mux_stride: int, enable_lut6: bool, fixed_size: tuple[int, int]|None, **kwargs):
+        name = f"type.s10-skip_cin-scratch3.{cin_mux_stride}"
         if not enable_lut6:
             name += "_l6.off"
         if fixed_size is not None:
@@ -989,12 +1132,43 @@ class BaseArchFactory(ArchFactory, ParamsChecker):
     def verify_params(self, params):
         return self.verify_required_keys(DEFAULTS, [], params)
     
-    def get_arch(self, per_fle_area: float, enable_lut6: bool, fixed_size: tuple[int, int]|None, **kwargs):
+    def get_arch(self, cin_mux_stride: int, enable_lut6: bool, per_fle_area: float, fixed_size: tuple[int, int]|None, **kwargs):
         layout_sizing_start, layout_sizing_end = gen_layout_sizing(fixed_size)
         
         return TEMPLATE.format(
-            grid_logic_tile_area=per_fle_area*10,
+            carry_chain_links=gen_carry_chain_links(mux_stride=cin_mux_stride),
             mode_lut6=gen_lut6() if enable_lut6 else '',
+            grid_logic_tile_area=per_fle_area * 10,
             layout_sizing_start=layout_sizing_start,
             layout_sizing_end=layout_sizing_end,
+        )
+    
+    def should_update_netstats(self, netstats: dict[str, any]) -> bool:
+        """
+        Check for required keys.
+        Update this function when you update get_netstats.
+        """
+        required_keys = ['concurrent_lut5s']
+        for key in required_keys:
+            if key not in netstats:
+                return True
+        
+        return False
+
+    def get_netstats(self, root: Element) -> dict[str, any]:
+        """
+        Gets the following statistics:
+        - concurrent_lut5s: int -> number of 5-LUTs used together with adders.
+
+        Update should_update_netstats with keys produced by the latest implementation of this function.
+        """
+        concurrent_lut5s = 0
+        for arith_block in ns.find_all_block_instances(root, 'arithmetic[0]'):
+            adder_block = ns.get_valid_child_block_instance(arith_block, 'adder[0]')
+            lut5_block= ns.get_valid_child_block_mode(arith_block, 'as_lut5')
+            if (adder_block is not None) and (lut5_block is not None):
+                concurrent_lut5s += 1
+
+        return dict(
+            concurrent_lut5s=concurrent_lut5s
         )

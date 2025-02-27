@@ -54,6 +54,7 @@ class VprExperiment(Experiment):
         allow_skip_existing: if True, then the experiment is skipped if the folder already exists, regardless of valid results. Will only apply if allow_skipping is True.
         route_chan_width: int, if provided >= 0, then routes with this fixed channel width, else ask VTR to find the minimum channel width. Default: None
         force_denser_packing: if True, then force VPR to pack as tightly as possible (--allow_unrelated_clustering on). Default: False
+        target_ext_pin_util: float, Sets the external pin utilization target (fraction between 0.0 and 1.0) during clustering. This determines how many pin the clustering engine will aim to use in a given cluster before closing it and opening a new cluster.
         """
         self._prerun_check()
 
@@ -77,7 +78,8 @@ class VprExperiment(Experiment):
         seed = self.exp_params['seed']
         route_chan_width = self.exp_params.get('route_chan_width', -1)
         force_denser_packing = self.exp_params.get('force_denser_packing', False)
-
+        pin_util = self.exp_params.get('target_ext_pin_util', 'auto')
+        
         # generate BLIF file
         blif_file_name = 'design.blif'
         with open(os.path.join(self.exp_dir, blif_file_name), 'w') as f:
@@ -117,6 +119,11 @@ class VprExperiment(Experiment):
         if force_denser_packing:
             # enable unrelated clustering
             cmd += ['--allow_unrelated_clustering', 'on']
+            # # disable time driven clustering
+            # cmd += ['--timing_driven_clustering', 'off']  # added by @Xilai for testing packing
+            
+        # set target pin utilization
+        cmd += ['--target_ext_pin_util', pin_util]
 
         # Make out and error files
         self.stdout_file = open(os.path.join(self.exp_dir, self.exp_params['stdout_file']), 'w')

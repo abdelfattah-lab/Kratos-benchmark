@@ -229,14 +229,14 @@ TEMPLATE = """<!--
   <directlist>
     <direct name="adder_carry" from_pin="clb.cout" to_pin="clb.cin" x_offset="0" y_offset="-1" z_offset="0"/>
     <!-- Direct connect to left and right LAB -->
-    <direct name="direct_right_1" from_pin="clb.O[4:0]" to_pin="clb.I1[9:5]" x_offset="1" y_offset="0" z_offset="0"/>
-    <direct name="direct_right_2" from_pin="clb.O[14:10]" to_pin="clb.I2[9:5]" x_offset="1" y_offset="0" z_offset="0"/>
-    <direct name="direct_right_3" from_pin="clb.O[9:5]" to_pin="clb.I3[9:5]" x_offset="1" y_offset="0" z_offset="0"/>
-    <direct name="direct_right_4" from_pin="clb.O[19:15]" to_pin="clb.I4[9:5]" x_offset="1" y_offset="0" z_offset="0"/>
-    <direct name="direct_left_1" from_pin="clb.O[24:20]" to_pin="clb.I1[14:10]" x_offset="-1" y_offset="0" z_offset="0"/>
-    <direct name="direct_left_2" from_pin="clb.O[34:30]" to_pin="clb.I2[14:10]" x_offset="-1" y_offset="0" z_offset="0"/>
-    <direct name="direct_left_3" from_pin="clb.O[29:25]" to_pin="clb.I3[14:10]" x_offset="-1" y_offset="0" z_offset="0"/>
-    <direct name="direct_left_4" from_pin="clb.O[39:35]" to_pin="clb.I4[14:10]" x_offset="-1" y_offset="0" z_offset="0"/>
+    <!-- <direct name="direct_right_1" from_pin="clb.O[4:0]" to_pin="clb.I1[9:5]" x_offset="1" y_offset="0" z_offset="0"/> -->
+    <!-- <direct name="direct_right_2" from_pin="clb.O[14:10]" to_pin="clb.I2[9:5]" x_offset="1" y_offset="0" z_offset="0"/> -->
+    <!-- <direct name="direct_right_3" from_pin="clb.O[9:5]" to_pin="clb.I3[9:5]" x_offset="1" y_offset="0" z_offset="0"/> -->
+    <!-- <direct name="direct_right_4" from_pin="clb.O[19:15]" to_pin="clb.I4[9:5]" x_offset="1" y_offset="0" z_offset="0"/> -->
+    <!-- <direct name="direct_left_1" from_pin="clb.O[24:20]" to_pin="clb.I1[14:10]" x_offset="-1" y_offset="0" z_offset="0"/> -->
+    <!-- <direct name="direct_left_2" from_pin="clb.O[34:30]" to_pin="clb.I2[14:10]" x_offset="-1" y_offset="0" z_offset="0"/> -->
+    <!-- <direct name="direct_left_3" from_pin="clb.O[29:25]" to_pin="clb.I3[14:10]" x_offset="-1" y_offset="0" z_offset="0"/> -->
+    <!-- <direct name="direct_left_4" from_pin="clb.O[39:35]" to_pin="clb.I4[14:10]" x_offset="-1" y_offset="0" z_offset="0"/> -->
   </directlist>
   <complexblocklist>
     <!-- Define I/O pads begin -->

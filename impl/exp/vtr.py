@@ -59,6 +59,7 @@ class VtrExperiment(Experiment):
         avoid_mult: if True, then avoids using hard multipliers. Default: False
         route_chan_width: int, if provided >= 0, then routes with this fixed channel width, else ask VTR to find the minimum channel width. Default: None
         force_denser_packing: if True, then force VPR to pack as tightly as possible. Default: False
+        target_ext_pin_util: float, Sets the external pin utilization target (fraction between 0.0 and 1.0) during clustering. This determines how many pin the clustering engine will aim to use in a given cluster before closing it and opening a new cluster.
         """
         self._prerun_check()
         
@@ -95,6 +96,7 @@ class VtrExperiment(Experiment):
         avoid_mult = self.exp_params.get('avoid_mult', False)
         route_chan_width = self.exp_params.get('route_chan_width', -1) 
         force_denser_packing = self.exp_params.get('force_denser_packing', False)
+        pin_util = self.exp_params.get('target_ext_pin_util', 'auto')
 
         # generate wrapper file
         wrapper_file_name = 'design.v'
@@ -153,6 +155,10 @@ class VtrExperiment(Experiment):
             cmd += ['--allow_unrelated_clustering', 'on']
             # focus solely on area
             cmd += ['--alpha_clustering', '0']
+            
+        # set target pin utilization
+        cmd += ['--target_ext_pin_util', pin_util]
+
 
         # Make out and error files
         self.stdout_file = open(os.path.join(self.exp_dir, self.exp_params['stdout_file']), 'w')

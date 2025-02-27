@@ -13,8 +13,8 @@ TEMPLATE = """# Written by impl.blif.concurrency.Concurrent5LUTAdderBlifMaker on
 
 .model conc_{adder_count}_{lut5_count}_model
 
-.inputs global_cin {adder_chain_inputs} {lut5_chain_inputs}
-.outputs global_cout {adder_chain_outputs} {lut5_chain_outputs}
+.inputs {adder_chain_inputs} {lut5_chain_inputs}
+.outputs {adder_chain_outputs} {lut5_chain_outputs}
 
 # Adder chain
 {adder_chain}
@@ -70,7 +70,7 @@ class Concurrent5LUTAdderBlifDesign(BlifDesign):
             outputs.append(adder_sumout)
 
             # make cout
-            adder_cout = f"adder_cout~{i}" if i < adder_count - 1 else "global_cout"
+            adder_cout = f"adder_cout~{i}"
             
             # make subckt
             subckt = f".subckt adder a={adder_a} b={adder_b} cin={last_cin} cout={adder_cout} sumout={adder_sumout}"

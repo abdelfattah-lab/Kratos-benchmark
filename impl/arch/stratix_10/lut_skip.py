@@ -151,7 +151,6 @@ TEMPLATE = """<!--
         <input name="I4" num_pins="15"/>
         <input name="cin" num_pins="1"/>
         <output name="O" num_pins="40" equivalent="none"/>
-        <output name="O_direct" num_pins="40" equivalent="none"/>
         <output name="cout" num_pins="1"/>
         <clock name="clk" num_pins="1"/>
         <fc in_type="frac" in_val="0.15" out_type="frac" out_val="0.10">
@@ -230,14 +229,14 @@ TEMPLATE = """<!--
   <directlist>
     <direct name="adder_carry" from_pin="clb.cout" to_pin="clb.cin" x_offset="0" y_offset="-1" z_offset="0"/>
     <!-- Direct connect to left and right LAB -->
-    <direct name="direct_right_1" from_pin="clb.O_direct[4:0]" to_pin="clb.I1[9:5]" x_offset="1" y_offset="0" z_offset="0"/>
-    <direct name="direct_right_2" from_pin="clb.O_direct[14:10]" to_pin="clb.I2[9:5]" x_offset="1" y_offset="0" z_offset="0"/>
-    <direct name="direct_right_3" from_pin="clb.O_direct[9:5]" to_pin="clb.I3[9:5]" x_offset="1" y_offset="0" z_offset="0"/>
-    <direct name="direct_right_4" from_pin="clb.O_direct[19:15]" to_pin="clb.I4[9:5]" x_offset="1" y_offset="0" z_offset="0"/>
-    <direct name="direct_left_1" from_pin="clb.O_direct[24:20]" to_pin="clb.I1[14:10]" x_offset="-1" y_offset="0" z_offset="0"/>
-    <direct name="direct_left_2" from_pin="clb.O_direct[34:30]" to_pin="clb.I2[14:10]" x_offset="-1" y_offset="0" z_offset="0"/>
-    <direct name="direct_left_3" from_pin="clb.O_direct[29:25]" to_pin="clb.I3[14:10]" x_offset="-1" y_offset="0" z_offset="0"/>
-    <direct name="direct_left_4" from_pin="clb.O_direct[39:35]" to_pin="clb.I4[14:10]" x_offset="-1" y_offset="0" z_offset="0"/>
+    <!-- <direct name="direct_right_1" from_pin="clb.O[4:0]" to_pin="clb.I1[9:5]" x_offset="1" y_offset="0" z_offset="0"/> -->
+    <!-- <direct name="direct_right_2" from_pin="clb.O[14:10]" to_pin="clb.I2[9:5]" x_offset="1" y_offset="0" z_offset="0"/> -->
+    <!-- <direct name="direct_right_3" from_pin="clb.O[9:5]" to_pin="clb.I3[9:5]" x_offset="1" y_offset="0" z_offset="0"/> -->
+    <!-- <direct name="direct_right_4" from_pin="clb.O[19:15]" to_pin="clb.I4[9:5]" x_offset="1" y_offset="0" z_offset="0"/> -->
+    <!-- <direct name="direct_left_1" from_pin="clb.O[24:20]" to_pin="clb.I1[14:10]" x_offset="-1" y_offset="0" z_offset="0"/> -->
+    <!-- <direct name="direct_left_2" from_pin="clb.O[34:30]" to_pin="clb.I2[14:10]" x_offset="-1" y_offset="0" z_offset="0"/> -->
+    <!-- <direct name="direct_left_3" from_pin="clb.O[29:25]" to_pin="clb.I3[14:10]" x_offset="-1" y_offset="0" z_offset="0"/> -->
+    <!-- <direct name="direct_left_4" from_pin="clb.O[39:35]" to_pin="clb.I4[14:10]" x_offset="-1" y_offset="0" z_offset="0"/> -->
   </directlist>
   <complexblocklist>
     <!-- Define I/O pads begin -->
@@ -289,7 +288,6 @@ TEMPLATE = """<!--
       <input name="I4" num_pins="15"/>
       <input name="cin" num_pins="1"/>
       <output name="O" num_pins="40" equivalent="none"/>
-      <output name="O_direct" num_pins="40" equivalent="none"/>
       <output name="cout" num_pins="1"/>
       <clock name="clk" num_pins="1"/>
       <pb_type name="lab" num_pb="1">
@@ -452,7 +450,7 @@ TEMPLATE = """<!--
                       <pack_pattern name="chain_arith" in_port="adder.cout" out_port="arithmetic.cout"/>
                     </direct>
                     <complete name="sumout" input="ff[0].Q adder.sumout" output="arithmetic.out">
-                      <delay_constant max="43.49e-12" in_port="adder.sumout" out_port="arithmetic.out"/>
+                      <delay_constant max="61.34e-12" in_port="adder.sumout" out_port="arithmetic.out"/>
                       <delay_constant max="43.49e-12" in_port="ff[0].Q" out_port="arithmetic.out"/>
                     </complete>
                     <complete name="lut5_out" input="ff[1].Q dual_lut4s.lut5_out" output="arithmetic.out">
@@ -668,7 +666,6 @@ TEMPLATE = """<!--
         <direct name="Input_I4" input="clb.I4" output="lab.I4"/>
         
         <direct name="output" input="lab.O" output="clb.O"/>
-        <direct name="output_direct" input="lab.O" output="clb.O_direct"/>
       </interconnect>
     </pb_type>
     <!-- Define general purpose logic block (CLB) ends -->
@@ -1076,22 +1073,24 @@ def gen_lut6():
                 <direct name="input_to_ff" input="ble6.in[0]" output="ff[0].D">
                   <delay_constant max="15.58e-12" in_port="ble6.in[0]" out_port="ff[0].D"/>
                 </direct>
-                <mux name="mux1" input="ff[0].Q lut6.out" output="ble6.out[0]">
+                <mux name="mux1" input="ble6.in[0] ff[0].Q lut6.out" output="ble6.out[0]">
+                  <delay_constant max="63.99e-12" in_port="ble6.in[0]" out_port="ble6.out[0]"/>
                   <delay_constant max="48.41e-12" in_port="lut6.out" out_port="ble6.out[0]"/>
                   <delay_constant max="48.41e-12" in_port="ff[0].Q" out_port="ble6.out[0]"/>
                 </mux>
                 <!-- This mux is the same as mux1 but connected to output 2 -->
-                <mux name="mux2" input="ff[0].Q lut6.out" output="ble6.out[1]">
+                <mux name="mux2" input="ble6.in[0] ff[0].Q lut6.out" output="ble6.out[1]">
+                  <delay_constant max="63.99e-12" in_port="ble6.in[0]" out_port="ble6.out[1]"/>
                   <delay_constant max="48.41e-12" in_port="lut6.out" out_port="ble6.out[1]"/>
                   <delay_constant max="48.41e-12" in_port="ff[0].Q" out_port="ble6.out[1]"/>
                 </mux>
                 <mux name="mux3" input="ff[1].Q lut6.out" output="ble6.out[2]">
-                  <delay_constant max="43.49e-12" in_port="lut6.out" out_port="ble6.out[2]"/>
+                  <delay_constant max="58.69e-12" in_port="lut6.out" out_port="ble6.out[2]"/>
                   <delay_constant max="43.49e-12" in_port="ff[1].Q" out_port="ble6.out[2]"/>
                 </mux>
                 <!-- This mux is the same as mux2 but connected to output 3 -->
                 <mux name="mux4" input="ff[1].Q lut6.out" output="ble6.out[3]">
-                  <delay_constant max="43.49e-12" in_port="lut6.out" out_port="ble6.out[3]"/>
+                  <delay_constant max="58.69e-12" in_port="lut6.out" out_port="ble6.out[3]"/>
                   <delay_constant max="43.49e-12" in_port="ff[1].Q" out_port="ble6.out[3]"/>
                 </mux>
               </interconnect>
