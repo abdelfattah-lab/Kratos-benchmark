@@ -106,11 +106,12 @@ def bark_notify(msg: str ="Hello from Kratos!", title='Kratos') -> bool:
                 if resp.status_code == 200:
                     continue
                 else:
-                    print('Bark internet failed')
+                    print(f'Bark internet failed with status code {resp.status_code}: {resp.text}')
+                    print('')
 
             except Exception as e:
-                print(e)
-                print('Bark unknown failed')
+                print(f'Bark unknown failed: {e}')
+                print('')
 
     else:
         print('Bark URL not set')
