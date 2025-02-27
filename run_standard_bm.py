@@ -136,6 +136,6 @@ run_vtr_denoised_v1(
     num_parallel_tasks=1,
     # verbose=True,
     desc='(Narwhal) Base vs. LUT Skip, all Koios benchmarks',
-    tele_batch=25,
-    notify_via_tele=False,
+    notify_batch=25,
+    notify='telegram',
 )

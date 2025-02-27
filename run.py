@@ -192,6 +192,6 @@ run_vtr_denoised_v1(
     num_parallel_tasks=4,
     verbose=True,
     desc='Base vs. LUT Skip[6], conv1d-FU/PW, conv2d-FU',
-    tele_batch=25,
-    # notify_via_tele=False,
+    notify_batch=25,
+    notify='telegram',
 )

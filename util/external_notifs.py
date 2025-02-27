@@ -5,6 +5,25 @@ Send messages to external devices.
 import requests
 import os
 
+
+def notification_backend(method:str , msg: str, title='') -> bool:
+    '''
+    calls multiple notification methods depending on the method provided
+    method: str, the method to be used for notification
+    msg: str, the message to be sent
+    title: str, the title of the message
+    '''
+    method = method.lower()
+    if method == 'telegram':
+        return telegram_notify(msg)
+    elif method == 'bark':
+        return bark_notify(msg, title)
+    else:
+        print(f"(!) {method} is not a valid notification method.")
+        return False
+
+
+
 ### TELEGRAM
 ENV_TELE_BOT_TOKEN = "KRATOS_TELE_BOT_TOKEN"
 ENV_TELE_CHAT_ID = "KRATOS_TELE_CHAT_ID"
@@ -71,3 +90,29 @@ def telegram_notify(msg: str ="Hello from Kratos!") -> bool:
 
     return success
 ### -------
+
+
+def bark_notify(msg: str ="Hello from Kratos!", title='Kratos') -> bool:
+    urls = os.getenv('BARKURL')
+    if urls:
+        urls = urls.strip().split()
+        for url in urls:
+            # print(url)
+            if url.endswith('/'):
+                url = url[:-1]
+
+            try:
+                resp = requests.get(url + f'/{title}/{msg}')
+                if resp.status_code == 200:
+                    continue
+                else:
+                    print(f'Bark internet failed with status code {resp.status_code}: {resp.text}')
+                    print('')
+
+            except Exception as e:
+                print(f'Bark unknown failed: {e}')
+                print('')
+
+    else:
+        print('Bark URL not set')
+        return False
