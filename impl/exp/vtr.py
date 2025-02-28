@@ -17,7 +17,7 @@ class VtrExperiment(Experiment):
     VTR implementation of an Experiment.
     """
 
-    def get_name(self, adder_cin_global: bool, avoid_mult: bool, soft_multiplier_adders: bool, compressor_tree_type: str, force_denser_packing: bool, **kwargs):
+    def get_name(self, adder_cin_global: bool, avoid_mult: bool, soft_multiplier_adders: bool, compressor_tree_type: str, force_denser_packing: bool, ending: str, parser: str, **kwargs):
         route_chan_width = kwargs.get('route_chan_width', -1)
         
         name = "vtr"
@@ -34,13 +34,17 @@ class VtrExperiment(Experiment):
             name += f"_rcw.{route_chan_width}"
         if force_denser_packing:
             name += "_dp"
-
+        if ending:
+            name += f"_end.{ending}"
+        if parser != 'system-verilog':
+            name += f"_parse.{parser}"
         return name
         
     def run(self) -> None:
         """
         Run on VTR.
 
+        parser: -parser argument. Default: system-verilog
         dry_run: if True, only generate files, do not run VTR
         clean: if True, zip the temp files after VTR finishes to save space
         ending: ending stage of VTR, if None, run the whole flow, options: 'parmys', 'vpr'
@@ -88,6 +92,7 @@ class VtrExperiment(Experiment):
 
         # get variables
         clean = self.exp_params.get('clean', True)
+        parser = self.exp_params.get('parser', 'system-verilog')
         ending = self.exp_params['ending']
         seed = self.exp_params['seed']
         adder_cin_global = self.exp_params.get('adder_cin_global', False)
@@ -123,12 +128,13 @@ class VtrExperiment(Experiment):
             raise RuntimeError('VTR_ROOT not found in environment variables; unable to execute VTR.')
         vtr_script_path = os.path.join(self.vtr_root, 'vtr_flow/scripts/run_vtr_flow.py')
         cmd = ['python', vtr_script_path, wrapper_file_name, arch_file_name,
-               '-parser', 'system-verilog', 
+               '-parser', parser, 
                '--sweep_constant_primary_outputs', 'on', # remove LUTs that drive constant '0's
-               '-top', self.design.wrapper_module_name, 
                '-search', self.verilog_search_dir, 
                '--seed', str(seed),
             ]
+
+
         if adder_cin_global:
             cmd += ['-adder_cin_global'] # only works with self-modified fork: https://github.com/abdelfattah-lab/vtr-updated
 
@@ -158,7 +164,6 @@ class VtrExperiment(Experiment):
             
         # set target pin utilization
         cmd += ['--target_ext_pin_util', pin_util]
-
 
         # Make out and error files
         self.stdout_file = open(os.path.join(self.exp_dir, self.exp_params['stdout_file']), 'w')
