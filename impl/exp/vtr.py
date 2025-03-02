@@ -92,7 +92,7 @@ class VtrExperiment(Experiment):
 
         # get variables
         clean = self.exp_params.get('clean', True)
-        parser = self.exp_params.get('parser', 'system-verilog')
+        parser = self.exp_params['parser']
         ending = self.exp_params['ending']
         seed = self.exp_params['seed']
         adder_cin_global = self.exp_params.get('adder_cin_global', False)

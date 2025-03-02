@@ -23,6 +23,7 @@ DEFAULTS_EXP_VTR = {
     'adder_cin_global': True,
     'soft_multiplier_adders': False,
     'compressor_tree_type': 'wallace',
+    'parser': 'system-verilog',
 }
 
 DEFAULTS_EXP_QUARTUS = {
