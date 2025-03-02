@@ -1,5 +1,5 @@
-DEVICE_FAMILY = "Stratix IV"
-DEVICE_NAME = "EP4SGX530NF45C4ES"
+DEVICE_FAMILY = "Stratix 10"
+DEVICE_NAME = "1SG250HH1F55E1VG" # https://www.intel.com/content/www/us/en/products/sku/210289/intel-stratix-10-gx-2500-fpga/specifications.html
 
 TURN_OFF_DSPS = """set_global_assignment -name DSP_BLOCK_BALANCING_IMPLEMENTATION "LOGIC ELEMENTS"
 set_global_assignment -name MAX_BALANCING_DSP_BLOCKS 0

@@ -1,5 +1,5 @@
 import structure.consts.keys as keys
-from impl.arch.stratix_IV.base import BaseArchFactory
+from impl.arch.stratix_10.fair.base import BaseArchFactory
 
 from runs.benchmarks import get_params 
 import runs.benchmarks.kratos as kratos
@@ -21,12 +21,12 @@ from structure.run import Runner
 
 import os.path as path
 
-DATA_WIDTH = 8
+DATA_WIDTH = list(range(3, 9))
 BASE_PARAMS = {
     keys.KEY_EXP: {
         'verilog_search_dir': path.join(path.dirname(path.realpath(__file__)), 'verilog'),
         'allow_skipping': True,
-        'adder_cin_global': True,
+        # 'adder_cin_global': True,
         'execute_flow_type': 'compile',
         # ... additional Experiment.run() parameters
     },
@@ -35,6 +35,7 @@ BASE_PARAMS = {
     },
     keys.KEY_DESIGN: {
         'data_width': DATA_WIDTH,
+        'sparsity': 0,
     }
 }
 
@@ -51,20 +52,23 @@ DESIGN_LIST = [
     # (GemmTRpDesign(), mini.get_gemmt_rp_params(BASE_PARAMS)),
     # (GemmSDesign(), mini.get_gemms_params(BASE_PARAMS)),
 
-    # Kratos benchmarks
-    # (Conv1dFuDesign(), kratos.get_conv_1d_fu_params(BASE_PARAMS)),
-    # (Conv1dPwDesign(), kratos.get_conv_1d_pw_params(BASE_PARAMS)),
-    # (Conv2dFuDesign(), kratos.get_conv_2d_fu_params(BASE_PARAMS)),
+    # ============================================================
+    # # Kratos benchmarks
+    (Conv1dFuDesign(), kratos.get_conv_1d_fu_params(BASE_PARAMS)),
+    (Conv1dPwDesign(), kratos.get_conv_1d_pw_params(BASE_PARAMS)),
+    (Conv2dFuDesign(), kratos.get_conv_2d_fu_params(BASE_PARAMS)),
     # (Conv2dRpDesign(), kratos.get_conv_2d_rp_params(BASE_PARAMS)),
-    # (Conv2dPwDesign(), kratos.get_conv_2d_pw_params(BASE_PARAMS)),
-    # (GemmTFuDesign(), kratos.get_gemmt_fu_params(BASE_PARAMS)),
-    # (GemmTRpDesign(), kratos.get_gemmt_rp_params(BASE_PARAMS)),
-    # (GemmSDesign(), kratos.get_gemms_params(BASE_PARAMS)),
-
+    (Conv2dPwDesign(), kratos.get_conv_2d_pw_params(BASE_PARAMS)),
+    (GemmTFuDesign(), kratos.get_gemmt_fu_params(BASE_PARAMS)),
+    (GemmTRpDesign(), kratos.get_gemmt_rp_params(BASE_PARAMS)),
+    (GemmSDesign(), kratos.get_gemms_params(BASE_PARAMS)),  
+    # ============================================================
+    
+    
     # Verification
-    (SimpleUnrolledDesign(), get_params(BASE_PARAMS, 'simple_unrolled', {
-        'const_weight': list(range(1, 2**DATA_WIDTH - 1))
-    }))
+    # (SimpleUnrolledDesign(), get_params(BASE_PARAMS, 'simple_unrolled', {
+    #     'const_weight': list(range(1, 2**DATA_WIDTH - 1))
+    # }))
 ]
 
 RUNNER = Runner()
@@ -78,8 +82,8 @@ for design, params in DESIGN_LIST:
 for dir, df in RUNNER.run_all_threaded(
     verbose=True,
     desc='Quartus vs. VTR',
-    num_parallel_tasks=16,
-    filter_params=['const_weight'],
+    num_parallel_tasks=1,
+    filter_params=['data_width'],
     # Quartus
     filter_results=['alm', 'lut_total'],
     # # VTR
