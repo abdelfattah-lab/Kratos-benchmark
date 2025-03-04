@@ -6,7 +6,7 @@ import psutil as psu
 from time import sleep
 from util.external_notifs import notification_backend
 
-MACHINE_NAME = "narwhal" # enter machine name
+MACHINE_NAME = "pilot" # enter machine name
 NOTIFY_METHOD = 'telegram' # change to notification service
 USE_THRESHOLD = 0.98 # alert threshold
 INTERVAL_S = 30
@@ -21,5 +21,6 @@ while True:
             threshold_crossed = True
     elif threshold_crossed:
         notification_backend(NOTIFY_METHOD, f"RAM usage for '{MACHINE_NAME}' has returned below threshold ({ram_usage*100:.2f}%).")
-	threshold_crossed = False
+        threshold_crossed = False
+    
     sleep(INTERVAL_S)
