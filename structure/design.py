@@ -17,6 +17,9 @@ class Design(DynamicallyNamed, ParamsChecker):
             wrapper_module_name = f"{impl}_wrapper"
         self.wrapper_module_name = wrapper_module_name
     
+    def get_formal_name(self) -> str:
+        self.raise_unimplemented("get_formal_name")
+
     def gen_sdc(self, **kwargs) -> str:
         """
         Generate an SDC file (Quartus-only).

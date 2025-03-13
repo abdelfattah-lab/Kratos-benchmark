@@ -18,7 +18,10 @@ class VtrBenchmarkLoaderDesign(StandardizedSdcDesign):
     
     def get_name(self, subset: str, impl: str, **kwargs):
         return f"{subset}-{impl}"
-    
+
+    def get_formal_name(self) -> str:
+        return 'vtr-loader'
+
     def gen_wrapper(self, verilog_dir: str, impl: str, **kwargs):
         assert os.path.exists(verilog_dir)
 

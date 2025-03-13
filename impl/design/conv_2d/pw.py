@@ -24,6 +24,9 @@ class Conv2dPwDesign(PluginDesign):
         plugin_name_insert = f"+{self.plugin.get_name(**kwargs)}" if not self.plugin is None else ""
         return f'i.{self.impl}{plugin_name_insert}_tb.{tree_base}_d.{data_width}_w.{img_w}_h.{img_h}_d.{img_d}_fw.{fil_w}_fh.{fil_h}_rd.{res_d}_sw.{stride_w}_sh.{stride_h}_c.{constant_weight}_s.{sparsity}_bf.{buffer_stages}_sf.{separate_filters}'
 
+    def get_formal_name(self) -> str:
+        return "conv2d-PW"
+
     def verify_params(self, params: dict[str, any]) -> dict[str, any]:
         """
         Verification of parameters for Conv-2D Pixel-wise.

@@ -45,7 +45,7 @@ def save_and_plot(
             df = df_mod_fn(df)
 
         # save results into csv
-        df.to_csv(os.path.join(folder_path, f"{filesafe_name}_results.csv"))
+        df.to_csv(os.path.join(folder_path, f"{filesafe_name}_results.csv"), index=False)
 
         # plot (if available)
         if plot_fn is not None:

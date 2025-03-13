@@ -54,6 +54,7 @@ class Runner():
             filter_params: list[str] = None,
             filter_results: list[str] = None,
             result_kwargs: dict = {},
+            use_formal_name_as_key: bool = False,
         ) -> dict[str, pd.DataFrame]:
         """
         Main function: run all generated experiments with a thread pool.
@@ -71,7 +72,9 @@ class Runner():
         * filter_params:list[str], a list of parameter keys that should be extracted from the Experiment parameters and included in the resultant Dataframe. Pass None to include all. Default: None
         * filter_results:list[str], a list of result keys that should be extracted from the result and included in the resultant Dataframe. Pass None to include all. Default: None
         * result_kwargs:dict, kwargs to pass into each Experiment get_result() function. Default: empty, i.e., no kwargs. 
-        @returns a dictionary of (experiment root directory): (Pandas DataFrame with filtered parameters and results).
+        * use_formal_name_as_key: bool, return dictionary uses Experiment.design.get_formal_name() as the key instead of experiment root directory. Default: False
+        
+        @returns a dictionary of (experiment root directory / Experiment.design.get_formal_name() if use_formal_name_as_key): (Pandas DataFrame with filtered parameters and results).
         """
         # sanity checks.
         if notify and notify_batch <= 0:
@@ -147,10 +150,11 @@ class Runner():
                     notification_backend(notify, msg)
 
                 if not only_store_successes or is_success:
-                    if exp.root_dir in results:
-                        results[exp.root_dir].append(res_dict)
+                    results_key = exp.design.get_formal_name() if use_formal_name_as_key else exp.root_dir
+                    if results_key in results:
+                        results[results_key].append(res_dict)
                     else:
-                        results[exp.root_dir] = [res_dict]
+                        results[results_key] = [res_dict]
                 
                 if verbose:
                     print("====================================")

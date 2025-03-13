@@ -21,6 +21,9 @@ class GemmTRpDesign(PluginDesign):
         plugin_name_insert = f"+{self.plugin.get_name(**kwargs)}" if not self.plugin is None else ""
         return f'i.{self.impl}{plugin_name_insert}_tb.{tree_base}_d.{data_width}_r.{row_num}_c.{col_num}_l.{length}_c.{constant_weight}_s.{sparsity}'
 
+    def get_formal_name(self) -> str:
+        return "gemmt-RP"
+
     def verify_params(self, params: dict[str, any]) -> dict[str, any]:
         """
         Verification of parameters for GEMMT Row-Parallel.

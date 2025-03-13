@@ -24,6 +24,9 @@ class Conv1dFuDesign(PluginDesign):
         plugin_name_insert = f"+{self.plugin.get_name(**kwargs)}" if not self.plugin is None else ""
         return f'i.{self.impl}{plugin_name_insert}_tb.{tree_base}_d.{data_width}_w.{img_w}_d.{img_d}_f.{fil_w}_r.{res_d}_s.{stride_w}_c.{constant_weight}_s.{sparsity}_sf.{separate_filters}'
 
+    def get_formal_name(self) -> str:
+        return "conv1d-FU"
+
     def verify_params(self, params: dict[str, any]) -> dict[str, any]:
         """
         Verification of parameters for Conv-1D Fully Unrolled.
