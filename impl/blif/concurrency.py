@@ -147,7 +147,7 @@ class Concurrent5LUTAdderBlifDesign(BlifDesign):
         # sanity checks
         if adder_count <= 0:
             raise ValueError("Require at least 1 adder!")
-        if lut5_adder_ratio <= 0:
+        if lut5_adder_ratio < 0: # allow 0 for testing
             raise ValueError("Require strictly positive lut5_adder_ratio!")
         
         # Get 5-LUTs required.

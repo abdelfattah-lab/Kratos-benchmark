@@ -224,6 +224,7 @@ def extract_info_vtr(path='.', extract_blocks_list=['clb', 'fle']) -> dict:
     result_dict['nets_total'] = 0               # Total logical nets
     result_dict['nets_absorbed'] = 0            # Absorbed logical nets during clustering
     result_dict['nets_absorbed_frac'] = -1.0    # nets_absorbed / nets_total
+    result_dict['mrcu'] = 0.0                   # max routing channel utilization
 
     # vpr output is not same as quartus, the status is at the end of the file, so we need to extract the block usage first and later extratc flow status
     vpr_out_path = os.path.join(path, 'vpr_stdout.log')
@@ -384,6 +385,12 @@ def extract_info_vtr(path='.', extract_blocks_list=['clb', 'fle']) -> dict:
             abs_str, total_str = line.split(',')[0].strip('Absorbed logical nets ').split(' out of ')
             result_dict['nets_total'] = int(total_str)
             result_dict['nets_absorbed'] = int(abs_str)
+            
+        # Maxmimum routing channel utilization
+        if line.startswith('Maximum routing channel utilization'):
+            parts = line.split()
+            result_dict['mrcu'] = float(parts[4])
+            
 
     f.close()
 
