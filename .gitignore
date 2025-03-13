@@ -30,3 +30,6 @@ test_*.*
 
 # output files for COFFE simulation
 coffe_maker_out
+
+# ignore run scripts
+run*.py
