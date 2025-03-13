@@ -68,7 +68,6 @@ def run_vtr_denoised_same_arch_raw(
     df_dict: dict[str, pd.DataFrame] = {}
 
     for impl, df in results.items():
-        print(impl, df)
         # concatenate DataFrames (and take mean if complete)
         if impl not in df_dict:
             df_dict[impl] = df
