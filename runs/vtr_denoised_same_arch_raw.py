@@ -19,8 +19,9 @@ def run_vtr_denoised_same_arch_raw(
         filter_blocks: list[str] = ['clb', 'fle'],
         seeds: tuple[int, int, int] = (1239, 5741, 1473),
         df_processing_fn: Callable[[pd.DataFrame], tuple[pd.DataFrame, list[str]]] = None,
+        save_to_folder: bool = True,
         **runner_kwargs
-    ) -> None:
+    ) -> pd.DataFrame|None:
     """
     Runs the following sequence:
     1. Runs all provided designs on arch provided on provided seeds.
@@ -36,7 +37,7 @@ def run_vtr_denoised_same_arch_raw(
     * filter_blocks:list[str], list of Pb type blocks to extract from VPR. All will be baseline normalized (unless also in avoid_norm) and plotted.
     * seeds: (int, int, int), a tuple of 3 seeds to use for averaging.
     * df_processing_fn: (pd.DataFrame) -> (pd.DataFrame, list[str]), function called on each mean DataFrame from 3 seeds to add any derived metrics. Returns (new DataFrame, keys to add to filter_results).  Default: None
-    
+    * save_to_folder: bool, whether to save results to folder (True) or just return the runner results (False). Default: True
     Remaining keyword arguments are passed directly to Runner.run_all_threaded().
     """
     # Setup Runner and architecture
@@ -94,5 +95,8 @@ def run_vtr_denoised_same_arch_raw(
         else:
             all_df = pd.concat([all_df, seed_mean], ignore_index=True)
 
-    # save into results directory
-    save_and_plot(dict(all=all_df))
+    # save into results directory (or return)
+    if save_to_folder:
+        save_and_plot(dict(all=all_df))
+    else:
+        return all_df
