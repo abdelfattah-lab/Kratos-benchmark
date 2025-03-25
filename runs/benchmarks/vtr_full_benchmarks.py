@@ -25,10 +25,10 @@ def get_all_vtr_bm_params(base_params: dict[str, any], exp_root_dir: str = 'vtr_
         'verilog_dir': get_vtr_verilog_dir(),
         'subset': 'vtr-bm',
         'impl': [
-            # 'bgm', # has falling-edge latches
+            'bgm',
             'blob_merge', 
-            # 'boundtop', # has falling-edge latches
-            # 'ch_intrinsics', # has falling-edge latches
+            'boundtop',
+            'ch_intrinsics',
             'diffeq1', 
             'diffeq2', 
             'LU8PEEng', 
@@ -37,13 +37,13 @@ def get_all_vtr_bm_params(base_params: dict[str, any], exp_root_dir: str = 'vtr_
             'mkDelayWorker32B', 
             'mkPktMerge',
             'mkSMAdapter4B',
-            # 'or1200', # has falling-edge latches
-            # 'raygentop', # has falling-edge latches
+            'or1200',
+            'raygentop',
             'sha',
             'stereovision0',
             'stereovision1',
             'stereovision2',
-            # 'stereovision3', # has falling-edge latches
+            'stereovision3',
         ],
     })
 
@@ -65,11 +65,11 @@ def get_all_koios_params(base_params: dict[str, any], exp_root_dir: str = 'vtr_f
             'lstm',
             'bnn',
             'lenet',
-            # 'dnnweaver', # broken
+            'dnnweaver',
             'tpu_like.large.os',
             'tpu_like.large.ws',
             'gemm_layer',
-            # 'attention_layer', # broken
+            'attention_layer',
             'conv_layer',
             'conv_layer_hls',
             'robot_rl',
