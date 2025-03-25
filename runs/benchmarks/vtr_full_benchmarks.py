@@ -1,5 +1,6 @@
 """
 Experiments to simulate VTR benchmarks.
+NOTE: these should be run with the default parser!! (not SystemVerilog)
 """
 
 from runs.benchmarks import get_params
