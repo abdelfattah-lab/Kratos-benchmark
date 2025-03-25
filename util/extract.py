@@ -224,7 +224,19 @@ def extract_info_vtr(path='.', extract_blocks_list=['clb', 'fle']) -> dict:
     result_dict['nets_total'] = 0               # Total logical nets
     result_dict['nets_absorbed'] = 0            # Absorbed logical nets during clustering
     result_dict['nets_absorbed_frac'] = -1.0    # nets_absorbed / nets_total
-    result_dict['mrcu'] = 0.0                   # max routing channel utilization
+    result_dict['mrcu'] = -1.0                  # max routing channel utilization
+    
+    result_dict['rcu_0.1'] = -1.0               # routing channel utilization at 0.0 - 0.1
+    result_dict['rcu_0.2'] = -1.0               # routing channel utilization at 0.1 - 0.2
+    result_dict['rcu_0.3'] = -1.0               # routing channel utilization at 0.2 - 0.3
+    result_dict['rcu_0.4'] = -1.0               # routing channel utilization at 0.3 - 0.4
+    result_dict['rcu_0.5'] = -1.0               # routing channel utilization at 0.4 - 0.5
+    result_dict['rcu_0.6'] = -1.0               # routing channel utilization at 0.5 - 0.6
+    result_dict['rcu_0.7'] = -1.0               # routing channel utilization at 0.6 - 0.7
+    result_dict['rcu_0.8'] = -1.0               # routing channel utilization at 0.7 - 0.8
+    result_dict['rcu_0.9'] = -1.0               # routing channel utilization at 0.8 - 0.9
+    result_dict['rcu_1.0'] = -1.0               # routing channel utilization at 0.9 - 1.0
+    
 
     # vpr output is not same as quartus, the status is at the end of the file, so we need to extract the block usage first and later extratc flow status
     vpr_out_path = os.path.join(path, 'vpr_stdout.log')
@@ -390,6 +402,22 @@ def extract_info_vtr(path='.', extract_blocks_list=['clb', 'fle']) -> dict:
         if line.startswith('Maximum routing channel utilization'):
             parts = line.split()
             result_dict['mrcu'] = float(parts[4])
+            
+            
+        # histogram of routing channel utilization
+        if line.startswith('Routing channel utilization histogram'):
+            # read next 10 lines that indicate the routing channel utilization
+            # notice the vpr.out seems something  wrong with the numbers
+            # after 0.6, every is offset by one. see the vpr.out and you will understand
+            for i in range(10):
+                line = f.readline()
+                parts = line.strip().replace('(', '').replace(')', '').replace(':', '').replace('%', '').split()
+                # deal with the strange offset
+                start_range = float(parts[1])
+                if start_range > 0.6:
+                    start_range -= 0.1
+                end_range = start_range + 0.1 # instead of directly using the end range in the file, which contains 'inf', we use start_range + 0.1
+                result_dict[f'rcu_{end_range:.1f}'] = float(parts[4]) / 100
             
 
     f.close()

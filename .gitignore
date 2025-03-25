@@ -33,3 +33,7 @@ coffe_maker_out
 
 # ignore run scripts
 run*.py
+
+# ignore slurms
+slurm/*
+slurm*.sh
