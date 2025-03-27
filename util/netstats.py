@@ -11,6 +11,12 @@ def check_element_not_open(elem: Element) -> bool:
     """
     return elem.attrib['name'] != 'open'
 
+def check_element_is_wire(elem: Element) -> bool:
+    """
+    Check that @mode == 'wire'.
+    """
+    return elem.attrib['mode'] == 'wire'
+
 def find_all_block_instances(root: Element, instance_name: str) -> list[Element]:
     """
     Finds all with './/block[@instance="<instance_name>"]'.

@@ -1053,6 +1053,8 @@ def gen_lut6():
     
 def get_local_crossbar_delay(ad_population: float):
     local_crossbar_delays = {
+      0: 69.39,
+      0.125: 69.39, # TODO: update with actual numbers
       0.25: 59.87,
       0.5: 65.4,
       0.75: 69.59,
@@ -1065,6 +1067,8 @@ def get_local_crossbar_delay(ad_population: float):
 
 def get_per_fle_area(ad_population: float):
     per_fle_areas = {
+      0: 2167.3155,
+      0.125: 2167.3155, # TODO: update with actual numbers
       0.25: 2367.847,
       0.5: 2469.397,
       0.75: 2515.396,
@@ -1076,11 +1080,50 @@ def get_per_fle_area(ad_population: float):
     return per_fle_areas[ad_population]
     
 def gen_ad_crossbar_wiring(population: float):
-    if population not in [0.25, 0.5, 0.75, 1.0]:
+    if population not in [0, 0.125, 0.25, 0.5, 0.75, 1.0]:
         raise ValueError(f"Unsupported AD crossbar population: {population}")
     
+    if population == 0:
+        return ""
+    
+    if population == 0.125:
+        return """<!-- 25% sparsely populated local routing, direct adder connections from LAB-LAB pins only -->
+          <!-- pins from right LAB -->
+          <complete name="directA_R" input="lab.I1[9:5]" output="fle[0:0].in_direct[3:0]">
+            <delay_constant max="63.13e-12" in_port="lab.I1[9:5]" out_port="fle[0:0].in_direct[3:0]"/>
+          </complete>
+          <complete name="directB_R" input="lab.I3[9:5]" output="fle[1:1].in_direct[3:0]">
+            <delay_constant max="63.13e-12" in_port="lab.I3[9:5]" out_port="fle[1:1].in_direct[3:0]"/>
+          </complete>
+          <complete name="directC_R" input="lab.I2[9:5]" output="fle[2:2].in_direct[3:0]">
+            <delay_constant max="63.13e-12" in_port="lab.I2[9:5]" out_port="fle[2:2].in_direct[3:0]"/>
+          </complete>
+          <complete name="directD_R" input="lab.I4[9:5]" output="fle[3:3].in_direct[3:0]">
+            <delay_constant max="63.13e-12" in_port="lab.I4[9:5]" out_port="fle[3:3].in_direct[3:0]"/>
+          </complete>
+          <complete name="directE_R" input="lab.I4[9:5]" output="fle[4:4].in_direct[3:0]">
+            <delay_constant max="63.13e-12" in_port="lab.I4[9:5]" out_port="fle[4:4].in_direct[3:0]"/>
+          </complete>
+          <!-- pins from left LAB -->
+          <complete name="directA_L" input="lab.I1[14:10]" output="fle[5:5].in_direct[3:0]">
+            <delay_constant max="63.13e-12" in_port="lab.I1[14:10]" out_port="fle[5:5].in_direct[3:0]"/>
+          </complete>
+          <complete name="directB_L" input="lab.I3[14:10]" output="fle[6:6].in_direct[3:0]">
+            <delay_constant max="63.13e-12" in_port="lab.I3[14:10]" out_port="fle[6:6].in_direct[3:0]"/>
+          </complete>
+          <complete name="directC_L" input="lab.I2[14:10]" output="fle[7:7].in_direct[3:0]">
+            <delay_constant max="63.13e-12" in_port="lab.I2[14:10]" out_port="fle[7:7].in_direct[3:0]"/>
+          </complete>
+          <complete name="directD_L" input="lab.I4[14:10]" output="fle[8:8].in_direct[3:0]">
+            <delay_constant max="63.13e-12" in_port="lab.I4[14:10]" out_port="fle[8:8].in_direct[3:0]"/>
+          </complete>
+          <complete name="directE_L" input="lab.I4[14:10]" output="fle[9:9].in_direct[3:0]">
+            <delay_constant max="63.13e-12" in_port="lab.I4[14:10]" out_port="fle[9:9].in_direct[3:0]"/>
+          </complete>
+          <!-- end: direct LAB-LAB crossbar -->"""
+
     if population == 0.25:
-      return """<!-- 25% sparsely populated local routing, direct adder connections from LAB-LAB pins only -->
+        return """<!-- 25% sparsely populated local routing, direct adder connections from LAB-LAB pins only -->
           <!-- pins from right LAB -->
           <complete name="directA_R" input="lab.I1[9:5] lab.I3[9:5]" output="fle[0:0].in_direct[3:0]">
             <delay_constant max="63.13e-12" in_port="lab.I1[9:5]" out_port="fle[0:0].in_direct[3:0]"/>
@@ -1126,7 +1169,7 @@ def gen_ad_crossbar_wiring(population: float):
           <!-- end: direct LAB-LAB crossbar -->"""
     
     if population == 0.5:
-      return """<!-- 50% sparsely populated local routing, direct adder connections from LAB-LAB pins only -->
+        return """<!-- 50% sparsely populated local routing, direct adder connections from LAB-LAB pins only -->
           <!-- pins from right LAB -->
           <complete name="directA_R" input="lab.I1[9:5] lab.I3[9:5] lab.I2[9:5] lab.I4[9:5]" output="fle[0:0].in_direct[3:0]">
             <delay_constant max="65.34e-12" in_port="lab.I1[9:5]" out_port="fle[0:0].in_direct[3:0]"/>
@@ -1193,7 +1236,7 @@ def gen_ad_crossbar_wiring(population: float):
 
     
     if population == 0.75:
-      return """<!-- 75% sparsely populated local routing, direct adder connections from LAB-LAB pins only -->
+        return """<!-- 75% sparsely populated local routing, direct adder connections from LAB-LAB pins only -->
           <!-- pins from right LAB -->
           <complete name="directA_R" input="lab.I1[14:5] lab.I3[14:5] lab.I2[9:5] lab.I4[9:5]" output="fle[0:0].in_direct[3:0]">
             <delay_constant max="69.33e-12" in_port="lab.I1[14:5]" out_port="fle[0:0].in_direct[3:0]"/>
@@ -1259,7 +1302,7 @@ def gen_ad_crossbar_wiring(population: float):
           <!-- end: direct LAB-LAB crossbar -->"""
 
     if population == 1.0:
-      return """<!-- 100% populated local routing, direct adder connections from LAB-LAB pins only -->
+        return """<!-- 100% populated local routing, direct adder connections from LAB-LAB pins only -->
           <complete name="directA" input="lab.I1[14:5] lab.I3[14:5] lab.I2[14:5] lab.I4[14:5]" output="fle[0:0].in_direct[3:0]">
             <delay_constant max="76.41e-12" in_port="lab.I1[14:5]" out_port="fle[0:0].in_direct[3:0]"/>
             <delay_constant max="76.41e-12" in_port="lab.I3[14:5]" out_port="fle[0:0].in_direct[3:0]"/>
@@ -1371,7 +1414,7 @@ class DD5ADArchFactory(ArchFactory, ParamsChecker):
         Check for required keys.
         Update this function when you update get_netstats.
         """
-        required_keys = ['concurrent_lut5s']
+        required_keys = ['lut4_wires', 'concurrent_lut5s']
         for key in required_keys:
             if key not in netstats:
                 return True
@@ -1381,17 +1424,28 @@ class DD5ADArchFactory(ArchFactory, ParamsChecker):
     def get_netstats(self, root: Element) -> dict[str, any]:
         """
         Gets the following statistics:
+        - lut4_wires: int -> number of 4-LUTs used as a wire.
         - concurrent_lut5s: int -> number of 5-LUTs used together with adders.
 
         Update should_update_netstats with keys produced by the latest implementation of this function.
         """
+        lut4_wires = 0
         concurrent_lut5s = 0
+
         for arith_block in ns.find_all_block_instances(root, 'arithmetic[0]'):
+            # concurrent 5-LUT check
             adder_block = ns.get_valid_child_block_instance(arith_block, 'adder[0]')
             lut5_block= ns.get_valid_child_block_mode(arith_block, 'as_lut5')
             if (adder_block is not None) and (lut5_block is not None):
                 concurrent_lut5s += 1
 
+            # 4-LUT wire check
+            lut4s_block = ns.get_valid_child_block_mode(arith_block, 'as_dual_lut4s')
+            if lut4s_block is not None:
+                lut4_wire0 = ns.get_valid_child_block_instance(arith_block, 'lut4[0]', check_valid=ns.check_element_is_wire)
+                lut4_wire1 = ns.get_valid_child_block_instance(arith_block, 'lut4[1]', check_valid=ns.check_element_is_wire)
+                lut4_wires += (not lut4_wire0 is None) + (not lut4_wire1 is None)
         return dict(
-            concurrent_lut5s=concurrent_lut5s
+            lut4_wires=lut4_wires,
+            concurrent_lut5s=concurrent_lut5s,
         )

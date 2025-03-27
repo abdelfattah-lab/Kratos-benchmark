@@ -1137,7 +1137,7 @@ class LUTSkipArchFactory(ArchFactory, ParamsChecker):
         Check for required keys.
         Update this function when you update get_netstats.
         """
-        required_keys = ['concurrent_lut5s']
+        required_keys = ['lut4_wires', 'concurrent_lut5s']
         for key in required_keys:
             if key not in netstats:
                 return True
@@ -1147,17 +1147,28 @@ class LUTSkipArchFactory(ArchFactory, ParamsChecker):
     def get_netstats(self, root: Element) -> dict[str, any]:
         """
         Gets the following statistics:
+        - lut4_wires: int -> number of 4-LUTs used as a wire.
         - concurrent_lut5s: int -> number of 5-LUTs used together with adders.
 
         Update should_update_netstats with keys produced by the latest implementation of this function.
         """
+        lut4_wires = 0
         concurrent_lut5s = 0
+
         for arith_block in ns.find_all_block_instances(root, 'arithmetic[0]'):
+            # concurrent 5-LUT check
             adder_block = ns.get_valid_child_block_instance(arith_block, 'adder[0]')
             lut5_block= ns.get_valid_child_block_mode(arith_block, 'as_lut5')
             if (adder_block is not None) and (lut5_block is not None):
                 concurrent_lut5s += 1
 
+            # 4-LUT wire check
+            lut4s_block = ns.get_valid_child_block_mode(arith_block, 'as_dual_lut4s')
+            if lut4s_block is not None:
+                lut4_wire0 = ns.get_valid_child_block_instance(arith_block, 'lut4[0]', check_valid=ns.check_element_is_wire)
+                lut4_wire1 = ns.get_valid_child_block_instance(arith_block, 'lut4[1]', check_valid=ns.check_element_is_wire)
+                lut4_wires += (not lut4_wire0 is None) + (not lut4_wire1 is None)
         return dict(
-            concurrent_lut5s=concurrent_lut5s
+            lut4_wires=lut4_wires,
+            concurrent_lut5s=concurrent_lut5s,
         )

@@ -6,6 +6,7 @@ Taken from https://github.com/verilog-to-routing/vtr-verilog-to-routing/blob/mas
 
 from structure.arch import ArchFactory
 from structure.util import ParamsChecker
+import util.netstats as ns
 
 TEMPLATE = """<!--
     This is the architecture file for a Stratix-10-like *arithmetic* Architecture discussed in [1].
@@ -988,5 +989,34 @@ class BaseArchFactory(ArchFactory, ParamsChecker):
             layout_sizing_end=layout_sizing_end,
         )
     
+    def should_update_netstats(self, netstats):
+        """
+        Check for required keys.
+        Update this function when you update get_netstats.
+        """
+        required_keys = ['lut4_wires']
+        for key in required_keys:
+            if key not in netstats:
+                return True
+        
+        return False
+    
     def get_netstats(self, root):
-        return dict(concurrent_lut5s=0)
+        """
+        Gets the following statistics:
+        - lut4_wires: int -> number of 4-LUTs used as a wire.
+        - concurrent_lut5s: int -> number of 5-LUTs used together with adders.
+
+        Update should_update_netstats with keys produced by the latest implementation of this function.
+        """
+        lut4_wires = 0
+        
+        for arith_block in ns.find_all_block_instances(root, 'arithmetic[0]'):
+            lut4_wire0 = ns.get_valid_child_block_instance(arith_block, 'lut4[0]', check_valid=ns.check_element_is_wire)
+            lut4_wire1 = ns.get_valid_child_block_instance(arith_block, 'lut4[1]', check_valid=ns.check_element_is_wire)
+            lut4_wires += (not lut4_wire0 is None) + (not lut4_wire1 is None)
+        
+        return dict(
+            lut4_wires=lut4_wires,
+            concurrent_lut5s=0,
+        )
