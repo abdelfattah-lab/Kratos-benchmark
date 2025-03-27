@@ -15,10 +15,10 @@ def check_element_is_wire(elem: Element) -> bool:
     """
     Check that @mode == 'wire'.
     """
-    if not check_element_not_open(elem):
+    elem_mode = elem.attrib.get('mode', None)
+    if elem_mode is None:
         return False
-
-    return elem.attrib['mode'] == 'wire'
+    return elem_mode == 'wire'
 
 def find_all_block_instances(root: Element, instance_name: str) -> list[Element]:
     """
