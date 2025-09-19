@@ -1,3 +1,5 @@
+import uuid
+
 """
 Basic utility classes.
 """
@@ -69,3 +71,16 @@ class DynamicallyNamed(Abstract):
         @returns name in string
         """
         self.raise_unimplemented("get_name")
+
+class Hashable():
+    """
+    Extend this class to make a class usable as a dictionary key.
+    """
+    def __init__(self) -> None:
+        self.uuid = str(uuid.uuid4())
+    
+    def __eq__(self, value: object) -> bool:
+        return hasattr(value, 'uuid') and self.uuid == value.uuid
+    
+    def __hash__(self) -> int:
+        return hash(self.uuid)

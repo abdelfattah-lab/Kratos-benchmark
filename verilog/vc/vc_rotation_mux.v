@@ -1,3 +1,6 @@
+`ifndef __VC_ROTATION_MUX_V__
+`define __VC_ROTATION_MUX_V__
+
 module vc_rotation_mux_back_pipe
 #(
     parameter DATA_WIDTH = 32,
@@ -15,7 +18,7 @@ module vc_rotation_mux_back_pipe
 
 genvar i;
 generate
-    for (i = 0; i < NUM_ELEMENTS; i = i + 1) begin
+    for (i = 0; i < NUM_ELEMENTS; i = i + 1) begin : num_elements_block
         always_ff @(posedge clk) begin
             data_out[i] <= data_in[(i + addr_in) % NUM_ELEMENTS];
             // if (i+addr_in < NUM_ELEMENTS) 
@@ -44,7 +47,7 @@ module vc_rotation_mux_back_comb
 
 genvar i;
 generate
-    for (i = 0; i < NUM_ELEMENTS; i = i + 1) begin
+    for (i = 0; i < NUM_ELEMENTS; i = i + 1) begin : num_elements_block
         always_comb begin
             data_out[i] = data_in[(i + addr_in) % NUM_ELEMENTS];
             // if (i+addr_in < NUM_ELEMENTS) 
@@ -74,7 +77,7 @@ module vc_rotation_mux_forward_pipe
 
 genvar i;
 generate
-    for (i = 0; i < NUM_ELEMENTS; i = i + 1) begin
+    for (i = 0; i < NUM_ELEMENTS; i = i + 1) begin : num_elements_block
         always_ff @(posedge clk) begin
             data_out[i] <= data_in[(i - addr_in) % NUM_ELEMENTS];
             // if (i-addr_in >= 0) 
@@ -101,14 +104,22 @@ module vc_rotation_mux_forward_comb
 
 // rotational mux
 
+logic [DATA_WIDTH-1:0] temp_data_in [0:NUM_ELEMENTS-1];
+
+
 genvar i;
 generate
-    for (i = 0; i < NUM_ELEMENTS; i = i + 1) begin
+
+    for (i = 0; i < NUM_ELEMENTS; i = i + 1) begin: assign_wires1
+        assign temp_data_in[i] = data_in[(i+1)*DATA_WIDTH-1:i*DATA_WIDTH];
+    end
+
+    for (i = 0; i < NUM_ELEMENTS; i = i + 1) begin : num_elements_block
 
         logic [ADDR_WIDTH - 1:0] addr_sel_signal;
         assign addr_sel_signal = (i - addr_in) % NUM_ELEMENTS;
         always_comb begin
-            data_out[(i+1)*DATA_WIDTH-1:i*DATA_WIDTH] = data_in[(addr_sel_signal+1)*DATA_WIDTH-1:addr_sel_signal*DATA_WIDTH];
+            data_out[(i+1)*DATA_WIDTH-1:i*DATA_WIDTH] = temp_data_in[addr_sel_signal];
             // if (i-addr_in >= 0) 
             //     data_out[i] <= data_in[i-addr_in];
             // else
@@ -118,3 +129,5 @@ generate
 endgenerate
 
 endmodule
+
+`endif

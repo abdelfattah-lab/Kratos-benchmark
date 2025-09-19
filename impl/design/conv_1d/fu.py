@@ -1,21 +1,31 @@
-from structure.design import StandardizedSdcDesign
-from util import reset_seed, gen_long_constant_bits
+from structure.design import PluginDesign
+from structure.plugin import Plugin
+from util.flow import reset_seed, gen_long_constant_bits
+from util.bit_gen import gen_verilog_random_hex_constant
 from structure.consts.shared_defaults import DEFAULTS_TCL, DEFAULTS_WRAPPER_CONV
 from structure.consts.shared_requirements import REQUIRED_KEYS_CONV1D_STRIDE
 
-class Conv1dFuDesign(StandardizedSdcDesign):
+from structure.consts.quartus import DEVICE_FAMILY, DEVICE_NAME, TURN_OFF_DSPS
+
+import math
+
+class Conv1dFuDesign(PluginDesign):
     """
     Conv-1D Fully Unrolled design.
     """
 
-    def __init__(self, impl: str = 'conv_reg_1d_full', module_dir: str = 'conv_1d', wrapper_module_name: str = 'conv_reg_1d_full_wrapper'):
-        super().__init__(impl, module_dir, wrapper_module_name)
+    def __init__(self, impl: str = 'conv_reg_1d_full', module_dir: str = 'conv_1d', wrapper_module_name: str = 'conv_reg_1d_full_wrapper', plugin: Plugin|None = None):
+        super().__init__(impl, module_dir, wrapper_module_name, plugin)
 
-    def get_name(self, data_width: int, img_w: int, img_d: int, fil_w: int, res_d: int, stride_w: int, constant_weight: bool, sparsity: float, separate_filters: bool, **kwargs):
+    def get_name(self, tree_base: int, data_width: int, img_w: int, img_d: int, fil_w: int, res_d: int, stride_w: int, constant_weight: bool, sparsity: float, separate_filters: bool, **kwargs):
         """
         Name generation
         """
-        return f'i.{self.impl}_d.{data_width}_w.{img_w}_d.{img_d}_f.{fil_w}_r.{res_d}_s.{stride_w}_c.{constant_weight}_s.{sparsity}_sf.{separate_filters}'
+        plugin_name_insert = f"+{self.plugin.get_name(**kwargs)}" if not self.plugin is None else ""
+        return f'i.{self.impl}{plugin_name_insert}_tb.{tree_base}_d.{data_width}_w.{img_w}_d.{img_d}_f.{fil_w}_r.{res_d}_s.{stride_w}_c.{constant_weight}_s.{sparsity}_sf.{separate_filters}'
+
+    def get_formal_name(self) -> str:
+        return "conv1d-FU"
 
     def verify_params(self, params: dict[str, any]) -> dict[str, any]:
         """
@@ -26,7 +36,11 @@ class Conv1dFuDesign(StandardizedSdcDesign):
         del defaults['kernel_only']
         del defaults['buffer_stages']
 
-        return self.verify_required_keys(defaults, REQUIRED_KEYS_CONV1D_STRIDE, params)
+        design_params = self.verify_required_keys(defaults, REQUIRED_KEYS_CONV1D_STRIDE, params)
+        
+        if self.plugin is None:
+            return design_params
+        return self.plugin.check_params(design_params)
 
     def gen_tcl(self, wrapper_file_name: str, search_path: str, **kwargs) -> str:
         """
@@ -39,19 +53,21 @@ class Conv1dFuDesign(StandardizedSdcDesign):
         Optional arguments (defaults to DEFAULTS_TCL):
         output_dir:str, reports output directory
         parallel_processors_num:int, number of parallel processors
+        execute_flow_type: 'compile' or 'implement' (prime only)
         """
         kwargs = self.autofill_defaults(DEFAULTS_TCL, kwargs)
         output_dir = kwargs['output_dir']
         parallel_processors_num = kwargs['parallel_processors_num']
+        execute_flow_type = kwargs['execute_flow_type']
         template = f'''# load packages
 load_package flow
 
 # new project
-project_new -revision v1 -overwrite unrolled_conv_reg_parallel
+project_new -revision v1 -overwrite unrolled_conv_reg_1d_full
 
 # device
-set_global_assignment -name FAMILY "Arria 10"
-set_global_assignment -name DEVICE 10AX115H1F34I1SG
+set_global_assignment -name FAMILY "{DEVICE_FAMILY}"
+set_global_assignment -name DEVICE {DEVICE_NAME}
 
 # misc
 set_global_assignment -name PROJECT_OUTPUT_DIRECTORY {output_dir}
@@ -70,11 +86,9 @@ set_global_assignment -name SEARCH_PATH {search_path}
 set_instance_assignment -name VIRTUAL_PIN ON -to clk
 set_instance_assignment -name VIRTUAL_PIN ON -to reset
 
-
-set_instance_assignment -name VIRTUAL_PIN ON -to fil[*][*][*][*]
-set_instance_assignment -name VIRTUAL_PIN ON -to lines_in[*][*][*]
-set_instance_assignment -name VIRTUAL_PIN ON -to lines_out[*][*][*]
-
+set_instance_assignment -name VIRTUAL_PIN ON -to weight[*]
+set_instance_assignment -name VIRTUAL_PIN ON -to lines_in[*]
+set_instance_assignment -name VIRTUAL_PIN ON -to lines_out[*]
 
 set_instance_assignment -name VIRTUAL_PIN ON -to opaque_in[*]
 set_instance_assignment -name VIRTUAL_PIN ON -to opaque_out[*]
@@ -83,9 +97,11 @@ set_instance_assignment -name VIRTUAL_PIN ON -to opaque_out[*]
 # effort level
 set_global_assignment -name OPTIMIZATION_MODE "HIGH PERFORMANCE EFFORT"
 
+# turn DSPs off
+{TURN_OFF_DSPS}
+
 # run compilation
-#execute_flow -compile
-execute_flow -implement
+execute_flow -{execute_flow_type}
 
 
 # close project
@@ -94,7 +110,7 @@ project_close
 
         return template
     
-    def gen_wrapper(self, data_width, img_w, img_d, fil_w, res_d, stride_w, constant_weight, sparsity, buffer_stages, **kwargs) -> str:
+    def gen_wrapper(self, tree_base, data_width, img_w, img_d, fil_w, res_d, stride_w, constant_weight, sparsity, **kwargs) -> str:
         template_inputx = 'input   logic   [DATA_WIDTH*FILTER_K*IMG_D*FILTER_L-1:0]   weight,'
         if constant_weight:
             inputfil = ''
@@ -108,7 +124,18 @@ project_close
             constant_bits = ''
             fil_in = 'fil'
         
+        has_plugin = self.plugin is not None
+        plugin_includes = ""
+        plugin_pins = ""
+        plugin_module = ""
+
+        if has_plugin:
+            plugin_includes = self.plugin.get_includes(**kwargs)
+            plugin_pins = self.plugin.get_pins(**kwargs)
+            plugin_module = self.plugin.get_module('clk', **kwargs)
+
         template = f'''`include "{self.module_dir}/{self.impl}.v"
+{plugin_includes} 
 
 module {self.wrapper_module_name}
 #(
@@ -119,6 +146,7 @@ module {self.wrapper_module_name}
     parameter FILTER_L = {fil_w},
     parameter RESULT_D = {res_d},
     parameter STRIDE_W = {stride_w},
+    parameter TREE_BASE = {tree_base},
 
     // parameters below are not meant to be set manually
     // ==============================
@@ -138,15 +166,17 @@ module {self.wrapper_module_name}
     {inputfil}
     input   logic   [DATA_WIDTH*IMG_D*IMG_W-1:0]            lines_in,
 
-    output  logic   [DATA_WIDTH*RESULT_D*RESULT_W-1:0]      lines_out,
+    output  logic   [DATA_WIDTH*4*RESULT_D*RESULT_W-1:0]      lines_out,
 
     input   logic   [7:0]                       opaque_in,
-    output  logic   [7:0]                       opaque_out
+    output  logic   [7:0]                       opaque_out{',' if has_plugin else ''}
+
+    {plugin_pins}
 );
 
     {constant_bits}
 
-    conv_reg_1d_parallel #(DATA_WIDTH,IMG_W, IMG_D, FILTER_L, RESULT_D, STRIDE_W) conv_reg_inst
+    {self.impl} #(DATA_WIDTH,IMG_W, IMG_D, FILTER_L, RESULT_D, STRIDE_W, TREE_BASE) conv_reg_inst
     (
         .clk(clk),
         .reset(reset),
@@ -157,7 +187,37 @@ module {self.wrapper_module_name}
         .opaque_out(opaque_out)
     );
 
-
+    {plugin_module}
 endmodule
 '''
         return template
+    
+    def _get_lines_sizes(self, data_width, img_w, img_d, fil_w, res_d, stride_w):
+        lines_in_size = data_width * img_d * img_w
+        lines_out_size = data_width * 4 * res_d * (int((img_w - fil_w) / stride_w) + 1)
+
+        return lines_in_size, lines_out_size
+
+    def gen_tb_params(self, data_width, img_w, img_d, fil_w, res_d, stride_w, **kwargs):
+        lines_in_size, lines_out_size = self._get_lines_sizes(data_width, img_w, img_d, fil_w, res_d, stride_w)
+
+        cycles = 1 + math.ceil(math.log2(fil_w * img_d)) + 1
+        return dict(
+            cycles=dict(
+                reset=cycles * 3,
+                hold=cycles,
+            ),
+            pins=dict(
+                clk='clk',
+                input=[
+                    ('lines_in', lines_in_size),
+                ],
+                output=[
+                    ('lines_out', lines_out_size),
+                ],
+            )
+        )        
+    
+    def gen_test_case(self, data_width, img_w, img_d, fil_w, res_d, stride_w, **kwargs):
+        lines_in_size, _ = self._get_lines_sizes(data_width, img_w, img_d, fil_w, res_d, stride_w)
+        return f"lines_in = {gen_verilog_random_hex_constant(lines_in_size)};"

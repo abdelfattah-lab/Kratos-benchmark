@@ -13,11 +13,27 @@ __pycache__/
 experiments*/
 results*/
 .vscode
-flow.py
-flow2.py
 experiments.zip
+test_*.*
+
+# possible result file extensions
 *.csv
+*.png
+*.jpg
+
+# include archive files
+!**/coffe_archives/*.csv
 
 # used for background execution
 *.out
 *.pid
+
+# output files for COFFE simulation
+coffe_maker_out
+
+# ignore run scripts
+run*.py
+
+# ignore slurms
+slurm/*
+slurm*.sh

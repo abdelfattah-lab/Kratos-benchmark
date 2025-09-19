@@ -1,27 +1,38 @@
-from structure.design import StandardizedSdcDesign
-from util import reset_seed, generate_random_matrix
+from structure.design import PluginDesign
+from structure.plugin import Plugin
+from util.flow import reset_seed, generate_random_matrix
 from structure.consts.shared_defaults import DEFAULTS_TCL, DEFAULTS_WRAPPER
 from structure.consts.shared_requirements import REQUIRED_KEYS_GEMM
 
-class GemmSDesign(StandardizedSdcDesign):
+from structure.consts.quartus import DEVICE_FAMILY, DEVICE_NAME, TURN_OFF_DSPS
+
+class GemmSDesign(PluginDesign):
     """
     GEMMS design.
     """
     
-    def __init__(self, impl: str = 'systolic_ws', module_dir: str = 'gemms', wrapper_module_name: str = 'systolic_ws_wrapper'):
-        super().__init__(impl, module_dir, wrapper_module_name)
+    def __init__(self, impl: str = 'systolic_ws', module_dir: str = 'gemms', wrapper_module_name: str = 'systolic_ws_wrapper', plugin: Plugin|None = None):
+        super().__init__(impl, module_dir, wrapper_module_name, plugin)
 
     def get_name(self, data_width: int, row_num: int, col_num: int, length: int, constant_weight: bool = True, sparsity: float = 0.0, **kwargs):
         """
         Name generation 
         """
-        return f'i.{self.impl}_d.{data_width}_r.{row_num}_c.{col_num}_l.{length}_c.{constant_weight}_s.{sparsity}'
+        plugin_name_insert = f"+{self.plugin.get_name(**kwargs)}" if not self.plugin is None else ""
+        return f'i.{self.impl}{plugin_name_insert}_d.{data_width}_r.{row_num}_c.{col_num}_l.{length}_c.{constant_weight}_s.{sparsity}'
+
+    def get_formal_name(self) -> str:
+        return "gemms-RP"
 
     def verify_params(self, params: dict[str, any]) -> dict[str, any]:
         """
         Verification of parameters for GEMMS.
         """
-        return self.verify_required_keys(DEFAULTS_WRAPPER, REQUIRED_KEYS_GEMM, params)
+        design_params = self.verify_required_keys(DEFAULTS_WRAPPER, REQUIRED_KEYS_GEMM, params)
+
+        if self.plugin is None:
+            return design_params
+        return self.plugin.check_params(design_params)
 
     def gen_tcl(self, wrapper_file_name: str, search_path: str, **kwargs) -> str:
         """
@@ -34,10 +45,12 @@ class GemmSDesign(StandardizedSdcDesign):
         Optional arguments (defaults to DEFAULTS_TCL):
         output_dir:str, reports output directory
         parallel_processors_num:int, number of parallel processors
+        execute_flow_type: 'compile' or 'implement' (prime only)
         """
         kwargs = self.autofill_defaults(DEFAULTS_TCL, kwargs)
         output_dir = kwargs['output_dir']
         parallel_processors_num = kwargs['parallel_processors_num']
+        execute_flow_type = kwargs['execute_flow_type']
         template = f'''# load packages
 load_package flow
 
@@ -45,8 +58,8 @@ load_package flow
 project_new -revision v1 -overwrite unrolled_systolic_ws
 
 # device
-set_global_assignment -name FAMILY "Arria 10"
-set_global_assignment -name DEVICE 10AX115H1F34I1SG
+set_global_assignment -name FAMILY "{DEVICE_FAMILY}"
+set_global_assignment -name DEVICE {DEVICE_NAME}
 
 # misc
 set_global_assignment -name PROJECT_OUTPUT_DIRECTORY {output_dir}
@@ -80,9 +93,11 @@ set_instance_assignment -name VIRTUAL_PIN ON -to result_data_out[*][*]
 # effort level
 set_global_assignment -name OPTIMIZATION_MODE "HIGH PERFORMANCE EFFORT"
 
+# turn DSPs off
+{TURN_OFF_DSPS}
+
 # run compilation
-#execute_flow -compile
-execute_flow -implement
+execute_flow -{execute_flow_type}
 
 
 # close project
@@ -104,8 +119,20 @@ project_close
             constant_bits = ''
             x_in = 'x'
 
+        has_plugin = self.plugin is not None
+        plugin_includes = ""
+        plugin_pins = ""
+        plugin_module = ""
+
+        if has_plugin:
+            plugin_includes = self.plugin.get_includes(**kwargs)
+            plugin_pins = self.plugin.get_pins(**kwargs)
+            plugin_module = self.plugin.get_module('clk', **kwargs)
+
         template = f'''`include "{self.module_dir}/{self.impl}.v"
 `include "vc/vc_sram.v"
+{plugin_includes}
+
 module {self.wrapper_module_name}
 #(
     parameter DATA_WIDTH = {data_width},
@@ -130,21 +157,23 @@ module {self.wrapper_module_name}
     input   logic                           src_wr_en       [0:LENGTH-1],
 
     input   logic  [ROW_ADDR_WIDTH-1:0]     result_rdaddr   [0:COL_NUM-1],
-    output  logic  [DATA_WIDTH-1:0]         result_data_out [0:COL_NUM-1]
-);
+    output  logic  [DATA_WIDTH*4-1:0]       result_data_out [0:COL_NUM-1]{',' if has_plugin else ''}
 
+    {plugin_pins}
+);
+    localparam RES_WIDTH = DATA_WIDTH * 4;
 
     {constant_bits}
     logic   [DATA_WIDTH-1:0]        src_data_out    [0:LENGTH-1];
     logic   [ROW_ADDR_WIDTH-1:0]    src_rdaddr      [0:LENGTH-1];
 
-    logic   [DATA_WIDTH-1:0]        result_data_in  [0:COL_NUM-1];
+    logic   [RES_WIDTH-1:0]         result_data_in  [0:COL_NUM-1];
     logic   [ROW_ADDR_WIDTH-1:0]    result_wraddr   [0:COL_NUM-1];
     logic                           result_wr_en    [0:COL_NUM-1];
 
     genvar i;
     generate
-        for (i = 0; i < LENGTH; i = i + 1) begin
+        for (i = 0; i < LENGTH; i = i + 1) begin : length_block
             vc_sram_1r1w #(DATA_WIDTH, ROW_NUM) src_sram_inst
             (
                 .clk(clk),
@@ -156,8 +185,8 @@ module {self.wrapper_module_name}
             );
         end
 
-        for (i = 0; i < COL_NUM; i = i + 1) begin
-            vc_sram_1r1w #(DATA_WIDTH, ROW_NUM) result_sram_inst
+        for (i = 0; i < COL_NUM; i = i + 1) begin : col_num_block
+            vc_sram_1r1w #(RES_WIDTH, ROW_NUM) result_sram_inst
             (
                 .clk(clk),
                 .data_in(result_data_in[i]),
@@ -186,6 +215,8 @@ module {self.wrapper_module_name}
         .row_wraddr(result_wraddr),
         .row_wr_en(result_wr_en)
     );
+
+    {plugin_module}
 endmodule
 '''
 

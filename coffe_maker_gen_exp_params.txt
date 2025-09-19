@@ -1,0 +1,6 @@
+ble_count=2-20:2
+lut_size=5
+CLB_groups_per_xb=2
+fc_in=0.1-0.3:0.1
+fc_out=0.2-0.4:0.1
+fs=3

@@ -17,7 +17,7 @@ module vc_cycle_buffer
     assign q = buffer[NUM_CYCLES];
     genvar i;
     generate
-        for (i = 0; i < NUM_CYCLES; i = i + 1) begin
+        for (i = 0; i < NUM_CYCLES; i = i + 1) begin : reg_block
             vc_reg #(DATA_WIDTH) regs (
                 .d(buffer[i]),
                 .q(buffer[i+1]),

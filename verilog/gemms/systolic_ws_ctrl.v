@@ -52,7 +52,7 @@ module systolic_ws_ctrl
     genvar i, j;
     // generate counter for input and output address
     generate
-        for(i = 0; i < LENGTH; i = i + 1) begin
+        for(i = 0; i < LENGTH; i = i + 1) begin : length_block
             auto_counter #(ROW_NUM) len_input_counter
             (
                 .clk(clk),
@@ -64,7 +64,7 @@ module systolic_ws_ctrl
             );
         end
 
-        for(i = 0; i < COL_NUM; i = i + 1) begin
+        for(i = 0; i < COL_NUM; i = i + 1) begin : col_num_block
             auto_counter #(ROW_NUM) col_output_counter
             (
                 .clk(clk),

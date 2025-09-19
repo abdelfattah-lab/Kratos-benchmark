@@ -12,6 +12,7 @@ module conv_bram_1d
     parameter FILTER_L = 3,
     parameter RESULT_D = 4,
     parameter STRIDE_W = 1,
+    parameter TREE_BASE = 2,
 
     // parameters below are not meant to be set manually
     // ==============================
@@ -35,9 +36,10 @@ module conv_bram_1d
     input   logic   [DATA_WIDTH*IMG_D-1:0]                      img_rddata,
     // result
     output  logic   [RESULT_RAM_ADDR_WIDTH*RESULT_D-1:0]        result_wraddr,
-    output  logic   [DATA_WIDTH*RESULT_D-1:0]                   result_wrdata,
+    output  logic   [DATA_WIDTH*4*RESULT_D-1:0]                   result_wrdata,
     output  logic   [RESULT_D-1:0]                              result_wren
 );
+    localparam RES_WIDTH = DATA_WIDTH*4;
 
     logic                                   dpath_sr_wren;
     logic   [RESULT_RAM_ADDR_WIDTH-1:0]     dpath_result_wraddr;
@@ -61,11 +63,11 @@ module conv_bram_1d
 
     genvar i;
     generate
-        for(i = 0; i < IMG_D; i = i + 1) begin
+        for(i = 0; i < IMG_D; i = i + 1) begin : img_d_block
             assign img_rdaddr[(i+1)*IMG_RAM_ADDR_WIDTH-1:i*IMG_RAM_ADDR_WIDTH] = img_rdaddr_dup;
         end
-        for(i = 0; i < FILTER_K; i = i + 1) begin
-            conv_bram_1d_dpath #(DATA_WIDTH,IMG_W,IMG_D,FILTER_L,RESULT_D, STRIDE_W) conv_1d_dpath_inst
+        for(i = 0; i < FILTER_K; i = i + 1) begin : filter_k_block
+            conv_bram_1d_dpath #(DATA_WIDTH,IMG_W,IMG_D,FILTER_L,RESULT_D, STRIDE_W, TREE_BASE) conv_1d_dpath_inst
             (
                 .clk(clk),
                 .reset(reset),
@@ -78,7 +80,7 @@ module conv_bram_1d
                 .last_val(last_val[i:i]),
 
                 .result_wraddr(result_wraddr[(i+1)*RESULT_RAM_ADDR_WIDTH-1:i*RESULT_RAM_ADDR_WIDTH]),
-                .result_wrdata(result_wrdata[(i+1)*DATA_WIDTH-1:i*DATA_WIDTH]),
+                .result_wrdata(result_wrdata[(i+1)*RES_WIDTH-1:i*RES_WIDTH]),
                 .result_wren(result_wren[i:i])
             );
         end

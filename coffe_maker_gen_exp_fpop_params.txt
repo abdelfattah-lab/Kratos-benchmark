@@ -1,0 +1,5 @@
+ble_count=2-20
+lut_size=5
+fc_in=0.15
+fc_out=0.1
+fs=3

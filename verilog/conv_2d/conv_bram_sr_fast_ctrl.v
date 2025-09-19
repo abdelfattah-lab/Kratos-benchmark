@@ -92,7 +92,7 @@ module conv_bram_sr_fast_ctrl
     logic    [IMG_RAM_ADDR_WIDTH_PER_STRIPE*FILTER_L-1:0]    img_rdaddr_track;
     // create line address for storing img_rdaddr related signals
     generate
-        for(i = 0;i < FILTER_L; i = i + 1) begin
+        for(i = 0;i < FILTER_L; i = i + 1) begin : filter_l_block
             // each row need a counter to hold individual address
             vc_counter_adder #(IMG_H_ADDR_WIDTH, i, STRIDE_H, FILTER_L) cat
             (

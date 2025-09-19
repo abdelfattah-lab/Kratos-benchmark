@@ -1,22 +1,23 @@
-from structure.util import ParamsChecker
+from structure.util import ParamsChecker, Hashable
 from structure.arch import ArchFactory
 from structure.design import Design
 import structure.consts.keys as keys
 import structure.consts.translation as translations
-from structure.consts.shared_defaults import DEFAULTS_EXP
 
-import os, threading
+import os, shutil, threading
 from copy import deepcopy
 from typing import Type, TypeVar, Callable
 from tabulate import tabulate
 
-class Experiment(ParamsChecker):
+class Experiment(ParamsChecker, Hashable):
     """
     {abstract}
     Experiment meant to be run by a structure.run.Runner.
+    Be sure to override the self.name variable during __init__() to define a short name for the Experiment class.
     """
 
     def __init__(self, arch: ArchFactory, design: Design, params: dict[str, dict[str, any]]) -> None:
+        super().__init__()
         """
         Takes in an ArchFactory, Design, and a full set of Experiment parameters (meant to be split for different subclasses).
         """
@@ -42,21 +43,36 @@ class Experiment(ParamsChecker):
         self.process = None  # subprocess
         self.stdout_file = None  # stdout file
         self.stderr_file = None  # stderr file
+        self.postthread = None # thread for post-process functions
         self.gcthread = None  # thread for garbage collection
         self.result = None  # result of the experiment
 
-    def _setup_exp(self, required_keys: list[str]) -> None:
+    def get_name(self, **kwargs):
+        """
+        {abstract}
+        Get the name of this experiment based on its parameters.
+        """
+        self.raise_unimplemented("get_name")
+
+    def _setup_exp(self, defaults: dict[str, any], required_keys: list[str], clear_exp_dir: bool = False) -> None:
         """
         Sets up the experiment when needed, i.e., make folders and README.
 
-        * required_keys: list of keys that are required in Experiment parameters.
+        Required arguments:
+        * defaults:dict[str, any], default Experiment parameters.
+        * required_keys:list[str], list of keys that are required in Experiment parameters.
+
+        Optional arguments:
+        * clear_exp_dir:bool, if True, then wipes any existing files from a previous run if the experiment folder already exists. Default: False
         """
         # Check all parameters.
-        self.exp_params = self.verify_required_keys(DEFAULTS_EXP, required_keys, self.exp_params)
+        self.exp_params = self.verify_required_keys(defaults, required_keys, self.exp_params)
          # make root and experiment directory
         self.root_dir = self.exp_params['root_dir']
-        self.verilog_search_dir = self.exp_params['verilog_search_dir']
-        self.exp_dir = os.path.join(self.root_dir, f"{self.arch.get_name(**self.arch_params)}--{self.design.get_name(**self.design_params)}")
+        self.exp_dir = os.path.join(self.root_dir, f"{self.arch.get_name(**self.arch_params)}--{self.design.get_name(**self.design_params)}--{self.get_name(**self.exp_params)}")
+        if os.path.exists(self.exp_dir) and clear_exp_dir:
+            # attempt folder removal
+            shutil.rmtree(self.exp_dir, ignore_errors=True)
         os.makedirs(self.exp_dir, exist_ok=True)
 
         # generate README file
@@ -70,18 +86,30 @@ class Experiment(ParamsChecker):
         """
         if self.process is not None:
             raise RuntimeError('Experiment is already running or has finished.')
-    
+
+    def _wait_main_process(self) -> None:
+        if self.process is not None:
+            self.process.wait()
+
     def _clean(self) -> None:
         if self.process is not None:
             self.process.wait()
             self.stdout_file.close()
             self.stderr_file.close()
+            self.process = None
         else:
             raise RuntimeError('Experiment is not running.')
         
     def _start_gc_thread(self, fn: Callable[..., None], args: tuple) -> None:
         self.gcthread = threading.Thread(target=fn, args=args)
         self.gcthread.start()
+    
+    def _start_post_thread(self, fn: Callable[..., None], args: tuple) -> None:
+        self.postthread = threading.Thread(target=fn, args=args)
+        self.postthread.start()
+    def _wait_post_thread(self) -> None:
+        if self.postthread is not None:
+            self.postthread.join()
 
     def run(self, dry_run=False, **kwargs) -> None:
         """
@@ -101,10 +129,11 @@ class Experiment(ParamsChecker):
 
     def wait(self):
         """
-        Wait for finished execution of Experiment.
+        Wait for finished execution of Experiment. (and the post-processing thread, if any)
         """
         if self.process is not None:
             self.process.wait()
+            self._wait_post_thread()
     
     def _get_readme_section(self, param_group: str, translations: dict[str, str], params: dict[str, any]) -> str:
         """
@@ -144,7 +173,7 @@ class Experiment(ParamsChecker):
         if (self.process is not None) and self.is_running():
             raise RuntimeError("Experiment is still running; unable to get result.")
         
-    def get_result(self) -> dict:
+    def get_result(self, **kwargs) -> dict:
         """
         {abstract}
         Get the result of the Experiment.
@@ -173,18 +202,18 @@ class ExperimentFactory():
     """
     Takes in variable parameters, and generates experiments for each combination of parameters.
     """
-    
-    def __init__(self, arch: ArchFactory, design: Design, experiment_class: Type[E]) -> None:
-        """
-        Provide the ArchFactory, Design and Experiment class to be used for all generated Experiments.
-        """
-        self.arch = arch
-        self.design = design
-        self.experiment_class = experiment_class
 
-    def gen_experiments(self, params: dict[str, any]) -> list[E]:
+    def gen_experiments(self, experiment_class: Type[E], arch: ArchFactory, design: Design, params: dict[str, any]) -> list[E]:
         """
         Searches through the parameters for variable parameters, specified as a list under the original key.
+        
+        Required arguments:
+        * experiment_class:Type[Experiment], concrete Experiment class to use
+        * arch:ArchFactory, concrete ArchFactory to use
+        * design:Design, concrete Design to use
+        * params:dict, parameters to use
+
+        @returns a list of experiment_class objects.
         """
         
         # Step 1: find all variable parameters
@@ -206,7 +235,7 @@ class ExperimentFactory():
         def generate_experiment(i: int, d: dict[str, any]) -> None:
             if i >= variable_params_count:
                 # reached the end of variable parameters; construct, append, return
-                experiments.append(self.experiment_class(self.arch, self.design, d))
+                experiments.append(experiment_class(arch, design, d))
                 return
             
             keys_path, v_list = variable_params[i]

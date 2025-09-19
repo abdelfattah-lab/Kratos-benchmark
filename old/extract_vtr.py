@@ -20,7 +20,7 @@ import conv_2d.flow_conv_2d_pw_util as flow_conv_2d_pw_util
 import conv_2d.flow_conv_2d_rp_util as flow_conv_2d_rp_util
 import conv_2d.flow_conv_2d_fu_util as flow_conv_2d_fu_util
 # tools
-import util
+import util.flow
 import arch_generator
 from flow_general import VTRRunner
 
@@ -110,7 +110,7 @@ def batch_run_extract_arch_explore_lut(flow, settings: dict, description='lut_ex
 
     # save results to csv.
     os.makedirs(flow.DEFAULT_RESULT_DIR, exist_ok=True)
-    fname = util.gen_dict_file_name(setting_remain) + '-lut_explore'
+    fname = util.flow.gen_dict_file_name(setting_remain) + '-lut_explore'
 
     # if file exists, then name by 2 3 ...
     if os.path.exists(os.path.join(flow.DEFAULT_RESULT_DIR, fname + '.csv')):

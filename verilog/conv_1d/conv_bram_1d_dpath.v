@@ -3,6 +3,7 @@
 
 `include "tree_mac/multiply_core_evo.v"
 `include "vc/vc_shiftregisters.v"
+
 module conv_bram_1d_dpath
 #(
     parameter DATA_WIDTH = 8,
@@ -12,7 +13,7 @@ module conv_bram_1d_dpath
     parameter FILTER_L = 3,
     parameter RESULT_D = 8,
     parameter STRIDE_W = 1,
-
+    parameter TREE_BASE = 2,
     // parameters below are not meant to be set manually
     // ==============================
     parameter RESULT_W = (IMG_W - FILTER_L) / STRIDE_W + 1,
@@ -37,7 +38,7 @@ module conv_bram_1d_dpath
     output  logic                                   last_val,
     // result
     output  logic   [RESULT_RAM_ADDR_WIDTH-1:0]     result_wraddr,
-    output  logic   [DATA_WIDTH-1:0]                result_wrdata,
+    output  logic   [DATA_WIDTH*4-1:0]                result_wrdata,
     output  logic                                   result_wren
 );
 
@@ -47,7 +48,7 @@ module conv_bram_1d_dpath
     genvar i, j, k;
     generate
         // assign duplicated enable signal
-        for(i = 0; i < IMG_D; i = i + 1) begin
+        for(i = 0; i < IMG_D; i = i + 1) begin : img_d_block
             assign en_dup[i:i] = dpath_sr_wren;
         end
     endgenerate
@@ -64,7 +65,7 @@ module conv_bram_1d_dpath
         .val_out()
     );
 
-    multiply_core_evo #(DATA_WIDTH, IMG_D * FILTER_L) multiply_core_inst
+    multiply_core_evo #(DATA_WIDTH, IMG_D * FILTER_L, TREE_BASE) multiply_core_inst
     (
         .clk(clk),
         .reset(reset),
@@ -73,7 +74,7 @@ module conv_bram_1d_dpath
         .sum_out(result_wrdata)
     );
 
-    multiply_core_evo_chain #(RESULT_RAM_ADDR_WIDTH, IMG_D * FILTER_L) addr_chain_inst
+    multiply_core_evo_chain #(RESULT_RAM_ADDR_WIDTH, IMG_D * FILTER_L, TREE_BASE) addr_chain_inst
     (
         .clk(clk),
         .reset(reset),
@@ -81,7 +82,7 @@ module conv_bram_1d_dpath
         .out(result_wraddr)
     );
 
-    multiply_core_evo_chain #(1, IMG_D * FILTER_L) val_chain_inst
+    multiply_core_evo_chain #(1, IMG_D * FILTER_L, TREE_BASE) val_chain_inst
     (
         .clk(clk),
         .reset(reset),

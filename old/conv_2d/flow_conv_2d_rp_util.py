@@ -1,7 +1,8 @@
 # flow script V2.0
 # uses design in conv_reg for convolution, available implementations: ['conv_reg_parallel']
 
-from util import plot_result, gen_result_table, generate_random_matrix_4d, bark, reset_seed, check_and_fill_defaults, gen_long_constant_bits
+from util.plot import plot_result_3d
+from util.flow import gen_result_table, generate_random_matrix_4d, bark, reset_seed, check_and_fill_defaults, gen_long_constant_bits
 import os
 import numpy as np
 import re

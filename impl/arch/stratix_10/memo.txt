@@ -1,0 +1,11 @@
+lut_skip_scratch.py is the file where Xilai and Junius tries to reporduce and figure out why the concurrent utilizaiton is not good enough.
+
+        <output name="O_DUP" num_pins="40" equivalent="none"/>                                                                                   <!-- duplicated outputs  -->
+        <output name="O_DUP" num_pins="40" equivalent="none"/>                                                                                   <!-- duplicated outputs  -->
+        <direct name="output_dup" input="lab.O" output="clb.O_DUP"/>                                                                            <!-- duplicated outputs  --> 
+
+
+
+lut_skip_scratch3.py is the file that contains doubleduty for lut5 (not lut56), and with LAB-LAB connection. and no dummy output, as we know the dummy output can be solved by increase target pin utilization.
+
+base_oringal is the demo file that contains completely original design, with no modification (not even bug fix for the "equivalent")

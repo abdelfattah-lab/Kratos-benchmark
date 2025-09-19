@@ -6,6 +6,7 @@
 `include "vc/vc_mac.v"
 `include "vc/vc_rotation_mux.v"
 `include "tree_mac/multiply_core_evo.v"
+
 module conv_bram_sr_fast_dpath
 #(
     parameter DATA_WIDTH = 12, // data width
@@ -17,6 +18,8 @@ module conv_bram_sr_fast_dpath
     
     parameter STRIDE_W = 1, // stride alone width
     parameter STRIDE_H = 1, // stride alone height
+
+    parameter TREE_BASE = 2,
 
     // parameters below are not meant to be set manually
     // ==============================
@@ -62,7 +65,7 @@ module conv_bram_sr_fast_dpath
     input   logic    [DATA_WIDTH*IMG_D*FILTER_L-1:0]   img_data_in ,
 
     // to result image
-    output  logic    [DATA_WIDTH-1:0]               result_data_out,
+    output  logic    [DATA_WIDTH*4-1:0]             result_data_out,
     output  logic    [RESULT_RAM_ADDR_WIDTH-1:0]    result_wraddress,
     output  logic                                   result_wren
 );
@@ -71,7 +74,7 @@ module conv_bram_sr_fast_dpath
 
     logic [FILTER_L-1:0] dpath_wren_dup;
     generate
-        for (i = 0; i < FILTER_L; i = i + 1) begin
+        for (i = 0; i < FILTER_L; i = i + 1) begin : filter_l_block
             assign dpath_wren_dup[i] = dpath_wren;
         end
     endgenerate
@@ -81,13 +84,15 @@ module conv_bram_sr_fast_dpath
     logic [DATA_WIDTH*IMG_D*FILTER_L*FILTER_L-1:0] sr_data_out_flattened;
 
     generate
-        for (i = 0; i < IMG_D; i = i + 1) begin
+        for (i = 0; i < IMG_D; i = i + 1) begin : img_d_block
             logic    [DATA_WIDTH*FILTER_L-1:0]               img_data_regularized;
-            logic    [DATA_WIDTH*FILTER_L*FILTER_L-1:0]       sr_data_out;
+            logic    [DATA_WIDTH*FILTER_L*FILTER_L-1:0]      sr_data_out;
+            logic    [DATA_WIDTH-1:0]                        img_data_in_packed [0:FILTER_L-1],
+                                                             img_data_regularized_packed [0:FILTER_L-1];
             vc_rotation_mux_back_comb #(DATA_WIDTH, FILTER_L) data_in_rotation_mux
             (
-                .data_in(img_data_in[(i+1)*DATA_WIDTH*FILTER_L-1:i*DATA_WIDTH*FILTER_L]),
-                .data_out(img_data_regularized),
+                .data_in(img_data_in_packed),
+                .data_out(img_data_regularized_packed),
                 .addr_in(dpath_rotation_offset)
             );
             vc_shiftregisters_2d_ar #(DATA_WIDTH, FILTER_L, FILTER_L) sr_2d
@@ -105,11 +110,16 @@ module conv_bram_sr_fast_dpath
             
             assign sr_data_out_flattened[(i+1)*DATA_WIDTH*FILTER_L*FILTER_L-1:i*DATA_WIDTH*FILTER_L*FILTER_L] = sr_data_out;
 
+            // convert unpacked to packed img_data_in, regularized.
+            for (j = 0; j < FILTER_L; j=j+1) begin : pack_img_data_block
+                assign img_data_in_packed[j] = img_data_in[i*FILTER_L + j*DATA_WIDTH +: DATA_WIDTH];
+                assign img_data_regularized[j*DATA_WIDTH +: DATA_WIDTH] = img_data_regularized_packed[j];
+            end
         end
     endgenerate
 
 
-    multiply_core_evo_withaddr #(DATA_WIDTH, FILTER_L*FILTER_L*IMG_D, RESULT_RAM_ADDR_WIDTH, 1) mul
+    multiply_core_evo_withaddr #(DATA_WIDTH, FILTER_L*FILTER_L*IMG_D, RESULT_RAM_ADDR_WIDTH, 1, TREE_BASE) mul
     (
         .clk(clk),
         .reset(reset),

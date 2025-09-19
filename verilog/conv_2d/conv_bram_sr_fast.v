@@ -17,6 +17,8 @@ module conv_bram_sr_fast
     parameter STRIDE_H = 1,
 
     parameter buffer_stages = 5, // $clog2(FILTER_K / 8),
+    
+    parameter TREE_BASE = 2,
 
     // parameters below are not meant to be set manually
     // ==============================
@@ -54,10 +56,10 @@ module conv_bram_sr_fast
     input   logic    [DATA_WIDTH*IMG_D*FILTER_W-1:0]                       img_data_in,
     // results
     output  logic    [RESULT_RAM_ADDR_WIDTH*RESULT_D-1:0]            result_wraddress,
-    output  logic    [DATA_WIDTH*RESULT_D-1:0]                       result_data_out ,
+    output  logic    [DATA_WIDTH*4*RESULT_D-1:0]                     result_data_out ,
     output  logic    [RESULT_D-1:0]                                  result_wren     
 );
-
+    localparam RES_WIDTH = DATA_WIDTH * 4;
     localparam FILTER_L = FILTER_W;
     localparam FILTER_L_ADDR_WIDTH = FILTER_W_ADDR_WIDTH;
 
@@ -73,11 +75,11 @@ module conv_bram_sr_fast
 
     genvar i,j;
     // assign input address
-    for (i = 0; i < IMG_D; i = i + 1) begin
-
+    generate
+        for (i = 0; i < IMG_D; i = i + 1) begin : img_d_block
             assign img_rdaddress[(i+1)*FILTER_L*IMG_RAM_ADDR_WIDTH_PER_STRIPE-1:i*FILTER_L*IMG_RAM_ADDR_WIDTH_PER_STRIPE] = img_rdaddr;
- 
-    end
+        end
+    endgenerate
 
     conv_bram_sr_fast_ctrl #(DATA_WIDTH,IMG_W,IMG_H,IMG_D,FILTER_L,FILTER_K,STRIDE_W,STRIDE_H) conv_bram_sr_fast_ctrl_inst (
         .clk(clk),
@@ -97,8 +99,8 @@ module conv_bram_sr_fast
 
     genvar k;
     generate
-        for (k = 0; k < FILTER_K; k = k + 1) begin
-        conv_bram_sr_fast_dpath #(DATA_WIDTH,IMG_W,IMG_H,IMG_D,FILTER_L,FILTER_K,STRIDE_W,STRIDE_H) conv_bram_sr_fast_dpath_inst (
+        for (k = 0; k < FILTER_K; k = k + 1) begin : filter_k_block
+        conv_bram_sr_fast_dpath #(DATA_WIDTH,IMG_W,IMG_H,IMG_D,FILTER_L,FILTER_K,STRIDE_W,STRIDE_H, TREE_BASE) conv_bram_sr_fast_dpath_inst (
             .clk(clk),
             .reset(reset),
 
@@ -114,7 +116,7 @@ module conv_bram_sr_fast
 
             .img_data_in(img_data_in),
 
-            .result_data_out(result_data_out[(k+1) * DATA_WIDTH - 1:k * DATA_WIDTH]),
+            .result_data_out(result_data_out[(k+1) * RES_WIDTH - 1:k * RES_WIDTH]),
             .result_wraddress(result_wraddress[(k+1) * RESULT_RAM_ADDR_WIDTH - 1:k * RESULT_RAM_ADDR_WIDTH]),
             .result_wren(result_wren[k:k])
         );

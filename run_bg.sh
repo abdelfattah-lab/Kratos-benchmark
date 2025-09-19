@@ -16,7 +16,7 @@ start() {
         echo "The service is already running."
     else
         chmod +x $BASH_RUN_SCRIPT
-        nohup $BASH_RUN_SCRIPT &> $BASH_RUN_SCRIPT.out &
+        nohup stdbuf -o0 $BASH_RUN_SCRIPT > $BASH_RUN_SCRIPT.out &
         echo $! > $PID_FILE
         echo "Process ID: $(cat $PID_FILE)"
         echo "Service started."

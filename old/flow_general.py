@@ -20,8 +20,10 @@ import conv_2d.flow_conv_2d_pw_util as flow_conv_2d_pw_util
 import conv_2d.flow_conv_2d_rp_util as flow_conv_2d_rp_util
 import conv_2d.flow_conv_2d_fu_util as flow_conv_2d_fu_util
 # tools
-import util
+import util.extract
+import util.flow
 import arch_generator
+import util.plot
 
 ROOT_DIR = os.path.dirname(os.path.realpath(__file__))
 ERR_REPORT_FILE = 'experiments/errors.txt'
@@ -111,7 +113,7 @@ class QuartusRunner:
         if (self.process is not None) and self.is_running():
             raise RuntimeError('QuartusRunner is still running.')
         else:
-            self.result = util.extract_info_quartus(os.path.join(self.exp_dir, self.flow.DEFAULT_OUTPUT_DIR))
+            self.result = util.extract.extract_info_quartus(os.path.join(self.exp_dir, self.flow.DEFAULT_OUTPUT_DIR))
             return self.result
 
 
@@ -240,7 +242,7 @@ class VTRRunner:
         if (self.process is not None) and self.is_running():
             raise RuntimeError('VTRRunner is still running.')
         else:
-            self.result = util.extract_info_vtr(os.path.join(self.exp_dir_vtr, 'temp'), ['clb', 'fle'])
+            self.result = util.extract.extract_info_vtr(os.path.join(self.exp_dir_vtr, 'temp'), ['clb', 'fle'])
             return self.result
 
 
@@ -309,18 +311,18 @@ def batch_run(flow, settings, num_parallel_tasks=1, flow_runner: QuartusRunner |
 
     os.makedirs(flow.DEFAULT_RESULT_DIR, exist_ok=True)
 
-    fname = util.gen_dict_file_name(setting_remain)
-    tname = util.gen_dict_title(setting_remain)
+    fname = util.flow.gen_dict_file_name(setting_remain)
+    tname = util.flow.gen_dict_title(setting_remain)
     # plot results
-    util.plot_result(sparsity_list, data_width_list, rfmaxs, description1='sparsity', description2='data width', description3='restricted fmax (MHz)',
+    util.plot.plot_result_3d(sparsity_list, data_width_list, rfmaxs, description1='sparsity', description2='data width', description3='restricted fmax (MHz)',
                      title=f'fmax vs sparsity and data width\n{tname}', save_name=os.path.join(flow.DEFAULT_RESULT_DIR, f'fmax_{fname}.png'), azimuth=125)
-    util.plot_result(sparsity_list, data_width_list, alms, description1='sparsity', description2='data width', description3='ALMs',
+    util.plot.plot_result_3d(sparsity_list, data_width_list, alms, description1='sparsity', description2='data width', description3='ALMs',
                      title=f'ALMs vs sparsity and data width\n{tname}', save_name=os.path.join(flow.DEFAULT_RESULT_DIR, f'alms_{fname}.png'), azimuth=-55)
     # save results in txt
     with open(os.path.join(flow.DEFAULT_RESULT_DIR, f'fmax_{fname}.txt'), 'w') as f:
-        f.write(util.gen_result_table(sparsity_list, data_width_list, rfmaxs, info='sparsity\\data width'))
+        f.write(util.flow.gen_result_table(sparsity_list, data_width_list, rfmaxs, info='sparsity\\data width'))
     with open(os.path.join(flow.DEFAULT_RESULT_DIR, f'alms_{fname}.txt'), 'w') as f:
-        f.write(util.gen_result_table(sparsity_list, data_width_list, alms, info='sparsity\\data width'))
+        f.write(util.flow.gen_result_table(sparsity_list, data_width_list, alms, info='sparsity\\data width'))
     # back to root dir
     os.chdir(current_dir)
 
@@ -389,18 +391,18 @@ def batch_run_arch(flow, settings, num_parallel_tasks=8):
 
     os.makedirs(flow.DEFAULT_RESULT_DIR, exist_ok=True)
 
-    fname = util.gen_dict_file_name(setting_remain)
-    tname = util.gen_dict_title(setting_remain)
+    fname = util.flow.gen_dict_file_name(setting_remain)
+    tname = util.flow.gen_dict_title(setting_remain)
     # plot results
-    util.plot_result(num_feedback_ble_list, lut_size_list, rfmaxs, description1='num_feedback_ble', description2='lut_size', description3='restricted fmax (MHz)',
+    util.plot.plot_result_3d(num_feedback_ble_list, lut_size_list, rfmaxs, description1='num_feedback_ble', description2='lut_size', description3='restricted fmax (MHz)',
                      title=f'fmax vs num_feedback_ble and lut_size\n{tname}', save_name=os.path.join(flow.DEFAULT_RESULT_DIR, f'fmax_{fname}.png'), azimuth=125)
-    util.plot_result(num_feedback_ble_list, lut_size_list, alms, description1='num_feedback_ble', description2='lut_size', description3='ALMs',
+    util.plot.plot_result_3d(num_feedback_ble_list, lut_size_list, alms, description1='num_feedback_ble', description2='lut_size', description3='ALMs',
                      title=f'ALMs vs num_feedback_ble and lut_size\n{tname}', save_name=os.path.join(flow.DEFAULT_RESULT_DIR, f'alms_{fname}.png'), azimuth=-55)
     # save results in txt
     with open(os.path.join(flow.DEFAULT_RESULT_DIR, f'fmax_{fname}.txt'), 'w') as f:
-        f.write(util.gen_result_table(num_feedback_ble_list, lut_size_list, rfmaxs, info='num_feedback_ble\\lut_size'))
+        f.write(util.flow.gen_result_table(num_feedback_ble_list, lut_size_list, rfmaxs, info='num_feedback_ble\\lut_size'))
     with open(os.path.join(flow.DEFAULT_RESULT_DIR, f'alms_{fname}.txt'), 'w') as f:
-        f.write(util.gen_result_table(num_feedback_ble_list, lut_size_list, alms, info='num_feedback_ble\\lut_size'))
+        f.write(util.flow.gen_result_table(num_feedback_ble_list, lut_size_list, alms, info='num_feedback_ble\\lut_size'))
     # back to root dir
     os.chdir(current_dir)
 
@@ -496,7 +498,7 @@ def batch_run_arch_cartesian(flow, settings, num_parallel_tasks=5):
 
     # save results to csv.
     os.makedirs(flow.DEFAULT_RESULT_DIR, exist_ok=True)
-    fname = util.gen_dict_file_name(setting_remain) + '_cartesian'
+    fname = util.flow.gen_dict_file_name(setting_remain) + '_cartesian'
 
     # if file exists, then name by 2 3 ...
     if os.path.exists(os.path.join(flow.DEFAULT_RESULT_DIR, fname + '.csv')):
@@ -600,7 +602,7 @@ def batch_run_arch_explore_lut(flow, settings: dict, num_parallel_tasks=5, descr
 
     # save results to csv.
     os.makedirs(flow.DEFAULT_RESULT_DIR, exist_ok=True)
-    fname = util.gen_dict_file_name(setting_remain) + '-lut_explore'
+    fname = util.flow.gen_dict_file_name(setting_remain) + '-lut_explore'
 
     # if file exists, then name by 2 3 ...
     if os.path.exists(os.path.join(flow.DEFAULT_RESULT_DIR, fname + '.csv')):

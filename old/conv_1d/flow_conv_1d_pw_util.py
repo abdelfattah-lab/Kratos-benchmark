@@ -1,7 +1,8 @@
 # flow script V2.0
 # uses design in conv_bram_1d for 1D convolution, available implementations: ['conv_bram_1d']
 
-from util import plot_result, gen_result_table, generate_flattened_bit, bark, reset_seed, check_and_fill_defaults, gen_long_constant_bits
+from util.plot import plot_result_3d
+from util.flow import gen_result_table, generate_flattened_bit, bark, reset_seed, check_and_fill_defaults, gen_long_constant_bits
 import os
 import numpy as np
 import re

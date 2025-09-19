@@ -1,7 +1,8 @@
 # flow script V2.0
 # uses design in conv_bram_sr for convolution, available implementations: ['conv_bram_sr_fast']
 # this uses data interleaving for better throughput
-from util import gen_long_constant_bits, plot_result, gen_result_table, generate_flattened_bit, bark, reset_seed, check_and_fill_defaults
+from util.plot import plot_result_3d
+from util.flow import gen_long_constant_bits, gen_result_table, generate_flattened_bit, bark, reset_seed, check_and_fill_defaults
 import os
 import numpy as np
 import re

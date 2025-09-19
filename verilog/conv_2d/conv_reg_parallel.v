@@ -23,6 +23,9 @@ module conv_reg_parallel
 
     parameter buffer_stages = 5, // $clog2(FILTER_K / 8),
     parameter use_bram = 0, // use bram or not, if use bram, then assume read data has 1 cycle latency, if use reg, then assume read data has 0 cycle latency
+    
+    parameter TREE_BASE = 2,
+
     // parameters below are not meant to be set manually
     // ==============================
     
@@ -60,9 +63,10 @@ module conv_reg_parallel
     input   logic    [IMG_D*IMG_W*DATA_WIDTH-1:0]                       img_data_in,
     // results
     output  logic    [RESULT_D*RESULT_W*RESULT_H_ADDR_WIDTH-1:0]        result_wraddress,
-    output  logic    [RESULT_D*RESULT_W*DATA_WIDTH-1:0]                 result_data_out,
+    output  logic    [RESULT_D*RESULT_W*DATA_WIDTH*4-1:0]               result_data_out,
     output  logic    [RESULT_D*RESULT_W-1:0]                            result_wren
 );
+    localparam RES_WIDTH = DATA_WIDTH*4;
 
     typedef enum logic [$clog2(5)-1:0] {
         STATE_IDLE, // waiting for start
@@ -95,8 +99,9 @@ module conv_reg_parallel
 
     generate
         // create shift register column array, each length is the filter height
-        for (i = 0; i < IMG_D; i = i + 1) begin
-            for (j = 0; j < IMG_W;  j = j + 1) begin
+        for (i = 0; i < IMG_D; i = i + 1) begin : img_d_block
+            for (j = 0; j < IMG_W;  j = j + 1) begin : img_w_block
+                logic [DATA_WIDTH*FILTER_H - 1:0] temp_out;
                 vc_shiftregisters_1d_ar #(DATA_WIDTH, FILTER_H) img_temp_sr
                 (
                     .clk(clk),
@@ -105,45 +110,62 @@ module conv_reg_parallel
                     .en(1'b1),
                     .val_in(),
 
-                    .data_out(img_data_sr_out[i][j])
+                    .data_out(temp_out)
                 );
+
+                for (k = 0; k < FILTER_H; k = k + 1) begin : filter_h_block1
+                    assign img_data_sr_out[i][j][k] = temp_out[(k+1)*DATA_WIDTH-1:k*DATA_WIDTH];
+                end
             end
         end
 
         // create multiply and core array
-        for (i = 0; i < RESULT_D; i = i + 1) begin
-            for (j = 0; j < RESULT_W; j = j + 1) begin
-                logic   [DATA_WIDTH-1:0]    input_flattened     [0:IMG_D * FILTER_H * FILTER_W- 1];
+        for (i = 0; i < RESULT_D; i = i + 1) begin : result_d_block
+            for (j = 0; j < RESULT_W; j = j + 1) begin : result_w_block
+                logic   [DATA_WIDTH-1:0]    input_flattened     [0:IMG_D * FILTER_H * FILTER_W - 1];
                 logic   [DATA_WIDTH-1:0]    weight_flattened    [0:IMG_D * FILTER_H * FILTER_W - 1];
-                multiply_core_evo_withaddr # (DATA_WIDTH, IMG_D * FILTER_H * FILTER_W, RESULT_H_ADDR_WIDTH, 1) mulcore
+
+                // logic   [DATA_WIDTH * IMG_D * FILTER_H * FILTER_W - 1:0] input_flattened_row;
+                // logic   [DATA_WIDTH * IMG_D * FILTER_H * FILTER_W - 1:0] weight_flattened_col;
+
+                multiply_core_evo_withaddr # (DATA_WIDTH, IMG_D * FILTER_H * FILTER_W, RESULT_H_ADDR_WIDTH, 1, TREE_BASE) mulcore
                 (
                     .clk(clk),
                     .reset(reset),
                     .row(input_flattened),
                     .col(weight_flattened),
+                    // .row(input_flattened_row),
+                    // .col(weight_flattened_col),
 
                     .addr_i_in(result_h_wraddr_delayed),
                     .addr_k_in(),
                     .val_in(result_val_ctrl_delayed),
 
-                    .sum_out(result_data_out[(i * RESULT_W + j) * DATA_WIDTH +: DATA_WIDTH]),
+                    .sum_out(result_data_out[(i * RESULT_W + j) * RES_WIDTH +: RES_WIDTH]),
                     .addr_i_out(result_wraddress[(i * RESULT_W + j) * RESULT_H_ADDR_WIDTH +: RESULT_H_ADDR_WIDTH]),
                     .addr_k_out(),
                     .val_out(result_wren[i * RESULT_W + j])
                 );
 
                 // connecting flattened wires
-                for (p = 0; p < IMG_D; p = p + 1) begin
-                    for (q = 0; q < FILTER_H; q = q + 1) begin
-                        for (r = 0; r < FILTER_W; r = r + 1) begin
+                for (p = 0; p < IMG_D; p = p + 1) begin : img_d_block
+                    for (q = 0; q < FILTER_H; q = q + 1) begin : filter_h_block
+                        for (r = 0; r < FILTER_W; r = r + 1) begin : filter_w_block
                             // assign filter_data_flattened[i * FILTER_H * FILTER_W + j * FILTER_W + k] = fil[(resd * IMG_D * FILTER_H * FILTER_W + i * FILTER_H * FILTER_W + j * FILTER_W + k) * DATA_WIDTH +: DATA_WIDTH];
 
-                            // assign input_flattened[p * FILTER_H * FILTER_W + q * FILTER_W + r] = img_data_sr_out[p][j * STRIDE_W + r][FILTER_H - 1 - q];
                             assign input_flattened[p * FILTER_H * FILTER_W + q * FILTER_W + r] = img_data_sr_out[p][j * STRIDE_W + r][FILTER_H - 1 - q];
                             assign weight_flattened[p * FILTER_H * FILTER_W + q * FILTER_W + r] = fil[(i * IMG_D * FILTER_H * FILTER_W + p * FILTER_H * FILTER_W + q * FILTER_W + r) * DATA_WIDTH +: DATA_WIDTH];
+                            // assign input_flattened_row[(p * FILTER_H * FILTER_W + q * FILTER_W + r) * DATA_WIDTH +: DATA_WIDTH] = img_data_sr_out[p][j * STRIDE_W + r][FILTER_H - 1 - q];
+                            // assign weight_flattened_col[(p * FILTER_H * FILTER_W + q * FILTER_W + r) * DATA_WIDTH +: DATA_WIDTH] = fil[(i * IMG_D * FILTER_H * FILTER_W + p * FILTER_H * FILTER_W + q * FILTER_W + r) * DATA_WIDTH +: DATA_WIDTH];
                         end
                     end
                 end
+
+                // // connect flattened wires to row/col
+                // for (p = 0; p < IMG_D * FILTER_H * FILTER_W; p = p + 1) begin : compress_rowcol_block
+                //     assign input_flattened_row[p * DATA_WIDTH +: DATA_WIDTH] = input_flattened[p];
+                //     assign weight_flattened_col[p * DATA_WIDTH +: DATA_WIDTH] = weight_flattened[p];
+                // end
             end
         end
     endgenerate
@@ -192,15 +214,15 @@ module conv_reg_parallel
     // if uses reg, then read has no latency, so use the current value
     generate
         if (use_bram) begin
-            for (i = 0; i < IMG_D; i = i + 1) begin
-                for (j = 0; j < IMG_W; j = j + 1) begin
+            for (i = 0; i < IMG_D; i = i + 1) begin : img_d_block
+                for (j = 0; j < IMG_W; j = j + 1) begin : img_w_block
                     // assign img_rdaddress[i][j] = img_h_rdaddr_next;
                     assign img_rdaddress[(i * IMG_W + j) * IMG_RAM_ADDR_WIDTH +: IMG_RAM_ADDR_WIDTH] = img_h_rdaddr_next;
                 end
             end
         end else begin
-            for (i = 0; i < IMG_D; i = i + 1) begin
-                for (j = 0; j < IMG_W; j = j + 1) begin
+            for (i = 0; i < IMG_D; i = i + 1) begin : img_d_block
+                for (j = 0; j < IMG_W; j = j + 1) begin : img_w_block
                     assign img_rdaddress[(i * IMG_W + j) * IMG_RAM_ADDR_WIDTH +: IMG_RAM_ADDR_WIDTH] = img_h_rdaddr;
                 end
             end

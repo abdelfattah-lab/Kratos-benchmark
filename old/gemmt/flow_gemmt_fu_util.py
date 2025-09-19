@@ -1,7 +1,8 @@
 # flow script V2.0
 # uses design in tree mac for matrix multiplication, input are gisters instead of bram, available implementations: ['mm_reg_full']
 
-from util import plot_result, gen_result_table, generate_flattened_bit, bark, reset_seed, check_and_fill_defaults
+from util.plot import plot_result_3d
+from util.flow import gen_result_table, generate_flattened_bit, bark, reset_seed, check_and_fill_defaults
 import os
 import numpy as np
 import re

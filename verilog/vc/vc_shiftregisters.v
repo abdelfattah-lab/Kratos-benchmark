@@ -29,7 +29,7 @@ module vc_shiftregisters_1d_ar
     assign val_stream[0:0] = val_in;
     genvar i;
     generate
-        for(i = 0; i < NUM_ELEMENTS; i = i + 1) begin
+        for(i = 0; i < NUM_ELEMENTS; i = i + 1) begin : num_element_block
             vc_EnReg #(DATA_WIDTH) data_regs
             (
                 .clk(clk),
@@ -77,7 +77,7 @@ module vc_shiftregisters_2d_ar
     genvar i;
 
     generate
-        for(i = 0; i < HEIGHT; i = i + 1) begin
+        for(i = 0; i < HEIGHT; i = i + 1) begin : height_block
             vc_shiftregisters_1d_ar #(DATA_WIDTH, WIDTH) data_regs
             (
                 .clk(clk),

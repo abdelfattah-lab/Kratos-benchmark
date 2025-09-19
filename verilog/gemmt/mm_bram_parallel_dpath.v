@@ -1,12 +1,16 @@
 `ifndef __MM_BRAM_PARALLEL_DPATH_V__
 `define __MM_BRAM_PARALLEL_DPATH_V__
 `include "tree_mac/multiply_core_evo.v"
+
 module mm_bram_parallel_dpath
 #(
     parameter DATA_WIDTH = 8,
     parameter ROW_NUM = 32,
     parameter COL_NUM = 32,
     parameter LENGTH = 32,
+
+    parameter TREE_BASE = 2,
+
     // below are parameters not meant to be set manually
     parameter ROW_ADDR_WIDTH = $clog2(ROW_NUM),
     parameter COL_ADDR_WIDTH = $clog2(COL_NUM),
@@ -27,10 +31,11 @@ module mm_bram_parallel_dpath
     input   logic   [DATA_WIDTH*LENGTH*COL_NUM-1:0]        weights,
 
     // to result sram
-    output  logic   [DATA_WIDTH*COL_NUM-1:0]        row_data_out,
+    output  logic   [DATA_WIDTH*4*COL_NUM-1:0]        row_data_out,
     output  logic   [ROW_ADDR_WIDTH*COL_NUM-1:0]    row_wraddr,
     output  logic   [COL_NUM-1:0]                   row_wr_en 
 );
+    localparam SUM_WIDTH = DATA_WIDTH * 4;
 
     genvar i,j,k;
 
@@ -40,16 +45,16 @@ module mm_bram_parallel_dpath
 
     generate
         // transpose the weights so it can be indexed by column
-        for(i = 0;i < LENGTH; i = i +1) begin
-            for(j = 0;j < COL_NUM; j = j +1) begin
+        for(i = 0;i < LENGTH; i = i +1) begin : length_block
+            for(j = 0;j < COL_NUM; j = j +1) begin : col_num_block
                 assign weights_t_flattened[j][(i+1)*DATA_WIDTH-1:i*DATA_WIDTH] = weights[(i*COL_NUM+j+1)*DATA_WIDTH-1:(i*COL_NUM+j)*DATA_WIDTH];
             end
         end
 
 
         // create multiply cores
-        for (i =0; i < COL_NUM; i = i + 1) begin
-            multiply_core_evo_withaddr #(DATA_WIDTH, LENGTH , ROW_ADDR_WIDTH, 1) mul_core_inst
+        for (i =0; i < COL_NUM; i = i + 1) begin : col_num_block
+            multiply_core_evo_withaddr #(DATA_WIDTH, LENGTH , ROW_ADDR_WIDTH, 1, TREE_BASE) mul_core_inst
             (
                 .clk(clk),
                 .reset(reset),
@@ -60,15 +65,13 @@ module mm_bram_parallel_dpath
                 .addr_k_in(),
                 .val_in(dpath_sum_en),
 
-                .sum_out(row_data_out[(i+1)*DATA_WIDTH-1:i*DATA_WIDTH]),
+                .sum_out(row_data_out[(i+1)*SUM_WIDTH-1:i*SUM_WIDTH]),
                 .addr_i_out(row_wraddr[(i+1)*ROW_ADDR_WIDTH-1:i*ROW_ADDR_WIDTH]),
                 .addr_k_out(),
                 .val_out(row_wr_en[i])
             );
         end
     endgenerate
-
-
 
 endmodule
 

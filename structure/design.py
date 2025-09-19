@@ -1,4 +1,5 @@
 from structure.util import ParamsChecker, DynamicallyNamed
+from structure.plugin import Plugin
 
 class Design(DynamicallyNamed, ParamsChecker):
     """
@@ -16,6 +17,9 @@ class Design(DynamicallyNamed, ParamsChecker):
             wrapper_module_name = f"{impl}_wrapper"
         self.wrapper_module_name = wrapper_module_name
     
+    def get_formal_name(self) -> str:
+        self.raise_unimplemented("get_formal_name")
+
     def gen_sdc(self, **kwargs) -> str:
         """
         Generate an SDC file (Quartus-only).
@@ -28,12 +32,22 @@ class Design(DynamicallyNamed, ParamsChecker):
         """
         self.raise_unimplemented("gen_tcl")
 
-    def gen_wrapper(self, **kwargs):
+    def gen_wrapper(self, **kwargs) -> str:
         """
         Generate a wrapper file.
         """
         self.raise_unimplemented("gen_wrapper")
-
+    
+    def gen_tb_params(self, **kwargs) -> dict[str, dict[str, any]]:
+        """
+        Generate 'tb_params' for structure.test.VerilogImplTester.
+        """
+        self.raise_unimplemented("gen_tb_params")
+    
+    def gen_test_case(self, **kwargs) -> str:
+        """
+        Generate a test case for structure.test.VerilogImplTester.verify().
+        """
 
 DEFAULTS_SDC = {
     'clock': 1
@@ -51,3 +65,11 @@ class StandardizedSdcDesign(Design):
         use_params = self.autofill_defaults(DEFAULTS_SDC, kwargs)
         template = f"create_clock -period {use_params['clock']} [get_ports clk]"
         return template
+    
+class PluginDesign(StandardizedSdcDesign):
+    """
+    Design that can take in and use a Plugin.
+    """
+    def __init__(self, impl: str, module_dir: str, wrapper_module_name: str, plugin: Plugin|None = None):
+        super().__init__(impl, module_dir, wrapper_module_name)
+        self.plugin = plugin
