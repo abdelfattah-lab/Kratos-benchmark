@@ -11,6 +11,7 @@ import runs.benchmarks.kratos_tiny as tiny
 from impl.arch.stratix_10.base import BaseArchFactory
 from impl.arch.stratix_10.parallel_carry import ParallelCarryArchFactory
 from impl.arch.stratix_10.lut_skip import LUTSkipArchFactory
+from impl.arch.stratix_10.four_bit_adder import FourBitSingleChainArchFactory, FourBitDoubleChainArchFactory
 
 # Conv-1D
 from impl.design.conv_1d.fu import Conv1dFuDesign
@@ -33,7 +34,11 @@ import os.path as path
 
 # ARCH = BaseArchFactory()
 # ARCH = ParallelCarryArchFactory()
-ARCH = LUTSkipArchFactory()
+ARCH_DOUBLE_DUTY = LUTSkipArchFactory()
+ARCH_4BIT_DOUBLE_ADDER = FourBitDoubleChainArchFactory()
+ARCH_4BIT_SINGLE_ADDER = FourBitSingleChainArchFactory()
+
+ARCH = ARCH_4BIT_SINGLE_ADDER
 
 BASE_PARAMS = {
     keys.KEY_EXP: {
@@ -96,7 +101,7 @@ run_vtr_all_designs(
         'ff': 'Total Register Count',
         'lut': 'LUT Count',
     },
-    num_parallel_tasks=16,
+    num_parallel_tasks=8,
     verbose=True,
     desc='tiny_run',
     notify_batch=5,
