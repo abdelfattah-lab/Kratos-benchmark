@@ -13,8 +13,9 @@ import util.netstats as ns
 from lxml.etree import Element
 
 # Override TEMPLATE to read from external file as requested
-TEMPLATE_SINGLE = open('/home/ayf7/repos/Kratos-benchmark/impl/arch/stratix_10/4bit_adder_single_chain_arch.xml', 'r', encoding='utf-8').read()
-TEMPLATE_DOUBLE = open('/home/ayf7/repos/Kratos-benchmark/impl/arch/stratix_10/4bit_adder_single_chain_arch.xml', 'r', encoding='utf-8').read()
+TEMPLATE_DCC1 = open('/home/ayf7/repos/Kratos-benchmark/impl/arch/stratix_10/4bit_adder_dcc1.xml', 'r', encoding='utf-8').read()
+TEMPLATE_DCC2 = open('/home/ayf7/repos/Kratos-benchmark/impl/arch/stratix_10/4bit_adder_dcc2.xml', 'r', encoding='utf-8').read()
+TEMPLATE_DCC3 = open('/home/ayf7/repos/Kratos-benchmark/impl/arch/stratix_10/4bit_adder_dcc3_small.xml', 'r', encoding='utf-8').read()
 
 def gen_layout_sizing(fixed_size: tuple[int, int]|None):
     if fixed_size is None:
@@ -24,30 +25,75 @@ def gen_layout_sizing(fixed_size: tuple[int, int]|None):
     return f'<fixed_layout name="fixed_arch_size" width="{w}" height="{h}">', '</fixed_layout>'
 
 DEFAULTS = {
-    'per_fle_area': 2167.3155, # LAB area / 10
+    # Note: per_fle_area is used by the reporting pipeline (e.g., area_fle = fle * per_fle_area).
+    # The XML templates below hard-code grid_logic_tile_area. Keep this default in sync per-class.
+    # This base DEFAULTS is used by DCC1; DCC2/DCC3 override in verify_params.
+    'per_fle_area': 2443.995, # DCC1: grid_logic_tile_area 24439.95 => /10
     'enable_lut6': True, # turn on/off 6-LUT mode
     'fixed_size': None, # (w, h) of fixed size, None for auto sizing
 }
 
-class FourBitSingleChainArchFactory(ArchFactory, ParamsChecker):
+class FourBitDCC1ArchFactory(ArchFactory, ParamsChecker):
+    def get_name(self, per_fle_area: float, enable_lut6: bool, fixed_size: tuple[int, int]|None, **kwargs):
+        # Distinguish single-chain vs. double-chain in the generated folder name
+        name = f"type.s10-chain_1"
+        return name
+    
+    def verify_params(self, params):
+        # DCC1 template uses grid_logic_tile_area=24439.95
+        filled = self.verify_required_keys(DEFAULTS, [], params)
+        filled['per_fle_area'] = 2443.995
+        return filled
+    
+    def get_arch(self, per_fle_area: float, enable_lut6: bool, fixed_size: tuple[int, int]|None, **kwargs):
+        # Inject fixed layout sizing if requested; otherwise return template as-is
+        if fixed_size is None:
+            return TEMPLATE_DCC1
+        w, h = fixed_size
+        s = TEMPLATE_DCC1
+        s = s.replace('<auto_layout aspect_ratio="1.0">', f'<fixed_layout name="fixed_arch_size" width="{w}" height="{h}">')
+        s = s.replace('</auto_layout>', '</fixed_layout>')
+        return s
+
+
+class FourBitDCC2ArchFactory(ArchFactory, ParamsChecker):
     def get_name(self, per_fle_area: float, enable_lut6: bool, fixed_size: tuple[int, int]|None, **kwargs):
         name = f"type.s10-chain_2"
         return name
     
     def verify_params(self, params):
-        return self.verify_required_keys(DEFAULTS, [], params)
+        # DCC2 template uses grid_logic_tile_area=25201.9
+        filled = self.verify_required_keys(DEFAULTS, [], params)
+        filled['per_fle_area'] = 2520.19
+        return filled
     
     def get_arch(self, per_fle_area: float, enable_lut6: bool, fixed_size: tuple[int, int]|None, **kwargs):
-        return TEMPLATE_SINGLE
+        # Inject fixed layout sizing if requested; otherwise return template as-is
+        if fixed_size is None:
+            return TEMPLATE_DCC2
+        w, h = fixed_size
+        s = TEMPLATE_DCC2
+        s = s.replace('<auto_layout aspect_ratio="1.0">', f'<fixed_layout name="fixed_arch_size" width="{w}" height="{h}">')
+        s = s.replace('</auto_layout>', '</fixed_layout>')
+        return s
 
-
-class FourBitDoubleChainArchFactory(ArchFactory, ParamsChecker):
+class FourBitDCC3ArchFactory(ArchFactory, ParamsChecker):
     def get_name(self, per_fle_area: float, enable_lut6: bool, fixed_size: tuple[int, int]|None, **kwargs):
-        name = f"type.s10-chain_2"
+        name = f"type.s10-chain_3"
         return name
     
     def verify_params(self, params):
-        return self.verify_required_keys(DEFAULTS, [], params)
+        # DCC3 template uses grid_logic_tile_area=25241.08 (small)
+        filled = self.verify_required_keys(DEFAULTS, [], params)
+        filled['per_fle_area'] = 2524.108
+        return filled
     
     def get_arch(self, per_fle_area: float, enable_lut6: bool, fixed_size: tuple[int, int]|None, **kwargs):
-        return TEMPLATE_DOUBLE
+        # Inject fixed layout sizing if requested; otherwise return template as-is
+        if fixed_size is None:
+            return TEMPLATE_DCC3
+        w, h = fixed_size
+        s = TEMPLATE_DCC3
+        s = s.replace('<auto_layout aspect_ratio="1.0">', f'<fixed_layout name="fixed_arch_size" width="{w}" height="{h}">')
+        s = s.replace('</auto_layout>', '</fixed_layout>')
+        return s
