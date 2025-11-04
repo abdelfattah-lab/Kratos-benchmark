@@ -11,7 +11,11 @@ import runs.benchmarks.kratos_tiny as tiny
 from impl.arch.stratix_10.base import BaseArchFactory
 from impl.arch.stratix_10.parallel_carry import ParallelCarryArchFactory
 from impl.arch.stratix_10.lut_skip import LUTSkipArchFactory
-from impl.arch.stratix_10.four_bit_adder import FourBitSingleChainArchFactory, FourBitDoubleChainArchFactory
+from impl.arch.stratix_10.four_bit_adder import (
+  FourBitDCC1ArchFactory,
+  FourBitDCC2ArchFactory, 
+  FourBitDCC3ArchFactory
+)
 
 # Conv-1D
 from impl.design.conv_1d.fu import Conv1dFuDesign
@@ -35,10 +39,11 @@ import os.path as path
 # ARCH = BaseArchFactory()
 # ARCH = ParallelCarryArchFactory()
 ARCH_DOUBLE_DUTY = LUTSkipArchFactory()
-ARCH_4BIT_DOUBLE_ADDER = FourBitDoubleChainArchFactory()
-ARCH_4BIT_SINGLE_ADDER = FourBitSingleChainArchFactory()
+ARCH_DCC1 = FourBitDCC1ArchFactory()
+ARCH_DCC2 = FourBitDCC2ArchFactory()
+ARCH_DCC3 = FourBitDCC3ArchFactory()
 
-ARCH = ARCH_4BIT_SINGLE_ADDER
+ARCH = ARCH_DCC3
 
 BASE_PARAMS = {
     keys.KEY_EXP: {
@@ -53,8 +58,8 @@ BASE_PARAMS = {
         'direct_ff_mux_with': ['lut', 'adder'],
     },
     keys.KEY_DESIGN: {
-        'sparsity': [0, 0.5, 0.9],
-        # 'sparsity': 0.5,
+        # 'sparsity': [0, 0.5, 0.9],
+        'sparsity': 0.5,
         'data_width': list(range(3, 9)),
     }
 }
@@ -101,7 +106,7 @@ run_vtr_all_designs(
         'ff': 'Total Register Count',
         'lut': 'LUT Count',
     },
-    num_parallel_tasks=8,
+    num_parallel_tasks=1,
     verbose=True,
     desc='tiny_run',
     notify_batch=5,

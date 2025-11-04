@@ -11,6 +11,7 @@ This is stress testing both a baseline and modified architecture, with a Kratos 
 from impl.arch.stratix_10.fair.base import BaseArchFactory
 from impl.arch.stratix_10.fair.lut_skip import LUTSkipArchFactory
 from impl.arch.stratix_10.lut_skip_scratch3 import LUTSkip3ArchFactory # @2.19 20:08, 10 dummy inputs
+from impl.arch.stratix_10.four_bit_adder import FourBitDoubleChainArchFactory
 
 # Designs
 # Conv-1D
@@ -53,7 +54,7 @@ from util.formatting import pretty
 from util.calc import merge_op
 from util.results import save_and_plot
 from util.plot import plot_xy
-from util.external_notifs import telegram_notify
+# from util.external_notifs import telegram_notify
 
 # Python libraries
 import os.path as path
@@ -103,8 +104,8 @@ def add_derived_metrics(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 # Make ArchFactory and Design instances
-BASE_ARCH = BaseArchFactory()
-MOD_ARCH = LUTSkip3ArchFactory()
+BASE_ARCH = LUTSkip3ArchFactory()
+MOD_ARCH = FourBitDoubleChainArchFactory()
 
 # Define design class list and plugin, N parameter
 PLUGIN = ShaxNPlugin()
@@ -113,10 +114,10 @@ DESIGN_CLASS_LIST = [
     # Mini benchmarks
     (Conv1dFuDesign, mini.get_conv_1d_fu_params(BASE_PARAMS)),
     # (Conv1dPwDesign, mini.get_conv_1d_pw_params(BASE_PARAMS)),
-    (Conv2dFuDesign, mini.get_conv_2d_fu_params(BASE_PARAMS)),
+    # (Conv2dFuDesign, mini.get_conv_2d_fu_params(BASE_PARAMS)),
     # (Conv2dRpDesign, mini.get_conv_2d_rp_params(BASE_PARAMS)),
     # (Conv2dPwDesign, mini.get_conv_2d_pw_params(BASE_PARAMS)),
-    (GemmTFuDesign, mini.get_gemmt_fu_params(BASE_PARAMS)),
+    # (GemmTFuDesign, mini.get_gemmt_fu_params(BASE_PARAMS)),
     # (GemmTRpDesign, mini.get_gemmt_rp_params(BASE_PARAMS)),
     # (GemmSDesign, mini.get_gemms_params(BASE_PARAMS)),
     
@@ -132,15 +133,7 @@ DESIGN_CLASS_LIST = [
 ]
 
 # Other args
-NOTIFY_VIA_TELE = True
-MACHINE_NAME = "Narwhal"
-
-# define notify function
-def notify_via_tele(msg: str) -> None:
-    if not NOTIFY_VIA_TELE:
-        return
-    
-    telegram_notify(f"[{MACHINE_NAME}] Stress test: {msg}")
+MACHINE_NAME = "Beluga"
 
 # Define run function
 def get_max_N(arch: ArchFactory, DesignClass: Type[PluginDesign], plugin: Plugin, base_params: dict[str, any], N_param: str) -> pd.DataFrame:
@@ -172,7 +165,6 @@ def get_max_N(arch: ArchFactory, DesignClass: Type[PluginDesign], plugin: Plugin
             result_kwargs=dict(
                 extract_blocks_list=FILTER_BLOCKS,
             ),
-            notify_via_tele=False,
         )
         runner.clear_experiments()
         if len(results) == 0:
@@ -211,7 +203,7 @@ def run_seq(DesignClass: Type[PluginDesign], plugin: Plugin, base_params: dict[s
     """
 
     design_name = DesignClass.__name__
-    notify_via_tele(f"Starting design {design_name}.")
+    # notify_via_tele(f"Starting design {design_name}.")
 
     # 1. Run baseline with 1 instance and get grid size
     print("(!) Running initial sizing...")
@@ -223,6 +215,7 @@ def run_seq(DesignClass: Type[PluginDesign], plugin: Plugin, base_params: dict[s
     if base_exp.process:
         base_exp.process.wait()
     base_results = base_exp.get_result()
+    print(base_results)
 
     grid_w, grid_h = base_results.get('gridx', 0), base_results.get('gridy', 0)
     if grid_w == 0 or grid_h == 0:
@@ -230,7 +223,6 @@ def run_seq(DesignClass: Type[PluginDesign], plugin: Plugin, base_params: dict[s
         return None
     
 
-    notify_via_tele(f"sizing {design_name} to {grid_w} x {grid_h}.")
     print(f"(!) Sizing to {grid_w} x {grid_h}.")
 
     # 2.1 Fix grid size
@@ -250,7 +242,6 @@ def run_seq(DesignClass: Type[PluginDesign], plugin: Plugin, base_params: dict[s
     print("(!) Maximum for modified architecture:")
     pretty(mod_max, 1)
     
-    notify_via_tele(f"{design_name} maximum N | base: {base_max[N_param]}, modified: {mod_max[N_param]}")
 
     # Merge on 'sha_num' and normalize to baseline
     norm_df = merge_op(mod_df, base_df, lambda a, b: a/b, 
@@ -311,5 +302,3 @@ save_and_plot(
     do_with_dir_fn=do_with_dir_fn,
     plot_fn=plot_fn,
 )
-
-notify_via_tele("Finished stress test.")
