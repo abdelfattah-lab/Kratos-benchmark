@@ -9,13 +9,14 @@ Modified:
 from structure.arch import ArchFactory
 from structure.util import ParamsChecker
 import util.netstats as ns
+import os
 
 from lxml.etree import Element
 
-# Override TEMPLATE to read from external file as requested
-TEMPLATE_DCC1 = open('/home/ayf7/repos/Kratos-benchmark/impl/arch/stratix_10/4bit_adder_dcc1.xml', 'r', encoding='utf-8').read()
-TEMPLATE_DCC2 = open('/home/ayf7/repos/Kratos-benchmark/impl/arch/stratix_10/4bit_adder_dcc2.xml', 'r', encoding='utf-8').read()
-TEMPLATE_DCC3 = open('/home/ayf7/repos/Kratos-benchmark/impl/arch/stratix_10/4bit_adder_dcc3_small.xml', 'r', encoding='utf-8').read()
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+TEMPLATE_DCC1 = open(os.path.join(BASE_DIR, '4bit_adder_dcc1.xml'), 'r', encoding='utf-8').read()
+TEMPLATE_DCC2 = open(os.path.join(BASE_DIR, '4bit_adder_dcc2.xml'), 'r', encoding='utf-8').read()
+TEMPLATE_DCC3 = open(os.path.join(BASE_DIR, '4bit_adder_dcc3_small.xml'), 'r', encoding='utf-8').read()
 
 def gen_layout_sizing(fixed_size: tuple[int, int]|None):
     if fixed_size is None:
