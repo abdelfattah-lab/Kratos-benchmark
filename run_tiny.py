@@ -8,7 +8,7 @@ from runs.vtr_all_designs import run_vtr_all_designs
 import runs.benchmarks.kratos_tiny as tiny
 
 # Stratix-10 Architectures
-from impl.arch.stratix_10.base import BaseArchFactory
+from impl.arch.stratix_10.fair.base import BaseArchFactory
 from impl.arch.stratix_10.parallel_carry import ParallelCarryArchFactory
 from impl.arch.stratix_10.lut_skip import LUTSkipArchFactory
 from impl.arch.stratix_10.four_bit_adder import (
@@ -16,6 +16,8 @@ from impl.arch.stratix_10.four_bit_adder import (
   FourBitDCC2ArchFactory, 
   FourBitDCC3ArchFactory
 )
+from impl.arch.stratix_10.four_bit_adder_dd import DCC2AndDD5ArchFactory
+
 
 # Conv-1D
 from impl.design.conv_1d.fu import Conv1dFuDesign
@@ -36,14 +38,15 @@ from impl.design.gemms import GemmSDesign
 import numpy as np
 import os.path as path
 
-# ARCH = BaseArchFactory()
+ARCH_BASE = BaseArchFactory()
 # ARCH = ParallelCarryArchFactory()
 ARCH_DOUBLE_DUTY = LUTSkipArchFactory()
 ARCH_DCC1 = FourBitDCC1ArchFactory()
 ARCH_DCC2 = FourBitDCC2ArchFactory()
 ARCH_DCC3 = FourBitDCC3ArchFactory()
+ARCH_DCC2_DD5 = DCC2AndDD5ArchFactory()
 
-ARCH = ARCH_DCC3
+ARCH = ARCH_DCC1
 
 BASE_PARAMS = {
     keys.KEY_EXP: {
@@ -106,7 +109,7 @@ run_vtr_all_designs(
         'ff': 'Total Register Count',
         'lut': 'LUT Count',
     },
-    num_parallel_tasks=1,
+    num_parallel_tasks=2,
     verbose=True,
     desc='tiny_run',
     notify_batch=5,
