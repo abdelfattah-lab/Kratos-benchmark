@@ -1,4 +1,13 @@
-<!--
+"""
+Taken from https://github.com/verilog-to-routing/vtr-verilog-to-routing/blob/master/vtr_flow/arch/COFFE_22nm/stratix10_arch.xml, as-is.
+
+!NOTE: should be used with a fixed routing channel width of 400.
+"""
+
+from structure.arch import ArchFactory
+from structure.util import ParamsChecker
+
+TEMPLATE = """<!--
     This is the architecture file for a Stratix-10-like *arithmetic* Architecture discussed in [1].
     The routing architecture is not Stratix-10-like (it is a single wire type of length 4) but 
     the arithmetic inside the logic block is modeled after Stratix 10.
@@ -952,3 +961,40 @@ def gen_lut6():
               <direct name="direct4" input="fle.clk" output="ble6.clk"/>
             </interconnect>
           </mode>
+          <!-- n1_lut6 -->"""
+
+def gen_layout_sizing(fixed_size: tuple[int, int]|None):
+    if fixed_size is None:
+        return '<auto_layout aspect_ratio="1.0">', '</auto_layout>'
+    
+    w, h = fixed_size
+    return f'<fixed_layout name="fixed_arch_size" width="{w}" height="{h}">', '</fixed_layout>'
+
+DEFAULTS = {
+    'per_fle_area': 2167.3155, # LAB area / 10
+    'enable_lut6': True, # turn on/off 6-LUT mode
+    'fixed_size': None, # (w, h) of fixed size, None for auto sizing
+}
+
+class BaseArchFactory(ArchFactory, ParamsChecker):
+    def get_name(self, enable_lut6: bool, fixed_size: tuple[int, int]|None, **kwargs):
+        name = "type.s10-base"
+        if not enable_lut6:
+            name += "_l6.off"
+        if fixed_size is not None:
+            w, h = fixed_size
+            name += f"_fs.{w}x{h}"
+        return name
+    
+    def verify_params(self, params):
+        return self.verify_required_keys(DEFAULTS, [], params)
+    
+    def get_arch(self, per_fle_area: float, enable_lut6: bool, fixed_size: tuple[int, int]|None, **kwargs):
+        layout_sizing_start, layout_sizing_end = gen_layout_sizing(fixed_size)
+        
+        return TEMPLATE.format(
+            grid_logic_tile_area=per_fle_area*10,
+            mode_lut6=gen_lut6() if enable_lut6 else '',
+            layout_sizing_start=layout_sizing_start,
+            layout_sizing_end=layout_sizing_end,
+        )
