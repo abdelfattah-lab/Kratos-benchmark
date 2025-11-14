@@ -21,7 +21,7 @@ def run_vtr_denoised_same_arch_raw(
         df_processing_fn: Callable[[pd.DataFrame], tuple[pd.DataFrame, list[str]]] = None,
         save_to_folder: bool = True,
         **runner_kwargs
-    ) -> pd.DataFrame|None:
+    ) -> pd.DataFrame | str | None:
     """
     Runs the following sequence:
     1. Runs all provided designs on arch provided on provided seeds.
@@ -39,6 +39,10 @@ def run_vtr_denoised_same_arch_raw(
     * df_processing_fn: (pd.DataFrame) -> (pd.DataFrame, list[str]), function called on each mean DataFrame from 3 seeds to add any derived metrics. Returns (new DataFrame, keys to add to filter_results).  Default: None
     * save_to_folder: bool, whether to save results to folder (True) or just return the runner results (False). Default: True
     Remaining keyword arguments are passed directly to Runner.run_all_threaded().
+
+    Returns:
+    * str: absolute path to the folder created by save_and_plot when save_to_folder is True.
+    * pd.DataFrame: combined DataFrame when save_to_folder is False.
     """
     # Setup Runner and architecture
     runner = Runner()
@@ -97,6 +101,10 @@ def run_vtr_denoised_same_arch_raw(
 
     # save into results directory (or return)
     if save_to_folder:
-        save_and_plot(dict(all=all_df))
+        saved_dir = {'path': None}
+        def capture_dir(dir_path: str) -> None:
+            saved_dir['path'] = dir_path
+        save_and_plot(dict(all=all_df), do_with_dir_fn=capture_dir)
+        return saved_dir['path']
     else:
         return all_df

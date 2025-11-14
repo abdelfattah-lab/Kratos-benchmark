@@ -18,7 +18,6 @@ XML_DIR = BASE_DIR / "xml"
 
 # TEMPLATE_DCC1 = (XML_DIR / '4bit_adder_dcc1.xml').read_text(encoding='utf-8')
 TEMPLATE_DCC2_DD5 = (XML_DIR / '4bit_adder_dcc2_dd.xml').read_text(encoding='utf-8')
-TEMPLATE_DCC2_DD5_NEW = (XML_DIR / '4bit_adder_dcc2_dd_new.xml').read_text(encoding='utf-8')
 
 def gen_layout_sizing(fixed_size: tuple[int, int]|None):
     if fixed_size is None:
@@ -57,23 +56,23 @@ class DCC2AndDD5ArchFactory(ArchFactory, ParamsChecker):
         s = s.replace('</auto_layout>', '</fixed_layout>')
         return s
 
-class DCC2AndDD5ArchFactoryNew(ArchFactory, ParamsChecker):
-    def get_name(self, per_fle_area: float, enable_lut6: bool, fixed_size: tuple[int, int]|None, **kwargs):
-        name = f"type.s10-new-dcc2-dd5"
-        return name
+# class DCC2AndDD5ArchFactoryNew(ArchFactory, ParamsChecker):
+#     def get_name(self, per_fle_area: float, enable_lut6: bool, fixed_size: tuple[int, int]|None, **kwargs):
+#         name = f"type.s10-new-dcc2-dd5"
+#         return name
     
-    def verify_params(self, params):
-        # DCC2 template uses grid_logic_tile_area=25201.9
-        filled = self.verify_required_keys(DEFAULTS, [], params)
-        filled['per_fle_area'] = 2520.19
-        return filled
+#     def verify_params(self, params):
+#         # DCC2 template uses grid_logic_tile_area=25201.9
+#         filled = self.verify_required_keys(DEFAULTS, [], params)
+#         filled['per_fle_area'] = 2520.19
+#         return filled
     
-    def get_arch(self, per_fle_area: float, enable_lut6: bool, fixed_size: tuple[int, int]|None, **kwargs):
-        # Inject fixed layout sizing if requested; otherwise return template as-is
-        if fixed_size is None:
-            return TEMPLATE_DCC2_DD5_NEW
-        w, h = fixed_size
-        s = TEMPLATE_DCC2_DD5_NEW
-        s = s.replace('<auto_layout aspect_ratio="1.0">', f'<fixed_layout name="fixed_arch_size" width="{w}" height="{h}">')
-        s = s.replace('</auto_layout>', '</fixed_layout>')
-        return s
+#     def get_arch(self, per_fle_area: float, enable_lut6: bool, fixed_size: tuple[int, int]|None, **kwargs):
+#         # Inject fixed layout sizing if requested; otherwise return template as-is
+#         if fixed_size is None:
+#             return TEMPLATE_DCC2_DD5_NEW
+#         w, h = fixed_size
+#         s = TEMPLATE_DCC2_DD5_NEW
+#         s = s.replace('<auto_layout aspect_ratio="1.0">', f'<fixed_layout name="fixed_arch_size" width="{w}" height="{h}">')
+#         s = s.replace('</auto_layout>', '</fixed_layout>')
+#         return s
