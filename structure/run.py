@@ -161,8 +161,9 @@ class Runner():
                     print(f"Result {result_no}/{total_count}: {'succeeded' if is_success else 'failed'}")
                     if track_run_time:
                         print(f" (Time elapsed for this experiment: {gen_time_elapsed(timer() - exp_start_times[exp])})")
-                    
+
                     print(f"@ root directory {exp.root_dir}")
+                    print(f"@ experiment directory {exp.exp_dir}")
                     pretty(res_dict, 1)
                     print("====================================")
                 else:

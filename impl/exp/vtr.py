@@ -133,6 +133,7 @@ class VtrExperiment(Experiment):
                '-search', self.verilog_search_dir, 
                '--seed', str(seed),
             ]
+        cmd += ['--echo_file', 'on']
 
 
         if adder_cin_global:
