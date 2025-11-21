@@ -8,15 +8,15 @@ from runs.vtr_all_designs import run_vtr_all_designs
 import runs.benchmarks.kratos_tiny as tiny
 
 # Stratix-10 Architectures
-from impl.arch.stratix_10.fair.base import BaseArchFactory
-from impl.arch.stratix_10.parallel_carry import ParallelCarryArchFactory
+from impl.arch.stratix_10.base import BaseArchFactory
 from impl.arch.stratix_10.lut_skip import LUTSkipArchFactory
 from impl.arch.stratix_10.four_bit_adder import (
   FourBitDCC1ArchFactory,
   FourBitDCC2ArchFactory, 
+  FourBitDCC2FaithfulArchFactory,
   FourBitDCC3ArchFactory
 )
-from impl.arch.stratix_10.four_bit_adder_dd import DCC2AndDD5ArchFactory
+# from impl.arch.stratix_10.four_bit_adder_dd import DCC2AndDD5ArchFactory
 
 
 # Conv-1D
@@ -44,14 +44,14 @@ ARCH_DOUBLE_DUTY = LUTSkipArchFactory()
 ARCH_DCC1 = FourBitDCC1ArchFactory()
 ARCH_DCC2 = FourBitDCC2ArchFactory()
 ARCH_DCC3 = FourBitDCC3ArchFactory()
-ARCH_DCC2_DD5 = DCC2AndDD5ArchFactory()
+# ARCH_DCC2_DD5 = DCC2AndDD5ArchFactory()
 
-ARCH = ARCH_DCC1
+ARCH = ARCH_DCC3
 
 BASE_PARAMS = {
     keys.KEY_EXP: {
         'verilog_search_dir': path.join(path.dirname(path.realpath(__file__)), 'verilog'),
-        # 'allow_skipping': True,
+        'allow_skipping': False,
         'adder_cin_global': True,
         'soft_multiplier_adders': True,
         # ... additional Experiment.run() parameters

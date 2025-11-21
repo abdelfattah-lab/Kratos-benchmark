@@ -14,7 +14,9 @@ from pathlib import Path
 from lxml.etree import Element
 
 BASE_DIR = Path(__file__).resolve().parent
-TEMPLATE = (BASE_DIR / 'fair_lut_skip.xml').read_text(encoding='utf-8')
+XML_DIR = BASE_DIR / "xml"
+
+TEMPLATE = (XML_DIR / 'fair_lut_skip.xml').read_text(encoding='utf-8')
 
 def gen_carry_chain_links(ble_count=10, mux_stride=1):
     # mux inputs from FLE 2 - N

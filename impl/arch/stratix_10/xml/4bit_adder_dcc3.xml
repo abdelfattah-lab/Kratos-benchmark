@@ -127,10 +127,10 @@ Reconfigurable
         <equivalent_sites>
           <site pb_type="clb" pin_mapping="direct" />
         </equivalent_sites>
-        <input name="I1" num_pins="15" equivalent="full" />
-        <input name="I2" num_pins="15" equivalent="full" />
-        <input name="I3" num_pins="15" equivalent="full" />
-        <input name="I4" num_pins="15" equivalent="full" />
+        <input name="I1" num_pins="15" />
+        <input name="I2" num_pins="15" />
+        <input name="I3" num_pins="15" />
+        <input name="I4" num_pins="15" />
         <input name="cin" num_pins="2" />
         <output name="O" num_pins="40" equivalent="none" />
         <output name="cout" num_pins="2" />
@@ -298,10 +298,10 @@ Reconfigurable
 
     <!-- Define general purpose logic block (CLB) begin -->
     <pb_type name="clb">
-      <input name="I1" num_pins="15" equivalent="full" />
-      <input name="I2" num_pins="15" equivalent="full" />
-      <input name="I3" num_pins="15" equivalent="full" />
-      <input name="I4" num_pins="15" equivalent="full" />
+      <input name="I1" num_pins="15" />
+      <input name="I2" num_pins="15" />
+      <input name="I3" num_pins="15" />
+      <input name="I4" num_pins="15" />
       <input name="cin" num_pins="2" />
       <output name="O" num_pins="40" equivalent="none" />
       <output name="cout" num_pins="2" />
@@ -496,12 +496,13 @@ Reconfigurable
                     <!-- the output of this connection should be adder[1].b only, however, a
                     complete cross bar
                              is used since the packer is not aware that the adder inputs are logically equivalent -->
-                    <complete name="add2_input"
-                      input="arithmetic.in[4] adder[0].sumout arithmetic.in[0]"
-                      output="adder[1].a adder[1].b">
+                    <complete name="add2_input_a" input="arithmetic.in[4] arithmetic.in[0]"
+                      output="adder[1].a">
+                    </complete>
+                    <direct name="add2_input_b" input="adder[0].sumout" output="adder[1].b">
                       <pack_pattern name="chain" in_port="adder[0].sumout" out_port="adder[1].b" />
                       <pack_pattern name="lut_chain" in_port="adder[0].sumout" out_port="adder[1].b" />
-                    </complete>
+                    </direct>
                     <complete name="sumout" input="ff.Q adder.sumout" output="arithmetic.out">
                       <delay_constant max="39.78e-12" in_port="adder.sumout"
                         out_port="arithmetic.out" />
