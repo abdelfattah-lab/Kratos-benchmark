@@ -1,9 +1,10 @@
 """
-Taken from https://github.com/verilog-to-routing/vtr-verilog-to-routing/blob/master/vtr_flow/arch/COFFE_22nm/stratix10_arch.xml, as-is.
+Adapted from lut_skip_scratch3.py (in same directory)
 
 Modified:
-- Breakable carry chains (set cin_mux_stride = 0 to revert to original)
-- LUT skipping in arithmetic mode, and passing adder outputs directly into sneak paths
+- shares two Z input with standard pins
+- use A and Z2, B and Z4 (maybe swap?) --> now symmetric, can have just one ble5 block now
+- all my changes denoted with "//"
 """
 
 from structure.arch import ArchFactory
@@ -305,7 +306,7 @@ TEMPLATE = """<!--
             -->
         <pb_type name="fle" num_pb="10">
           <input name="in" num_pins="8"/>
-          <input name="in_direct" num_pins="4"/>
+          <input name="in_direct" num_pins="2"/> <!-- // CHANGE NUMBER OF PINS to 2 -->
           <input name="cin" num_pins="1"/>
           <output name="out" num_pins="4"/>
           <output name="cout" num_pins="1"/>
@@ -322,9 +323,9 @@ TEMPLATE = """<!--
                             H -> fle[7]
               -->
           <mode name="n2_lut5">
-            <pb_type name="ble5" num_pb="2">
+            <pb_type name="ble5" num_pb="2"> <!-- // Only need one ble5 type, just change interconnect -->
               <input name="in" num_pins="5"/>
-              <input name="in_direct" num_pins="2"/>
+              <input name="in_direct" num_pins="2"/> <!-- // 2 pins, but in_direct[1] = A/B -->
               <input name="cin" num_pins="1"/>
               <output name="out" num_pins="2"/>
               <output name="cout" num_pins="1"/>
@@ -332,7 +333,7 @@ TEMPLATE = """<!--
               <mode name="arithmetic">
                 <pb_type name="arithmetic" num_pb="1">
                   <input name="in" num_pins="5"/>
-                  <input name="in_direct" num_pins="2"/>
+                  <input name="in_direct" num_pins="2"/> <!-- // put in_direct[1] = A/B, other one is actual in_direct -->
                   <input name="cin" num_pins="1"/>
                   <output name="out" num_pins="2"/>
                   <output name="cout" num_pins="1"/>
@@ -425,7 +426,7 @@ TEMPLATE = """<!--
                     <direct name="ff_clock2" input="arithmetic.clk" output="ff[1].clk"/>
                     <direct name="lut4_in1" input="arithmetic.in" output="dual_lut4s.in"/>
 
-                    <!-- add 2-1 mux from 4-LUTs to adder inputs. -->
+                    <!-- add 2-1 mux from 4-LUTs to adder inputs. // lut_to_add2 input is still in_direct[1] (actually just a rerouted wire) --> 
                     <mux name="lut_to_add1" input="dual_lut4s.lut4_out[0] arithmetic.in_direct[0]" output="adder.a">
                       <delay_constant max="68.88e-12" in_port="dual_lut4s.lut4_out[0]" out_port="adder.a"/>
                       <delay_constant max="68.88e-12" in_port="arithmetic.in_direct[0]" out_port="adder.a"/>
@@ -530,7 +531,7 @@ TEMPLATE = """<!--
               </mode>
             </pb_type>
             <interconnect>
-              <!-- Shared inputs between the two 5-LUTs -->
+              <!-- Shared inputs between the two 5-LUTs (A/B) -->
               <complete name="lut5_reg1" input="fle.in[0]" output="ble5[0].in[0] ble5[1].in[1]"/>
               <complete name="lut5_reg2" input="fle.in[1]" output="ble5[0].in[1] ble5[1].in[0]"/>
               <!-- Rest of the 5-LUT inputs -->
@@ -538,8 +539,12 @@ TEMPLATE = """<!--
               <direct name="lut5_inputs_2" input="fle.in[7:5]" output="ble5[1].in[4:2]"/>
               <direct name="lut5_outputs_1" input="ble5[0].out" output="fle.out[1:0]"/>
               <direct name="lut5_outputs_2" input="ble5[1].out" output="fle.out[3:2]"/>
-              <!-- Direct inputs from crossbar -->
-              <direct name="lut5_direct1" input="fle.in_direct" output="ble5.in_direct"/>
+              <!-- // Direct inputs from crossbar - use A/B is in_direct for ble[0]/ble[1] -->
+              <direct name="lut5_direct1" input="fle.in_direct[0]" output="ble5[0].in_direct[0]"/>
+              <direct name="lut5_direct2" input="fle.in_direct[1]" output="ble5[1].in_direct[0]"/>
+
+              <direct name="lut5_direct_share_1" input="fle.in[0]" output="ble5[0].in_direct[1]"/>
+              <direct name="lut5_direct_share_2" input="fle.in[1]" output="ble5[1].in_direct[1]"/>
               
               <direct name="carry_in" input="fle.cin" output="ble5[0].cin">
                 <pack_pattern name="chain_arith" in_port="fle.cin" out_port="ble5[0].cin"/>
@@ -594,46 +599,46 @@ TEMPLATE = """<!--
           
           <!-- 25% sparsely populated local routing, direct adder connections from LAB-LAB pins only -->
           <!-- pins from right LAB -->
-          <complete name="directA_R" input="lab.I1[9:5] lab.I3[9:5]" output="fle[0:0].in_direct[3:0]">
-            <delay_constant max="76.33e-12" in_port="lab.I1[9:5]" out_port="fle[0:0].in_direct[3:0]"/>
-            <delay_constant max="76.33e-12" in_port="lab.I3[9:5]" out_port="fle[0:0].in_direct[3:0]"/>
+          <complete name="directA_R" input="lab.I1[9:5] lab.I3[9:5]" output="fle[0:0].in_direct[1:0]">
+            <delay_constant max="76.33e-12" in_port="lab.I1[9:5]" out_port="fle[0:0].in_direct[1:0]"/>
+            <delay_constant max="76.33e-12" in_port="lab.I3[9:5]" out_port="fle[0:0].in_direct[1:0]"/>
           </complete>
-          <complete name="directB_R" input="lab.I1[9:5] lab.I2[9:5]" output="fle[1:1].in_direct[3:0]">
-            <delay_constant max="76.33e-12" in_port="lab.I1[9:5]" out_port="fle[1:1].in_direct[3:0]"/>
-            <delay_constant max="76.33e-12" in_port="lab.I2[9:5]" out_port="fle[1:1].in_direct[3:0]"/>
+          <complete name="directB_R" input="lab.I1[9:5] lab.I2[9:5]" output="fle[1:1].in_direct[1:0]">
+            <delay_constant max="76.33e-12" in_port="lab.I1[9:5]" out_port="fle[1:1].in_direct[1:0]"/>
+            <delay_constant max="76.33e-12" in_port="lab.I2[9:5]" out_port="fle[1:1].in_direct[1:0]"/>
           </complete>
-          <complete name="directC_R" input="lab.I2[9:5] lab.I3[9:5]" output="fle[2:2].in_direct[3:0]">
-            <delay_constant max="76.33e-12" in_port="lab.I2[9:5]" out_port="fle[2:2].in_direct[3:0]"/>
-            <delay_constant max="76.33e-12" in_port="lab.I3[9:5]" out_port="fle[2:2].in_direct[3:0]"/>
+          <complete name="directC_R" input="lab.I2[9:5] lab.I3[9:5]" output="fle[2:2].in_direct[1:0]">
+            <delay_constant max="76.33e-12" in_port="lab.I2[9:5]" out_port="fle[2:2].in_direct[1:0]"/>
+            <delay_constant max="76.33e-12" in_port="lab.I3[9:5]" out_port="fle[2:2].in_direct[1:0]"/>
           </complete>
-          <complete name="directD_R" input="lab.I2[9:5] lab.I4[9:5]" output="fle[3:3].in_direct[3:0]">
-            <delay_constant max="76.33e-12" in_port="lab.I2[9:5]" out_port="fle[3:3].in_direct[3:0]"/>
-            <delay_constant max="76.33e-12" in_port="lab.I4[9:5]" out_port="fle[3:3].in_direct[3:0]"/>
+          <complete name="directD_R" input="lab.I2[9:5] lab.I4[9:5]" output="fle[3:3].in_direct[1:0]">
+            <delay_constant max="76.33e-12" in_port="lab.I2[9:5]" out_port="fle[3:3].in_direct[1:0]"/>
+            <delay_constant max="76.33e-12" in_port="lab.I4[9:5]" out_port="fle[3:3].in_direct[1:0]"/>
           </complete>
-          <complete name="directE_R" input="lab.I3[9:5] lab.I4[9:5]" output="fle[4:4].in_direct[3:0]">
-            <delay_constant max="76.33e-12" in_port="lab.I3[9:5]" out_port="fle[4:4].in_direct[3:0]"/>
-            <delay_constant max="76.33e-12" in_port="lab.I4[9:5]" out_port="fle[4:4].in_direct[3:0]"/>
+          <complete name="directE_R" input="lab.I3[9:5] lab.I4[9:5]" output="fle[4:4].in_direct[1:0]">
+            <delay_constant max="76.33e-12" in_port="lab.I3[9:5]" out_port="fle[4:4].in_direct[1:0]"/>
+            <delay_constant max="76.33e-12" in_port="lab.I4[9:5]" out_port="fle[4:4].in_direct[1:0]"/>
           </complete>
           <!-- pins from left LAB -->
-          <complete name="directA_L" input="lab.I1[14:10] lab.I3[14:10]" output="fle[5:5].in_direct[3:0]">
-            <delay_constant max="76.33e-12" in_port="lab.I1[14:10]" out_port="fle[5:5].in_direct[3:0]"/>
-            <delay_constant max="76.33e-12" in_port="lab.I3[14:10]" out_port="fle[5:5].in_direct[3:0]"/>
+          <complete name="directA_L" input="lab.I1[14:10] lab.I3[14:10]" output="fle[5:5].in_direct[1:0]">
+            <delay_constant max="76.33e-12" in_port="lab.I1[14:10]" out_port="fle[5:5].in_direct[1:0]"/>
+            <delay_constant max="76.33e-12" in_port="lab.I3[14:10]" out_port="fle[5:5].in_direct[1:0]"/>
           </complete>
-          <complete name="directB_L" input="lab.I1[14:10] lab.I2[14:10]" output="fle[6:6].in_direct[3:0]">
-            <delay_constant max="76.33e-12" in_port="lab.I1[14:10]" out_port="fle[6:6].in_direct[3:0]"/>
-            <delay_constant max="76.33e-12" in_port="lab.I2[14:10]" out_port="fle[6:6].in_direct[3:0]"/>
+          <complete name="directB_L" input="lab.I1[14:10] lab.I2[14:10]" output="fle[6:6].in_direct[1:0]">
+            <delay_constant max="76.33e-12" in_port="lab.I1[14:10]" out_port="fle[6:6].in_direct[1:0]"/>
+            <delay_constant max="76.33e-12" in_port="lab.I2[14:10]" out_port="fle[6:6].in_direct[1:0]"/>
           </complete>
-          <complete name="directC_L" input="lab.I2[14:10] lab.I3[14:10]" output="fle[7:7].in_direct[3:0]">
-            <delay_constant max="76.33e-12" in_port="lab.I2[14:10]" out_port="fle[7:7].in_direct[3:0]"/>
-            <delay_constant max="76.33e-12" in_port="lab.I3[14:10]" out_port="fle[7:7].in_direct[3:0]"/>
+          <complete name="directC_L" input="lab.I2[14:10] lab.I3[14:10]" output="fle[7:7].in_direct[1:0]">
+            <delay_constant max="76.33e-12" in_port="lab.I2[14:10]" out_port="fle[7:7].in_direct[1:0]"/>
+            <delay_constant max="76.33e-12" in_port="lab.I3[14:10]" out_port="fle[7:7].in_direct[1:0]"/>
           </complete>
-          <complete name="directD_L" input="lab.I2[14:10] lab.I4[14:10]" output="fle[8:8].in_direct[3:0]">
-            <delay_constant max="76.33e-12" in_port="lab.I2[14:10]" out_port="fle[8:8].in_direct[3:0]"/>
-            <delay_constant max="76.33e-12" in_port="lab.I4[14:10]" out_port="fle[8:8].in_direct[3:0]"/>
+          <complete name="directD_L" input="lab.I2[14:10] lab.I4[14:10]" output="fle[8:8].in_direct[1:0]">
+            <delay_constant max="76.33e-12" in_port="lab.I2[14:10]" out_port="fle[8:8].in_direct[1:0]"/>
+            <delay_constant max="76.33e-12" in_port="lab.I4[14:10]" out_port="fle[8:8].in_direct[1:0]"/>
           </complete>
-          <complete name="directE_L" input="lab.I3[14:10] lab.I4[14:10]" output="fle[9:9].in_direct[3:0]">
-            <delay_constant max="76.33e-12" in_port="lab.I3[14:10]" out_port="fle[9:9].in_direct[3:0]"/>
-            <delay_constant max="76.33e-12" in_port="lab.I4[14:10]" out_port="fle[9:9].in_direct[3:0]"/>
+          <complete name="directE_L" input="lab.I3[14:10] lab.I4[14:10]" output="fle[9:9].in_direct[1:0]">
+            <delay_constant max="76.33e-12" in_port="lab.I3[14:10]" out_port="fle[9:9].in_direct[1:0]"/>
+            <delay_constant max="76.33e-12" in_port="lab.I4[14:10]" out_port="fle[9:9].in_direct[1:0]"/>
           </complete>
           <!-- end: direct LAB-LAB crossbar -->
 
@@ -1119,7 +1124,7 @@ DEFAULTS = {
     'fixed_size': None, # (w, h) of fixed size, None for auto sizing
 }
 
-class LUTSkip3ArchFactory(ArchFactory, ParamsChecker):
+class DD5_2Z_Input_Shared_AB(ArchFactory, ParamsChecker):
     def get_name(self, cin_mux_stride: int, enable_lut6: bool, fixed_size: tuple[int, int]|None, **kwargs):
         name = f"type.s10-skip_cin-scratch3.{cin_mux_stride}"
         if not enable_lut6:

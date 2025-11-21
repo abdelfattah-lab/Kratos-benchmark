@@ -114,6 +114,8 @@ def run_vtr_denoised_v1(
                 p = deepcopy(params)
                 p[keys.KEY_EXP]['seed']  = seed
                 p[keys.KEY_EXP]['root_dir'] = path.join(p[keys.KEY_EXP]['root_dir'], f"{exp_type}-{seed}")
+                # new! (below)
+                p[keys.KEY_EXP]['impl'] = exp_type
                 if exp_type != 'baseline':
                     p[keys.KEY_ARCH] |= variable_arch_params
                 runner.add_experiments(VtrExperiment, arch, design, p)
@@ -152,7 +154,8 @@ def run_vtr_denoised_v1(
             flt += filter_params_new
         
         for key, df in dfs.items():
-            seed_mean = df.groupby(by=flt).mean().reset_index()
+            #seed_mean = df.groupby(by=flt).mean().reset_index()
+            seed_mean = df.groupby(by=flt).mean(numeric_only=True).reset_index()
 
             # add post-processing (if any)
             if df_processing_fn is not None:

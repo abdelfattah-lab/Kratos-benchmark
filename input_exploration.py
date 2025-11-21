@@ -1,170 +1,179 @@
 import structure.consts.keys as keys
+from structure.consts.translation import TRANSLATIONS_GRAPH
+from runs.vtr_denoised_v1 import run_vtr_denoised_v1
 
-import runs.benchmarks.kratos as kratos
-import runs.benchmarks.kratos_mini as mini
+import util.derived_metrics as derived_metrics
 
-from structure.run import Runner
-from util.results import save_and_plot
-from util.plot import plot_xy
-from util.calc import merge_op
-
-# VTR experiment
-from impl.exp.vtr import VtrExperiment
-
-# Stratix 10 Architectures
+# Stratix 10
 from impl.arch.stratix_10.base import BaseArchFactory
-
-# DD5 Architecture
-from impl.arch.stratix_10.fair.dd5_variable_ad import DD5ADArchFactory
+from impl.arch.stratix_10.lut_skip import LUTSkipArchFactory
 from impl.arch.stratix_10.lut_skip_scratch3 import LUTSkip3ArchFactory
+from impl.arch.stratix_10.lut_skip_1d import LUTSkip1dArchFactory
+from impl.arch.stratix_10.lut_skip_6 import LUTSkip6ArchFactory
+from impl.arch.stratix_10.sharing_1z import DD5_1Z_Input_Shared_A
+from impl.arch.stratix_10.sharing_2z import DD5_2Z_Input_Shared_AB
 
-# Conv-1D
+# VTR Standard Benchmark Loader parameters
+import runs.benchmarks.vtr_full_benchmarks as vtr_bm
+
+# Designs (Kratos)
 from impl.design.conv_1d.fu import Conv1dFuDesign
 from impl.design.conv_1d.pw import Conv1dPwDesign
-
-# Conv-2D
 from impl.design.conv_2d.fu import Conv2dFuDesign
-from impl.design.conv_2d.rp import Conv2dRpDesign
 from impl.design.conv_2d.pw import Conv2dPwDesign
-
-# GEMM-T
 from impl.design.gemmt.fu import GemmTFuDesign
 from impl.design.gemmt.rp import GemmTRpDesign
-
-# GEMM-S
 from impl.design.gemms import GemmSDesign
 
-from copy import deepcopy
-import time
-import pandas as pd
+import runs.benchmarks.kratos as kratos
+import runs.benchmarks.kratos_tiny as tiny
+
+# VTR Standard Benchmark Loader
+from impl.design.vtr_full_benchmarks.loader import VtrBenchmarkLoaderDesign
+
 import numpy as np
-import os
 import os.path as path
+from pandas import DataFrame
+
+#BASE_ARCH = BaseArchFactory
+#EXP_ARCH = LUTSkip3ArchFactory
+
+#BASE_ARCH = LUTSkip3ArchFactory
+#EXP_ARCH = DD5_1Z_Input_Shared_A_Top
+
+BASE_ARCH = LUTSkip3ArchFactory
+EXP_ARCH = DD5_2Z_Input_Shared_AB
 
 BASE_PARAMS = {
     keys.KEY_EXP: {
-        'root_dir': 'experiments/input_exploration',
         'verilog_search_dir': path.join(path.dirname(path.realpath(__file__)), 'verilog'),
         'allow_skipping': True,
+        'avoid_mult': False,
         'adder_cin_global': False,
-        'compressor_tree_type': ['wallace', 'dadda', 'cascade'],
+        'soft_multiplier_adders': True,
+        'route_chan_width': 400,
+        # 'force_denser_packing': True,
         # ... additional Experiment.run() parameters
     },
     keys.KEY_ARCH: {
-        'lut_size': 6,
-        # 'cin_mux_stride': 1,
-        # 'cin_mux_stride': list(range(1, 4)),
+        # fixed architecture parameters for both baseline and explored
+        'cin_mux_stride': 0,
+        # 'enable_lut6': False,
+        # 'direct_ff_mux_with': 'adder',
     },
     keys.KEY_DESIGN: {
-        'sparsity': [0.1, .5, .9],
-        'data_width': [4, 8],
+        'sparsity': 0.5,
+        #'data_width': [4,8], # maybe change to just 6?
+        'data_width': 6,
     }
 }
 
-DESIGN_LIST = [
-    # Mini benchmarks
-    # (Conv1dFuDesign(), mini.get_conv_1d_fu_params(BASE_PARAMS)),
-    # (Conv1dPwDesign(), mini.get_conv_1d_pw_params(BASE_PARAMS)),
-    # (Conv2dFuDesign(), mini.get_conv_2d_fu_params(BASE_PARAMS)),
-    # (Conv2dRpDesign(), mini.get_conv_2d_rp_params(BASE_PARAMS)),
-    # (Conv2dPwDesign(), mini.get_conv_2d_pw_params(BASE_PARAMS)),
-    # (GemmTFuDesign(), mini.get_gemmt_fu_params(BASE_PARAMS)),
-    # (GemmTRpDesign(), mini.get_gemmt_rp_params(BASE_PARAMS)),
-    #(GemmSDesign(), mini.get_gemms_params(BASE_PARAMS)),
+VARIABLE_ARCH_PARAMS = None
 
-    # Kratos benchmarks
-    (Conv1dFuDesign(), kratos.get_conv_1d_fu_params(BASE_PARAMS)),
-    # (Conv1dPwDesign(), kratos.get_conv_1d_pw_params(BASE_PARAMS)),
-    (Conv2dFuDesign(), kratos.get_conv_2d_fu_params(BASE_PARAMS)),
-    # (Conv2dRpDesign(), kratos.get_conv_2d_rp_params(BASE_PARAMS)),
-    # (Conv2dPwDesign(), kratos.get_conv_2d_pw_params(BASE_PARAMS)),
-    (GemmTFuDesign(), kratos.get_gemmt_fu_params(BASE_PARAMS)),
-    # (GemmTRpDesign(), kratos.get_gemmt_rp_params(BASE_PARAMS)),
-    #(GemmSDesign(), kratos.get_gemms_params(BASE_PARAMS)), ## <- USUAL ONE, JUST COMMENTED OUT TEMOPORARILY
-]
-
-def run_experiments(
-        runner: Runner, 
-        num_parallel_tasks: int = 8,
-        filter_params: list[str] = None,
-        filter_results: list[str] = None,
-        extract_blocks_list: list[str] = ['clb', 'fle', 'adder']
-    ) -> dict[str, pd.DataFrame]:
-    """
-    Run the Runner on a provided VTR_ROOT.
-    """
-    return runner.run_all_threaded(
-        verbose=True,
-        num_parallel_tasks=num_parallel_tasks,
-        filter_params=filter_params,
-        filter_results=filter_results,
-        result_kwargs=dict(
-            extract_blocks_list=extract_blocks_list
-        )
-    )
-
-# Construct Runner with experiments.
-RUNNER = Runner()
-#ARCH = BaseArchFactory()
-ARCH = LUTSkip3ArchFactory()
-for (design, params) in DESIGN_LIST:
-    RUNNER.add_experiments(VtrExperiment, ARCH, design, params)
-
-# Define parameters.
-
-# set this to True if you want the geometric mean of all included designs.
-MERGE_DESIGNS = True
-
-NUM_PARALLEL_TASKS = 8
-FILTER_PARAMS = ['data_width', 'compressor_tree_type']
-FILTER_BLOCKS = ['clb', 'fle', 'adder', 'lut']
-FILTER_RESULTS = [#'fmax', 'area_le', 'area_le_used', 'area_r', 'area_total', 'area_total_used', 
-                  'twl', *FILTER_BLOCKS]
-TRANSLATIONS = {
-    'data_width': 'Data Width',
-    'fmax': 'Fmax (MHz)',
-    'area_le': 'LE Area (MWTAs)',
-    'area_le_used': 'Used Logic Area (MWTAs)',
-    'area_r': 'Routing Area (MWTAs)',
-    'area_total': 'Total Area of LEs and Routing (MWTAs)',
-    'area_total_used': 'Total Area of Used Logic and Routing (MWTAs)',
-    'twl': 'Total Wirelength',
-    'clb': 'CLB Count',
-    'fle': 'FLE Count',
-    'adder': 'Adder Count',
-    'lut': 'LUT Count',
-}
-
-results = run_experiments(
-    runner=RUNNER,
-    num_parallel_tasks=NUM_PARALLEL_TASKS,
-    filter_params=FILTER_PARAMS,
-    filter_results=FILTER_RESULTS,
-    extract_blocks_list=FILTER_BLOCKS,
+VARIABLE_ARCH_PARAMS = dict(
+    ble_count=10
 )
 
-if MERGE_DESIGNS:
-    # take geometric mean.
-    merged = None
-    for k, v in results.items():
-        if merged is None:
-            merged = v.copy(deep=True)
-        else:
-            merged = merge_op(merged, v, lambda a, b: a * b, FILTER_RESULTS)
-    
-    merged_count = len(results)
-    for col in FILTER_RESULTS:
-        merged[col] **= 1/merged_count
-    
-    results['merged'] = merged
+DESIGN_LIST = [
+    # VTR Standard benchmarks
+    (Conv1dFuDesign(), kratos.get_conv_1d_fu_params(BASE_PARAMS)),
+    (Conv1dPwDesign(), kratos.get_conv_1d_pw_params(BASE_PARAMS)),
+    (Conv2dFuDesign(), kratos.get_conv_2d_fu_params(BASE_PARAMS)),
+    (Conv2dPwDesign(), kratos.get_conv_2d_pw_params(BASE_PARAMS)),
+    (GemmTFuDesign(), kratos.get_gemmt_fu_params(BASE_PARAMS)),
+    (GemmTRpDesign(), kratos.get_gemmt_rp_params(BASE_PARAMS)),
+    (GemmSDesign(), kratos.get_gemms_params(BASE_PARAMS)),
 
-# define plot function.
-def plot_fn(save_dir: str, filesafe_name: str, df: pd.DataFrame) -> None:
-    plot_xy(df, ['compressor_tree_type'], ['data_width'], FILTER_RESULTS,
-            x_axis_label=['Data Width'],
-            y_axis_label=[TRANSLATIONS.get(c, c) for c in FILTER_RESULTS],
-            save_path=path.join(save_dir, f"{filesafe_name}_graphs.png"),
-            short_labels=dict(compressor_tree_type='ct'))
+    # Tiny benchmarks
+    #(Conv1dFuDesign(), tiny.get_conv_1d_fu_params(BASE_PARAMS)),
+    #(Conv1dPwDesign(), tiny.get_conv_1d_pw_params(BASE_PARAMS)),
+    #(Conv2dFuDesign(), tiny.get_conv_2d_fu_params(BASE_PARAMS)),
+    #(Conv2dPwDesign(), tiny.get_conv_2d_pw_params(BASE_PARAMS)),
+    #(GemmTFuDesign(), tiny.get_gemmt_fu_params(BASE_PARAMS)),
+    #(GemmTRpDesign(), tiny.get_gemmt_rp_params(BASE_PARAMS)),
+    #(GemmSDesign(), tiny.get_gemms_params(BASE_PARAMS)),
+]
 
-# save for each result.
-save_and_plot(results, plot_fn=plot_fn)
+# add derived metrics:
+# - ADP used
+# - CLB average utilization
+def add_derived_metrics(df: DataFrame) -> tuple[DataFrame, list[str]]:
+    # df = derived_metrics.apply_clb_avg_util(df, 10)
+    df = derived_metrics.apply_adder_avg_util(df)
+    
+    # 5-LUT measurements
+    df = derived_metrics.apply_lut5_to_adder_ratio(df)
+    df = derived_metrics.apply_lut5_concurrency(df)
+
+    # 5-LUT measurements
+    df = derived_metrics.apply_lut6_to_adder_ratio(df)
+    df = derived_metrics.apply_lut6_concurrency(df)
+
+    # 5/6-LUT measurements
+    df = derived_metrics.apply_lut56_to_adder_ratio(df)
+    df = derived_metrics.apply_lut56_concurrency(df)
+    
+    # Area calculations
+    df = derived_metrics.apply_area_fle(df)
+
+    # ADP
+    # df = derived_metrics.apply_adp_used(df)
+    df = derived_metrics.apply_adp_fle(df)
+
+    return df, [
+        # 'clb_avg_util', 
+        'adder_avg_util',
+        'lut5/adder',
+        'lut5_concurrency',
+        'lut6/adder',
+        'lut6_concurrency',
+        'lut56/adder',
+        'lut56_concurrency',
+        'area_fle',
+        # 'adp_used',
+        'adp_fle', 
+    ]
+
+print("BASE", BASE_ARCH)
+print("EXP", EXP_ARCH, "\n")
+
+run_vtr_denoised_v1(
+    new_arch=EXP_ARCH,
+    base_arch=BASE_ARCH,
+    design_list=DESIGN_LIST,
+    variable_arch_params=VARIABLE_ARCH_PARAMS,
+    x_axis=['ble_count'],
+    filter_params_baseline=['sparsity','data_width'],
+    filter_params_add=['per_fle_area'],
+    group_cols=['per_fle_area'],
+    group_cols_short_labels=dict(),
+    filter_results=['fmax', 'cpd', 'twl', 
+                    'concurrent_lut5s', 'concurrent_lut6s',
+                    ],
+    filter_blocks=['clb', 'fle',
+                    'lut5', 'lut6',
+                    'adder',
+                   ],
+    avoid_norm=[
+                'lut5/adder',
+                'lut5_concurrency',
+                'lut6/adder',
+                'lut6_concurrency',
+                'lut56/adder',
+                'lut56_concurrency',
+                ],
+    avoid_plot=[
+                'per_fle_area',
+                'concurrent_lut5s', 'concurrent_lut6s',
+                'lut5', 'lut6',
+                'adder',
+                ],
+    translations=TRANSLATIONS_GRAPH,
+    df_processing_fn=add_derived_metrics,
+    rotate_x_axis_labels=True,
+    merge_designs=False,
+    num_parallel_tasks=1,
+    #stagger_launch_sec=120,
+    # verbose=True,
+    desc='Base vs. DD5'
+)

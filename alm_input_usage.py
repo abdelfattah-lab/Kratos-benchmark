@@ -231,16 +231,20 @@ overall_total_counts = np.zeros(12, dtype=np.float64)
 overall_cond_prob  = np.zeros((12, 12), dtype=np.float64)
 overall_avg_others = np.zeros(12, dtype=np.float64)
 overall_spec_cond_prob = np.zeros((7,8), dtype=np.float64)
+overall_special_total_counts = np.zeros(7, dtype=np.float64) # ADDED
 if mean == "geometric":
     overall_total_counts = np.ones(12, dtype=np.float64)
     overall_cond_prob  = np.ones((12, 12), dtype=np.float64)
     overall_avg_others = np.ones(12, dtype=np.float64)
     overall_spec_cond_prob = np.ones((7,8), dtype=np.float64)
+    overall_special_total_counts = np.zeros(7, dtype=np.float64) # ADDED
 
 n_done = 0
 
 # Repeat for each subexperiment folder under given experiment root
-exp_dirs = sorted([d for d in root.iterdir() if d.is_dir()])
+# exp_dirs = sorted([d for d in root.iterdir() if d.is_dir()]) CHANGED
+exp_dirs = sorted({p.parent for p in root.rglob("temp") if p.is_dir()}, key=lambda p: str(p))
+
 for exp_dir in tqdm(exp_dirs, total=len(exp_dirs), desc="experiments", unit="exp"):
     sparsity, tree = extract_cin_s_tree(exp_dir.name)
     zip_path = exp_dir / "temp" / args.zipname
@@ -268,9 +272,14 @@ for exp_dir in tqdm(exp_dirs, total=len(exp_dirs), desc="experiments", unit="exp
             outdir = exp_dir
 
             if args.mode in ("basic_bar","all"):
-                save_basic_bar(outdir, total_counts,tree)
+                #save_basic_bar(outdir, total_counts,tree)
+                #overall_total_counts = mean_accum(overall_total_counts, total_counts, mean) CHANGED
+                #save_basic_bar_spec(outdir, special_total_counts,tree)
+
+                save_basic_bar(outdir, total_counts, tree)
                 overall_total_counts = mean_accum(overall_total_counts, total_counts, mean)
-                save_basic_bar_spec(outdir, special_total_counts,tree)
+                save_basic_bar_spec(outdir, special_total_counts, tree)
+                overall_special_total_counts = mean_accum(overall_special_total_counts, special_total_counts, mean)
 
             if args.mode in ("2D_conditional","all"):
                 save_2d_conditional(outdir, conditional_prob, tree)
@@ -293,15 +302,20 @@ overall_total_counts = mean_final(overall_total_counts, mean, n_done)
 overall_cond_prob = mean_final(overall_cond_prob, mean, n_done)
 overall_avg_others = mean_final(overall_avg_others, mean, n_done)
 overall_spec_cond_prob= mean_final(overall_spec_cond_prob, mean, n_done)
+overall_special_total_counts = mean_final(overall_special_total_counts, mean, n_done) #ADDED
 
 # Set up overall data mean and directory to hold graphs
 
 mean_pin_usage = root / "mean_pin_usage"
 mean_pin_usage.mkdir(parents=True, exist_ok=True)
 
+#if args.mode in ("basic_bar","all"): CHANGED
+#    save_basic_bar(mean_pin_usage, overall_total_counts,special_title="Mean Pin Usage Counts")
+#    save_basic_bar_spec(mean_pin_usage, special_total_counts,special_title="Total Frequency of Special Z Combos")
+
 if args.mode in ("basic_bar","all"):
-    save_basic_bar(mean_pin_usage, overall_total_counts,special_title="Mean Pin Usage Counts")
-    save_basic_bar_spec(mean_pin_usage, special_total_counts,special_title="Total Frequency of Special Z Combos")
+    save_basic_bar(mean_pin_usage, overall_total_counts, special_title="Mean Pin Usage Counts")
+    save_basic_bar_spec(mean_pin_usage, overall_special_total_counts, special_title="Total Frequency of Special Z Combos (Mean)")
 
 if args.mode in ("2D_conditional","all"):
     save_2d_conditional(mean_pin_usage, overall_cond_prob,special_title="Mean Pin Usage Conditional Probability")
