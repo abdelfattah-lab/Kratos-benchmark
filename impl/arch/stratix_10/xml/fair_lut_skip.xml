@@ -534,7 +534,7 @@
                 <pack_pattern name="chain_arith" in_port="ble5[1].cout" out_port="fle.cout"/>
               </direct>
               <direct name="carry_link" input="ble5[0].cout" output="ble5[1].cin">
-                <pack_pattern name="chain_arith" in_port="ble5[0].cout" out_port="ble5[1].cout"/>
+                <pack_pattern name="chain_arith" in_port="ble5[0].cout" out_port="ble5[1].cin"/>
               </direct>
               <complete name="clock" input="fle.clk" output="ble5[1:0].clk"/>
             </interconnect>
@@ -638,8 +638,12 @@
         </interconnect>
       </pb_type>
       <interconnect>
-        <direct name="carry_in" input="clb.cin" output="lab.cin"/>
-        <direct name="carry_out" input="lab.cout" output="clb.cout"/>
+        <direct name="carry_in" input="clb.cin" output="lab.cin">
+          <pack_pattern name="chain_arith" in_port="clb.cin" out_port="lab.cin"/>
+        </direct>
+        <direct name="carry_out" input="lab.cout" output="clb.cout">
+          <pack_pattern name="chain_arith" in_port="lab.cout" out_port="clb.cout"/>
+        </direct>
         <direct name="clock" input="clb.clk" output="lab.clk"/>
         <complete name="Input_feedback_I1" input="lab.O[4:0]" output="lab.I1"/>
         <complete name="Input_feedback_I2" input="lab.O[24:20]" output="lab.I2"/>
