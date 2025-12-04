@@ -456,10 +456,8 @@ Reconfigurable
                     <direct name="lut4_in1" input="arithmetic.in[3:0]" output="lut4[0].in" />
                     <direct name="lut4_in2" input="arithmetic.in[3:0]" output="lut4[1].in" />
                     <direct name="lut_to_add1" input="lut4[0:0].out" output="adder[0].a">
-                      <pack_pattern name="lut_chain" in_port="lut4[0:0].out" out_port="adder[0].a" />
                     </direct>
                     <direct name="lut_to_add2" input="lut4[1:1].out" output="adder[0].b">
-                      <pack_pattern name="lut_chain" in_port="lut4[1:1].out" out_port="adder[0].b" />
                     </direct>
                     <direct name="add_to_ff1" input="adder.sumout" output="ff.D">
                       <delay_constant max="16.45e-12" in_port="adder.sumout" out_port="ff.D" />
@@ -468,24 +466,16 @@ Reconfigurable
                     </direct>
                     <direct name="carry_in1" input="arithmetic.cin[0]" output="adder[0].cin">
                       <pack_pattern name="chain" in_port="arithmetic.cin[0]" out_port="adder[0].cin" />
-                      <pack_pattern name="lut_chain" in_port="arithmetic.cin[0]"
-                        out_port="adder[0].cin" />
                     </direct>
                     <direct name="carry_out1" input="adder[0].cout" output="arithmetic.cout[0]">
                       <pack_pattern name="chain" in_port="adder[0].cout"
                         out_port="arithmetic.cout[0]" />
-                      <pack_pattern name="lut_chain" in_port="adder[0].cout"
-                        out_port="arithmetic.cout[0]" />
                     </direct>
                     <direct name="carry_in2" input="arithmetic.cin[1]" output="adder[1].cin">
                       <pack_pattern name="chain" in_port="arithmetic.cin[1]" out_port="adder[1].cin" />
-                      <pack_pattern name="lut_chain" in_port="arithmetic.cin[1]"
-                        out_port="adder[1].cin" />
                     </direct>
                     <direct name="carry_out2" input="adder[1].cout" output="arithmetic.cout[1]">
                       <pack_pattern name="chain" in_port="adder[1].cout"
-                        out_port="arithmetic.cout[1]" />
-                      <pack_pattern name="lut_chain" in_port="adder[1].cout"
                         out_port="arithmetic.cout[1]" />
                     </direct>
                     <!-- the output of this connection should be adder[1].a only, however, a
@@ -496,9 +486,10 @@ Reconfigurable
                     <!-- the output of this connection should be adder[1].b only, however, a
                     complete cross bar
                              is used since the packer is not aware that the adder inputs are logically equivalent -->
-                    <complete name="add2_input" input="arithmetic.in[4] arithmetic.in[0] adder[0].sumout" output="adder[1].a adder[1].b">
-                      <pack_pattern name="chain" in_port="adder[0].sumout" out_port="adder[1].b"/>
-                      <pack_pattern name="lut_chain" in_port="adder[0].sumout" out_port="adder[1].b"/>
+                    <complete name="add2_input"
+                      input="arithmetic.in[4] arithmetic.in[0] adder[0].sumout"
+                      output="adder[1].a adder[1].b">
+                      <pack_pattern name="chain" in_port="adder[0].sumout" out_port="adder[1].b" />
                     </complete>
                     <complete name="sumout" input="ff.Q adder.sumout" output="arithmetic.out">
                       <delay_constant max="39.78e-12" in_port="adder.sumout"
@@ -511,11 +502,9 @@ Reconfigurable
                   <direct name="direct1" input="ble5.in" output="arithmetic.in" />
                   <direct name="carry_in" input="ble5.cin" output="arithmetic.cin">
                     <pack_pattern name="chain" in_port="ble5.cin" out_port="arithmetic.cin" />
-                    <pack_pattern name="lut_chain" in_port="ble5.cin" out_port="arithmetic.cin" />
                   </direct>
                   <direct name="carry_out" input="arithmetic.cout" output="ble5.cout">
                     <pack_pattern name="chain" in_port="arithmetic.cout" out_port="ble5.cout" />
-                    <pack_pattern name="lut_chain" in_port="arithmetic.cout" out_port="ble5.cout" />
                   </direct>
                   <direct name="direct2" input="ble5.clk" output="arithmetic.clk" />
                   <direct name="direct3" input="arithmetic.out" output="ble5.out" />
@@ -576,12 +565,8 @@ Reconfigurable
                     <direct name="lut4_in1" input="arithmetic.in[3:0]" output="lut4[0].in" />
                     <direct name="lut4_in2" input="arithmetic.in[3:0]" output="lut4[1].in" />
                     <direct name="lut_to_add1" input="lut4[0:0].out" output="adder[0].a">
-                      <pack_pattern name="simple_lut_chain" in_port="lut4[0:0].out"
-                        out_port="adder[0].a" />
                     </direct>
                     <direct name="lut_to_add2" input="lut4[1:1].out" output="adder[0].b">
-                      <pack_pattern name="simple_lut_chain" in_port="lut4[1:1].out"
-                        out_port="adder[0].b" />
                     </direct>
                     <direct name="add_to_ff1" input="adder[0].sumout" output="ff[0].D">
                       <delay_constant max="16.45e-12" in_port="adder[0].sumout" out_port="ff[0].D" />
@@ -596,13 +581,9 @@ Reconfigurable
                     <direct name="carry_in1" input="arithmetic.cin[0]" output="adder[0].cin">
                       <pack_pattern name="simple_chain" in_port="arithmetic.cin[0]"
                         out_port="adder[0].cin" />
-                      <pack_pattern name="simple_lut_chain" in_port="arithmetic.cin[0]"
-                        out_port="adder[0].cin" />
                     </direct>
                     <direct name="carry_out1" input="adder[0].cout" output="arithmetic.cout[0]">
                       <pack_pattern name="simple_chain" in_port="adder[0].cout"
-                        out_port="arithmetic.cout[0]" />
-                      <pack_pattern name="simple_lut_chain" in_port="adder[0].cout"
                         out_port="arithmetic.cout[0]" />
                     </direct>
                     <direct name="carry_in2" input="arithmetic.cin[1]" output="adder[1].cin">
@@ -634,13 +615,9 @@ Reconfigurable
                   <direct name="direct1" input="ble5.in" output="arithmetic.in" />
                   <direct name="carry_in" input="ble5.cin" output="arithmetic.cin">
                     <pack_pattern name="simple_chain" in_port="ble5.cin" out_port="arithmetic.cin" />
-                    <pack_pattern name="simple_lut_chain" in_port="ble5.cin[0]"
-                      out_port="arithmetic.cin[0]" />
                   </direct>
                   <direct name="carry_out" input="arithmetic.cout" output="ble5.cout">
                     <pack_pattern name="simple_chain" in_port="arithmetic.cout" out_port="ble5.cout" />
-                    <pack_pattern name="simple_lut_chain" in_port="arithmetic.cout[0]"
-                      out_port="ble5.cout[0]" />
                   </direct>
                   <direct name="direct2" input="ble5.clk" output="arithmetic.clk" />
                   <direct name="direct3" input="arithmetic.out" output="ble5.out" />
@@ -661,23 +638,15 @@ Reconfigurable
 
               <direct name="carry_in" input="fle.cin" output="ble5[0].cin">
                 <pack_pattern name="chain" in_port="fle.cin" out_port="ble5[0].cin" />
-                <pack_pattern name="lut_chain" in_port="fle.cin" out_port="ble5[0].cin" />
                 <pack_pattern name="simple_chain" in_port="fle.cin" out_port="ble5[0].cin" />
-                <pack_pattern name="simple_lut_chain" in_port="fle.cin[0]" out_port="ble5[0].cin[0]" />
               </direct>
               <direct name="carry_out" input="ble5[1].cout" output="fle.cout">
                 <pack_pattern name="chain" in_port="ble5[1].cout" out_port="fle.cout" />
-                <pack_pattern name="lut_chain" in_port="ble5[1].cout" out_port="fle.cout" />
                 <pack_pattern name="simple_chain" in_port="ble5[1].cout" out_port="fle.cout" />
-                <pack_pattern name="simple_lut_chain" in_port="ble5[1].cout[0]"
-                  out_port="fle.cout[0]" />
               </direct>
               <direct name="carry_link" input="ble5[0].cout" output="ble5[1].cin">
                 <pack_pattern name="chain" in_port="ble5[0].cout" out_port="ble5[1].cin" />
-                <pack_pattern name="lut_chain" in_port="ble5[0].cout" out_port="ble5[1].cin" />
                 <pack_pattern name="simple_chain" in_port="ble5[0].cout" out_port="ble5[1].cin" />
-                <pack_pattern name="simple_lut_chain" in_port="ble5[0].cout[0]"
-                  out_port="ble5[1].cin[0]" />
               </direct>
               <complete name="clock" input="fle.clk" output="ble5[1:0].clk" />
             </interconnect>
@@ -812,46 +781,33 @@ Reconfigurable
             <delay_constant max="18.69e-12" in_port="lab.cin[0]" out_port="fle[0:0].cin[0]" />
             <delay_constant max="18.85e-12" in_port="lab.cin[1]" out_port="fle[0:0].cin[1]" />
             <pack_pattern name="chain" in_port="lab.cin" out_port="fle[0:0].cin" />
-            <pack_pattern name="lut_chain" in_port="lab.cin" out_port="fle[0:0].cin" />
             <pack_pattern name="simple_chain" in_port="lab.cin" out_port="fle[0:0].cin" />
-            <pack_pattern name="simple_lut_chain" in_port="lab.cin[0]" out_port="fle[0:0].cin[0]" />
           </direct>
           <direct name="carry_out" input="fle[9:9].cout" output="lab.cout">
             <pack_pattern name="chain" in_port="fle[9:9].cout" out_port="lab.cout" />
-            <pack_pattern name="lut_chain" in_port="fle[9:9].cout" out_port="lab.cout" />
             <pack_pattern name="simple_chain" in_port="fle[9:9].cout" out_port="lab.cout" />
-            <pack_pattern name="simple_lut_chain" in_port="fle[9:9].cout[0]" out_port="lab.cout[0]" />
           </direct>
           <direct name="carry_link" input="fle[8:0].cout" output="fle[9:1].cin">
             <pack_pattern name="chain" in_port="fle[8:0].cout" out_port="fle[9:1].cin" />
-            <pack_pattern name="lut_chain" in_port="fle[8:0].cout" out_port="fle[9:1].cin" />
             <pack_pattern name="simple_chain" in_port="fle[8:0].cout" out_port="fle[9:1].cin" />
-            <pack_pattern name="simple_lut_chain" in_port="fle[8:0].cout[0]"
-              out_port="fle[9:1].cin[0]" />
           </direct>
         </interconnect>
       </pb_type>
       <interconnect>
         <direct name="carry_in1" input="clb.cin[0]" output="lab.cin[0]">
           <pack_pattern name="chain" in_port="clb.cin[0]" out_port="lab.cin[0]" />
-          <pack_pattern name="lut_chain" in_port="clb.cin[0]" out_port="lab.cin[0]" />
           <pack_pattern name="simple_chain" in_port="clb.cin[0]" out_port="lab.cin[0]" />
-          <pack_pattern name="simple_lut_chain" in_port="clb.cin[0]" out_port="lab.cin[0]" />
         </direct>
         <direct name="carry_out1" input="lab.cout[0]" output="clb.cout[0]">
           <pack_pattern name="chain" in_port="lab.cout[0]" out_port="clb.cout[0]" />
-          <pack_pattern name="lut_chain" in_port="lab.cout[0]" out_port="clb.cout[0]" />
           <pack_pattern name="simple_chain" in_port="lab.cout[0]" out_port="clb.cout[0]" />
-          <pack_pattern name="simple_lut_chain" in_port="lab.cout[0]" out_port="clb.cout[0]" />
         </direct>
         <direct name="carry_in2" input="clb.cin[1]" output="lab.cin[1]">
           <pack_pattern name="chain" in_port="clb.cin[1]" out_port="lab.cin[1]" />
-          <pack_pattern name="lut_chain" in_port="clb.cin[1]" out_port="lab.cin[1]" />
           <pack_pattern name="simple_chain" in_port="clb.cin[1]" out_port="lab.cin[1]" />
         </direct>
         <direct name="carry_out2" input="lab.cout[1]" output="clb.cout[1]">
           <pack_pattern name="chain" in_port="lab.cout[1]" out_port="clb.cout[1]" />
-          <pack_pattern name="lut_chain" in_port="lab.cout[1]" out_port="clb.cout[1]" />
           <pack_pattern name="simple_chain" in_port="lab.cout[1]" out_port="clb.cout[1]" />
         </direct>
         <direct name="clock" input="clb.clk" output="lab.clk" />

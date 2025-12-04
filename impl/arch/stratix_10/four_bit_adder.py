@@ -19,7 +19,7 @@ XML_DIR = BASE_DIR / 'xml'
 TEMPLATE_DCC1 = (XML_DIR / '4bit_adder_dcc1.xml').read_text(encoding='utf-8')
 TEMPLATE_DCC2 = (XML_DIR / '4bit_adder_dcc2.xml').read_text(encoding='utf-8')
 TEMPLATE_DCC2_FAITHFUL = (XML_DIR / '4bit_adder_dcc2_faithful.xml').read_text(encoding='utf-8')
-TEMPLATE_DCC3 = (XML_DIR / '4bit_adder_dcc3.xml').read_text(encoding='utf-8')
+TEMPLATE_DCC3 = (XML_DIR / '4bit_adder_dcc3_new.xml').read_text(encoding='utf-8')
 
 def gen_layout_sizing(fixed_size: tuple[int, int]|None):
     if fixed_size is None:

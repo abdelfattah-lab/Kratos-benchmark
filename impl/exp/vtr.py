@@ -165,7 +165,7 @@ class VtrExperiment(Experiment):
             
         # set target pin utilization
         cmd += ['--target_ext_pin_util', pin_util]
-        cmd += ['--pack_verbosity', '3']
+        cmd += ['--pack_verbosity', '2']
 
         # Make out and error files
         self.stdout_file = open(os.path.join(self.exp_dir, self.exp_params['stdout_file']), 'w')
