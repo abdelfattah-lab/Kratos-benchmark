@@ -96,6 +96,7 @@ class Runner():
                 exp_start_times[exp] = timer()
 
             exp.run()
+            print(f"Starting next experiment at location {exp.exp_dir}")
             exp.wait()
             return exp.get_full_params(), exp.get_result(**result_kwargs)
         
