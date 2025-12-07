@@ -12,7 +12,7 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent
 XML_DIR = BASE_DIR / "xml"
 
-TEMPLATE = (XML_DIR / 'base.xml').read_text(encoding='utf-8')
+TEMPLATE = (XML_DIR / 'fair_base.xml').read_text(encoding='utf-8')
 
 def gen_lut6():
     return """<mode name="n1_lut6">

@@ -127,10 +127,10 @@
         <equivalent_sites>
           <site pb_type="clb" pin_mapping="direct" />
         </equivalent_sites>
-        <input name="I1" num_pins="15" equivalent="full" />
-        <input name="I2" num_pins="15" equivalent="full" />
-        <input name="I3" num_pins="15" equivalent="full" />
-        <input name="I4" num_pins="15" equivalent="full" />
+        <input name="I1" num_pins="15" />
+        <input name="I2" num_pins="15" />
+        <input name="I3" num_pins="15" />
+        <input name="I4" num_pins="15" />
         <input name="cin" num_pins="1" />
         <output name="O" num_pins="40" equivalent="none" />
         <output name="cout" num_pins="1" />
@@ -285,10 +285,10 @@
     <!-- Define I/O pads ends -->
     <!-- Define general purpose logic block (CLB) begin -->
     <pb_type name="clb">
-      <input name="I1" num_pins="15" equivalent="full" />
-      <input name="I2" num_pins="15" equivalent="full" />
-      <input name="I3" num_pins="15" equivalent="full" />
-      <input name="I4" num_pins="15" equivalent="full" />
+      <input name="I1" num_pins="15" />
+      <input name="I2" num_pins="15" />
+      <input name="I3" num_pins="15" />
+      <input name="I4" num_pins="15" />
       <input name="cin" num_pins="1" />
       <output name="O" num_pins="40" equivalent="none" />
       <output name="cout" num_pins="1" />
