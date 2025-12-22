@@ -346,7 +346,7 @@ TEMPLATE = """<!--
                     <output name="lut5_out" num_pins="1"/>
                     <output name="lut4_out" num_pins="2"/>
                     <mode name="as_lut5">
-                      <pb_type name="lut5" blif_model=".names" num_pb="1" class="lut">
+                      <pb_type name="lut5_arith" blif_model=".names" num_pb="1" class="lut">
                       <input name="in" num_pins="5" port_class="lut_in"/>
                       <output name="out" num_pins="1" port_class="lut_out"/>
                       <!-- LUT timing using delay matrix -->
@@ -542,7 +542,6 @@ TEMPLATE = """<!--
               <!-- // Direct inputs from crossbar - use A/B is in_direct for ble[0]/ble[1] -->
               <direct name="lut5_direct1" input="fle.in_direct[0]" output="ble5[0].in_direct[0]"/>
               <direct name="lut5_direct2" input="fle.in_direct[1]" output="ble5[1].in_direct[0]"/>
-
               <direct name="lut5_direct_share_1" input="fle.in[0]" output="ble5[0].in_direct[1]"/>
               <direct name="lut5_direct_share_2" input="fle.in[1]" output="ble5[1].in_direct[1]"/>
               
@@ -1170,8 +1169,10 @@ class DD5_2Z_Input_Shared_AB(ArchFactory, ParamsChecker):
         concurrent_lut5s = 0
         for arith_block in ns.find_all_block_instances(root, 'arithmetic[0]'):
             adder_block = ns.get_valid_child_block_instance(arith_block, 'adder[0]')
-            lut5_block= ns.get_valid_child_block_mode(arith_block, 'as_lut5')
-            if (adder_block is not None) and (lut5_block is not None):
+            # Check for either as_lut5 or as_dual_lut4s mode
+            lut5_block = ns.get_valid_child_block_mode(arith_block, 'as_lut5')
+            lut4s_block = ns.get_valid_child_block_mode(arith_block, 'as_dual_lut4s')
+            if (adder_block is not None) and ((lut5_block is not None) or (lut4s_block is not None)):
                 concurrent_lut5s += 1
 
         return dict(

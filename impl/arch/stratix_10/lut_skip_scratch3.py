@@ -345,7 +345,7 @@ TEMPLATE = """<!--
                     <output name="lut5_out" num_pins="1"/>
                     <output name="lut4_out" num_pins="2"/>
                     <mode name="as_lut5">
-                      <pb_type name="lut5" blif_model=".names" num_pb="1" class="lut">
+                      <pb_type name="lut5_arith" blif_model=".names" num_pb="1" class="lut">
                       <input name="in" num_pins="5" port_class="lut_in"/>
                       <output name="out" num_pins="1" port_class="lut_out"/>
                       <!-- LUT timing using delay matrix -->
@@ -359,7 +359,7 @@ TEMPLATE = """<!--
                               139.70e-12
                               69.70e-12
                             -->
-                        <delay_matrix type="max" in_port="lut5.in" out_port="lut5.out">
+                        <delay_matrix type="max" in_port="lut5_arith.in" out_port="lut5_arith.out">
                             149.24e-12
                             149.24e-12
                             149.24e-12
@@ -368,8 +368,8 @@ TEMPLATE = """<!--
                         </delay_matrix>
                       </pb_type>
                       <interconnect>
-                        <direct name="lut5_in" input="dual_lut4s.in" output="lut5.in"/>
-                        <direct name="lut5_out" input="lut5.out" output="dual_lut4s.lut5_out"/>
+                        <direct name="lut5_in" input="dual_lut4s.in" output="lut5_arith.in"/>
+                        <direct name="lut5_out" input="lut5_arith.out" output="dual_lut4s.lut5_out"/>
                       </interconnect>
                     </mode>
                     <mode name="as_dual_lut4s">
@@ -1165,8 +1165,9 @@ class LUTSkip3ArchFactory(ArchFactory, ParamsChecker):
         concurrent_lut5s = 0
         for arith_block in ns.find_all_block_instances(root, 'arithmetic[0]'):
             adder_block = ns.get_valid_child_block_instance(arith_block, 'adder[0]')
-            lut5_block= ns.get_valid_child_block_mode(arith_block, 'as_lut5')
-            if (adder_block is not None) and (lut5_block is not None):
+            lut5_block = ns.get_valid_child_block_mode(arith_block, 'as_lut5')
+            lut4s_block = ns.get_valid_child_block_mode(arith_block, 'as_dual_lut4s')
+            if (adder_block is not None) and ((lut5_block is not None) or (lut4s_block is not None)):
                 concurrent_lut5s += 1
 
         return dict(

@@ -12,6 +12,8 @@ from impl.arch.stratix_10.lut_skip_1d import LUTSkip1dArchFactory
 from impl.arch.stratix_10.lut_skip_6 import LUTSkip6ArchFactory
 from impl.arch.stratix_10.sharing_1z import DD5_1Z_Input_Shared_A
 from impl.arch.stratix_10.sharing_2z import DD5_2Z_Input_Shared_AB
+from impl.arch.stratix_10.sharing_4z_AEBF import DD5_4Z_Input_Shared_AEBF
+from impl.arch.stratix_10.sharing_4z_ABlut4 import DD5_4Z_Input_Shared_ABlut4
 
 # VTR Standard Benchmark Loader parameters
 import runs.benchmarks.vtr_full_benchmarks as vtr_bm
@@ -39,10 +41,13 @@ from pandas import DataFrame
 #EXP_ARCH = LUTSkip3ArchFactory
 
 #BASE_ARCH = LUTSkip3ArchFactory
-#EXP_ARCH = DD5_1Z_Input_Shared_A_Top
+#EXP_ARCH = DD5_1Z_Input_Shared_A
+
+#BASE_ARCH = LUTSkip3ArchFactory
+#EXP_ARCH = DD5_2Z_Input_Shared_AB
 
 BASE_ARCH = LUTSkip3ArchFactory
-EXP_ARCH = DD5_2Z_Input_Shared_AB
+EXP_ARCH = DD5_4Z_Input_Shared_AEBF
 
 BASE_PARAMS = {
     keys.KEY_EXP: {
@@ -76,22 +81,22 @@ VARIABLE_ARCH_PARAMS = dict(
 
 DESIGN_LIST = [
     # VTR Standard benchmarks
-    (Conv1dFuDesign(), kratos.get_conv_1d_fu_params(BASE_PARAMS)),
-    (Conv1dPwDesign(), kratos.get_conv_1d_pw_params(BASE_PARAMS)),
-    (Conv2dFuDesign(), kratos.get_conv_2d_fu_params(BASE_PARAMS)),
-    (Conv2dPwDesign(), kratos.get_conv_2d_pw_params(BASE_PARAMS)),
-    (GemmTFuDesign(), kratos.get_gemmt_fu_params(BASE_PARAMS)),
-    (GemmTRpDesign(), kratos.get_gemmt_rp_params(BASE_PARAMS)),
-    (GemmSDesign(), kratos.get_gemms_params(BASE_PARAMS)),
+    #(Conv1dFuDesign(), kratos.get_conv_1d_fu_params(BASE_PARAMS)),
+    #(Conv1dPwDesign(), kratos.get_conv_1d_pw_params(BASE_PARAMS)),
+    #(Conv2dFuDesign(), kratos.get_conv_2d_fu_params(BASE_PARAMS)),
+    #(Conv2dPwDesign(), kratos.get_conv_2d_pw_params(BASE_PARAMS)),
+    #(GemmTFuDesign(), kratos.get_gemmt_fu_params(BASE_PARAMS)),
+    #(GemmTRpDesign(), kratos.get_gemmt_rp_params(BASE_PARAMS)),
+    #(GemmSDesign(), kratos.get_gemms_params(BASE_PARAMS)),
 
     # Tiny benchmarks
-    #(Conv1dFuDesign(), tiny.get_conv_1d_fu_params(BASE_PARAMS)),
-    #(Conv1dPwDesign(), tiny.get_conv_1d_pw_params(BASE_PARAMS)),
-    #(Conv2dFuDesign(), tiny.get_conv_2d_fu_params(BASE_PARAMS)),
-    #(Conv2dPwDesign(), tiny.get_conv_2d_pw_params(BASE_PARAMS)),
-    #(GemmTFuDesign(), tiny.get_gemmt_fu_params(BASE_PARAMS)),
-    #(GemmTRpDesign(), tiny.get_gemmt_rp_params(BASE_PARAMS)),
-    #(GemmSDesign(), tiny.get_gemms_params(BASE_PARAMS)),
+    (Conv1dFuDesign(), tiny.get_conv_1d_fu_params(BASE_PARAMS)),
+    (Conv1dPwDesign(), tiny.get_conv_1d_pw_params(BASE_PARAMS)),
+    (Conv2dFuDesign(), tiny.get_conv_2d_fu_params(BASE_PARAMS)),
+    (Conv2dPwDesign(), tiny.get_conv_2d_pw_params(BASE_PARAMS)),
+    (GemmTFuDesign(), tiny.get_gemmt_fu_params(BASE_PARAMS)),
+    (GemmTRpDesign(), tiny.get_gemmt_rp_params(BASE_PARAMS)),
+    (GemmSDesign(), tiny.get_gemms_params(BASE_PARAMS)),
 ]
 
 # add derived metrics:
@@ -150,7 +155,7 @@ run_vtr_denoised_v1(
     filter_results=['fmax', 'cpd', 'twl', 
                     'concurrent_lut5s', 'concurrent_lut6s',
                     ],
-    filter_blocks=['clb', 'fle',
+    filter_blocks=['clb', 'fle', 'lut4', 'lut5_arith',
                     'lut5', 'lut6',
                     'adder',
                    ],
