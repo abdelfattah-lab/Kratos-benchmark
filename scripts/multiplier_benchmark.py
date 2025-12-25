@@ -15,6 +15,7 @@ Requirements:
 
 import structure.consts.keys as keys
 from structure.design import StandardizedSdcDesign
+from utils import REPO_ROOT
 from impl.exp.vtr import VtrExperiment
 from structure.run import Runner
 from impl.arch.stratix_10.base import BaseArchFactory
@@ -94,7 +95,7 @@ def get_base_params(compressor_tree_type: str) -> dict:
     """Generate base parameters for a given compressor tree type."""
     return {
         keys.KEY_EXP: {
-            'verilog_search_dir': path.dirname(path.realpath(__file__)),
+            'verilog_search_dir': str(REPO_ROOT),
             'allow_skipping': True,
             'avoid_mult': True,  # Use soft multipliers only
             'adder_cin_global': False,

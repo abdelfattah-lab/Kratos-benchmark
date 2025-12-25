@@ -7,6 +7,7 @@ Output: Separate PNG for each architecture, with tree_base values as grouped bar
 
 import structure.consts.keys as keys
 from runs.vtr_denoised_same_arch_raw import run_vtr_denoised_same_arch_raw
+from utils import VERILOG_DIR
 import runs.benchmarks.kratos_tiny as tiny
 import util.derived_metrics as derived_metrics
 
@@ -73,6 +74,9 @@ SPARSITY = 0.5
 NUM_PARALLEL_TASKS = 5
 VERBOSE = False
 
+# Results folder prefix (e.g., 'tree-base-sweep-' creates 'results/tree-base-sweep-<timestamp>')
+RUN_PREFIX = 'tree-base-sweep-'
+
 # Metrics to plot (metric_key, y_label)
 METRICS_TO_PLOT: Sequence[tuple[str, str]] = (
     ('area_fle', 'Area'),
@@ -97,7 +101,7 @@ def get_base_params() -> dict:
     """Get base parameters."""
     return {
         keys.KEY_EXP: {
-            'verilog_search_dir': path.join(path.dirname(path.realpath(__file__)), 'verilog'),
+            'verilog_search_dir': str(VERILOG_DIR),
             'allow_skipping': True,
             'adder_cin_global': False,
             'route_chan_width': 400,
@@ -374,7 +378,8 @@ def plot_tree_base_comparison(
 def main():
     # Create output directory
     timestamp = dt.now().strftime("%d%b%y-%H.%M.%S")
-    output_dir = Path("results") / f"tree_base_sweep_{timestamp}"
+    folder_name = f"{RUN_PREFIX}{timestamp}" if RUN_PREFIX else timestamp
+    output_dir = Path("results") / folder_name
     output_dir.mkdir(parents=True, exist_ok=True)
     print(f"Output directory: {output_dir}")
 

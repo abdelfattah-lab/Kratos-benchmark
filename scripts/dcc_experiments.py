@@ -13,6 +13,7 @@ Configuration:
 
 import structure.consts.keys as keys
 from structure.consts.translation import TRANSLATIONS_GRAPH
+from utils import VERILOG_DIR
 
 from runs.vtr_denoised_same_arch_raw import run_vtr_denoised_same_arch_raw
 
@@ -106,7 +107,7 @@ BASELINE_ARCH_KEY: str = "base"
 # Note: 'allow_skipping', 'compressor_tree_type', 'soft_multiplier_adders', 'ternary_adder_dp' can be overridden per-architecture in ARCH_CONFIG
 BASE_PARAMS = {
     keys.KEY_EXP: {
-        'verilog_search_dir': path.join(path.dirname(path.realpath(__file__)), 'verilog'),
+        'verilog_search_dir': str(VERILOG_DIR),
         'allow_skipping': True,
         'adder_cin_global': False,
         'route_chan_width': 400,
@@ -166,6 +167,9 @@ FILTER_BLOCKS = ['clb', 'fle', 'fle1', 'fle2', 'lut5', 'lut6', 'adder']
 # Runner settings
 NUM_PARALLEL_TASKS = 3
 VERBOSE = True
+
+# Results folder prefix (e.g., 'full-run-' creates 'results/full-run-<timestamp>')
+RUN_PREFIX = 'full-run-'
 
 # =============================================================================
 # DERIVED METRICS
@@ -527,7 +531,8 @@ def run_single_arch(arch_class: Type, arch_config: dict) -> pd.DataFrame | None:
 def main():
     # Create output directory with timestamp
     timestamp = dt.now().strftime("%d%b%y-%H.%M.%S")
-    output_dir = Path("results") / timestamp
+    folder_name = f"{RUN_PREFIX}{timestamp}" if RUN_PREFIX else timestamp
+    output_dir = Path("results") / folder_name
     output_dir.mkdir(parents=True, exist_ok=True)
     print(f"Output directory: {output_dir}")
 

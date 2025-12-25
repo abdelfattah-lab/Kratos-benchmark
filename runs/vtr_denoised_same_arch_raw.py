@@ -20,6 +20,7 @@ def run_vtr_denoised_same_arch_raw(
         seeds: tuple[int, int, int] = (1239, 5741, 1473),
         df_processing_fn: Callable[[pd.DataFrame], tuple[pd.DataFrame, list[str]]] = None,
         save_to_folder: bool = True,
+        prefix: str = '',
         **runner_kwargs
     ) -> pd.DataFrame | str | None:
     """
@@ -38,6 +39,7 @@ def run_vtr_denoised_same_arch_raw(
     * seeds: (int, int, int), a tuple of 3 seeds to use for averaging.
     * df_processing_fn: (pd.DataFrame) -> (pd.DataFrame, list[str]), function called on each mean DataFrame from 3 seeds to add any derived metrics. Returns (new DataFrame, keys to add to filter_results).  Default: None
     * save_to_folder: bool, whether to save results to folder (True) or just return the runner results (False). Default: True
+    * prefix: str, prefix for the results folder name (e.g., 'full-run-' creates 'results/full-run-<timestamp>'). Default: ''
     Remaining keyword arguments are passed directly to Runner.run_all_threaded().
 
     Returns:
@@ -101,10 +103,6 @@ def run_vtr_denoised_same_arch_raw(
 
     # save into results directory (or return)
     if save_to_folder:
-        saved_dir = {'path': None}
-        def capture_dir(dir_path: str) -> None:
-            saved_dir['path'] = dir_path
-        save_and_plot(dict(all=all_df), do_with_dir_fn=capture_dir)
-        return saved_dir['path']
+        return save_and_plot(dict(all=all_df), prefix=prefix)
     else:
         return all_df
