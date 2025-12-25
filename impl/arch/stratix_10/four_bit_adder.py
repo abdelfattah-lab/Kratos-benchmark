@@ -37,7 +37,7 @@ DEFAULTS = {
     'fixed_size': None, # (w, h) of fixed size, None for auto sizing
 }
 
-class FourBitDCC1ArchFactory(ArchFactory, ParamsChecker):
+class DCC1ArchFactory(ArchFactory, ParamsChecker):
     def get_name(self, per_fle_area: float, enable_lut6: bool, fixed_size: tuple[int, int]|None, **kwargs):
         # Distinguish single-chain vs. double-chain in the generated folder name
         name = f"type.s10-chain_1"
@@ -60,7 +60,7 @@ class FourBitDCC1ArchFactory(ArchFactory, ParamsChecker):
         return s
 
 
-class FourBitDCC2ArchFactory(ArchFactory, ParamsChecker):
+class DCC2ArchFactory(ArchFactory, ParamsChecker):
     def get_name(self, per_fle_area: float, enable_lut6: bool, fixed_size: tuple[int, int]|None, **kwargs):
         name = f"type.s10-chain_2"
         return name
@@ -81,7 +81,7 @@ class FourBitDCC2ArchFactory(ArchFactory, ParamsChecker):
         s = s.replace('</auto_layout>', '</fixed_layout>')
         return s
 
-class FourBitDCC2FaithfulArchFactory(ArchFactory, ParamsChecker):
+class DCC2FaithfulArchFactory(ArchFactory, ParamsChecker):
     def get_name(self, per_fle_area: float, enable_lut6: bool, fixed_size: tuple[int, int]|None, **kwargs):
         name = f"type.s10-chain_2"
         return name
@@ -103,7 +103,7 @@ class FourBitDCC2FaithfulArchFactory(ArchFactory, ParamsChecker):
         return s
 
 
-class FourBitDCC3ArchFactory(ArchFactory, ParamsChecker):
+class DCC3ArchFactory(ArchFactory, ParamsChecker):
     def get_name(self, per_fle_area: float, enable_lut6: bool, fixed_size: tuple[int, int]|None, **kwargs):
         name = f"type.s10-chain_3"
         return name

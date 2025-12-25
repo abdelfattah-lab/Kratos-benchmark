@@ -22,6 +22,7 @@ DEFAULTS_EXP_VTR = {
     'avoid_mult': True,
     'adder_cin_global': True,
     'soft_multiplier_adders': False,
+    'ternary_adder_dp': False,
     'compressor_tree_type': 'wallace',
     'parser': 'system-verilog',
 }

@@ -147,3 +147,20 @@ def apply_area_fle(df: pd.DataFrame) -> pd.DataFrame:
     df['area_fle'] = 0.0
     df.loc[(df['fle'] > 0) & (df['per_fle_area'] > 0), 'area_fle'] = df['fle'] * df['per_fle_area']
     return df
+
+def dcc1_gather_fle(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Compute 'fle' column. If 'fle' already has values, keep them.
+    Otherwise, sum 'fle1' + 'fle2' (for dcc1 architecture).
+    """
+    # If 'fle' column exists and has non-zero values, keep them
+    if 'fle' in df.columns and (df['fle'] > 0).any():
+        return df
+
+    # Otherwise, compute from fle1 + fle2 (for dcc1 architecture)
+    if 'fle1' in df.columns and 'fle2' in df.columns:
+        if 'fle' not in df.columns:
+            df['fle'] = 0.0
+        df.loc[(df['fle1'] > 0) | (df['fle2'] > 0), 'fle'] = df['fle1'] + df['fle2']
+
+    return df

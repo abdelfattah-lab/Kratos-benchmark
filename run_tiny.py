@@ -11,10 +11,10 @@ import runs.benchmarks.kratos_tiny as tiny
 from impl.arch.stratix_10.base import BaseArchFactory
 from impl.arch.stratix_10.lut_skip import LUTSkipArchFactory
 from impl.arch.stratix_10.four_bit_adder import (
-  FourBitDCC1ArchFactory,
-  FourBitDCC2ArchFactory, 
-  FourBitDCC2FaithfulArchFactory,
-  FourBitDCC3ArchFactory
+  DCC1ArchFactory,
+  DCC2ArchFactory, 
+  DCC2FaithfulArchFactory,
+  DCC3ArchFactory
 )
 # from impl.arch.stratix_10.four_bit_adder_dd import DCC2AndDD5ArchFactory
 
@@ -41,9 +41,9 @@ import os.path as path
 ARCH_BASE = BaseArchFactory()
 # ARCH = ParallelCarryArchFactory()
 ARCH_DOUBLE_DUTY = LUTSkipArchFactory()
-ARCH_DCC1 = FourBitDCC1ArchFactory()
-ARCH_DCC2 = FourBitDCC2ArchFactory()
-ARCH_DCC3 = FourBitDCC3ArchFactory()
+ARCH_DCC1 = DCC1ArchFactory()
+ARCH_DCC2 = DCC2ArchFactory()
+ARCH_DCC3 = DCC3ArchFactory()
 # ARCH_DCC2_DD5 = DCC2AndDD5ArchFactory()
 
 ARCH = ARCH_DCC3
@@ -53,23 +53,24 @@ BASE_PARAMS = {
         'verilog_search_dir': path.join(path.dirname(path.realpath(__file__)), 'verilog'),
         'allow_skipping': False,
         'adder_cin_global': True,
-        'soft_multiplier_adders': True,
+        'soft_multiplier_adders': False,  # Use compressor tree instead of cascading adders
+        'compressor_tree_type': 'ternary',  # Ternary adder tree for DCC3 chain topology
         # ... additional Experiment.run() parameters
     },
     keys.KEY_ARCH: {
         'lut_size': 6,
-        'direct_ff_mux_with': ['lut', 'adder'],
+        'direct_ff_mux_with': ['adder'],
     },
     keys.KEY_DESIGN: {
         # 'sparsity': [0, 0.5, 0.9],
-        'sparsity': 0.5,
-        'data_width': list(range(3, 9)),
+        'sparsity': 0.1,
+        'data_width': [6],
     }
 }
 
 DESIGN_LIST = [
     # Tiny benchmarks
-    # (Conv1dFuDesign(), tiny.get_conv_1d_fu_params(BASE_PARAMS)),
+    (Conv1dFuDesign(), tiny.get_conv_1d_fu_params(BASE_PARAMS)),
     (Conv1dPwDesign(), tiny.get_conv_1d_pw_params(BASE_PARAMS)),
     # (Conv2dFuDesign(), tiny.get_conv_2d_fu_params(BASE_PARAMS)),
     # (Conv2dRpDesign(), tiny.get_conv_2d_rp_params(BASE_PARAMS)),
@@ -109,7 +110,7 @@ run_vtr_all_designs(
         'ff': 'Total Register Count',
         'lut': 'LUT Count',
     },
-    num_parallel_tasks=2,
+    num_parallel_tasks=1,
     verbose=True,
     desc='tiny_run',
     notify_batch=5,

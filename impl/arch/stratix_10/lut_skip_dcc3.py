@@ -1,0 +1,56 @@
+"""
+Taken from https://github.com/verilog-to-routing/vtr-verilog-to-routing/blob/master/vtr_flow/arch/COFFE_22nm/stratix10_arch.xml, as-is.
+
+Modified:
+- Breakable carry chains (set cin_mux_stride = 0 to revert to original)
+- LUT skipping in arithmetic mode, and passing adder outputs directly into sneak paths
+"""
+
+from structure.arch import ArchFactory
+from structure.util import ParamsChecker
+import util.netstats as ns
+from pathlib import Path
+
+from lxml import etree as ET
+
+BASE_DIR = Path(__file__).resolve().parent
+XML_DIR = BASE_DIR / 'xml'
+TEMPLATE = (XML_DIR / '4bit_adder_dcc3_lut_skip.xml').read_text(encoding='utf-8')
+
+def gen_layout_sizing(fixed_size: tuple[int, int]|None):
+    if fixed_size is None:
+        return '<auto_layout aspect_ratio="1.0">', '</auto_layout>'
+    
+    w, h = fixed_size
+    return f'<fixed_layout name="fixed_arch_size" width="{w}" height="{h}">', '</fixed_layout>'
+
+DEFAULTS = {
+    # Note: per_fle_area is used by the reporting pipeline (e.g., area_fle = fle * per_fle_area).
+    # The XML templates below hard-code grid_logic_tile_area. Keep this default in sync per-class.
+    # This base DEFAULTS is used by DCC1; DCC2/DCC3 override in verify_params.
+    'per_fle_area': 2443.995, # DCC1: grid_logic_tile_area 24439.95 => /10
+    'enable_lut6': True, # turn on/off 6-LUT mode
+    'fixed_size': None, # (w, h) of fixed size, None for auto sizing
+}
+
+
+class LUTSkipDCC3ArchFactory(ArchFactory, ParamsChecker):
+    def get_name(self, per_fle_area: float, enable_lut6: bool, fixed_size: tuple[int, int]|None, **kwargs):
+        name = f"type.s10-skip_chain_3"
+        return name
+    
+    def verify_params(self, params):
+        # DCC3 template uses grid_logic_tile_area=25241.08 (small)
+        filled = self.verify_required_keys(DEFAULTS, [], params)
+        filled['per_fle_area'] = 2604.8359
+        return filled
+    
+    def get_arch(self, per_fle_area: float, enable_lut6: bool, fixed_size: tuple[int, int]|None, **kwargs):
+        # Inject fixed layout sizing if requested; otherwise return template as-is
+        if fixed_size is None:
+            return TEMPLATE
+        w, h = fixed_size
+        s = TEMPLATE
+        s = s.replace('<auto_layout aspect_ratio="1.0">', f'<fixed_layout name="fixed_arch_size" width="{w}" height="{h}">')
+        s = s.replace('</auto_layout>', '</fixed_layout>')
+        return s

@@ -19,17 +19,20 @@ class VtrExperiment(Experiment):
 
     def get_name(self, adder_cin_global: bool, avoid_mult: bool, soft_multiplier_adders: bool, compressor_tree_type: str, force_denser_packing: bool, ending: str, parser: str, **kwargs):
         route_chan_width = kwargs.get('route_chan_width', -1)
-        
+        ternary_adder_dp = kwargs.get('ternary_adder_dp', False)
+
         name = "vtr"
         if adder_cin_global:
             name += "_acg"
         if avoid_mult:
             name += "_am"
-        name += "_c."
-        if soft_multiplier_adders:
-            name += "0"
+        # Multiplication method: ternary_adder_dp > soft_multiplier_adders > compressor_tree_type
+        if ternary_adder_dp:
+            name += "_m.tdp"  # ternary DP
+        elif soft_multiplier_adders:
+            name += "_m.sma"  # soft multiplier adders (cascade chain)
         else:
-            name += compressor_tree_type
+            name += f"_c.{compressor_tree_type}"  # compressor tree type
         if route_chan_width >= 0:
             name += f"_rcw.{route_chan_width}"
         if force_denser_packing:
@@ -58,7 +61,8 @@ class VtrExperiment(Experiment):
         compressor_tree_type: chooses a compressor tree type to implement:
             - 'wallace': chooses Proposed Wallace (Asif & Kong, https://doi.org/10.1155/2014/343960)
             - 'dadda': chooses Dadda (Dadda, L. (1990). Some schemes for parallel multipliers. IEEE Computer Society Press.)
-            - 'cascade': ignore this flag, and set soft_multiplier_adders to True.
+            - 'cascade': sequential accumulation for double-carry-chain architectures (sumout feeds next adder input)
+            - 'ternary': ternary adder tree with sumout->input chaining for DCC3 architectures
             - 'old': ignore all new implementations, and revert to vanilla VTR soft multiplication.
         avoid_mult: if True, then avoids using hard multipliers. Default: False
         route_chan_width: int, if provided >= 0, then routes with this fixed channel width, else ask VTR to find the minimum channel width. Default: None
@@ -97,6 +101,8 @@ class VtrExperiment(Experiment):
         seed = self.exp_params['seed']
         adder_cin_global = self.exp_params.get('adder_cin_global', False)
         soft_multiplier_adders = self.exp_params.get('soft_multiplier_adders', False)
+        ternary_adder_dp = self.exp_params.get('ternary_adder_dp', False)
+        ternary_adder_chains = self.exp_params.get('ternary_adder_chains', False)
         compressor_tree_type = self.exp_params['compressor_tree_type']
         avoid_mult = self.exp_params.get('avoid_mult', False)
         route_chan_width = self.exp_params.get('route_chan_width', -1) 
@@ -139,9 +145,11 @@ class VtrExperiment(Experiment):
         if adder_cin_global:
             cmd += ['-adder_cin_global'] # only works with self-modified fork: https://github.com/abdelfattah-lab/vtr-updated
 
-        if soft_multiplier_adders or compressor_tree_type == 'cascade':
+        if ternary_adder_dp:
+            cmd += ['-ternary_adder_dp'] # only works with self-modified fork: https://github.com/abdelfattah-lab/vtr-updated
+        elif soft_multiplier_adders:
             cmd += ['-soft_multiplier_adders'] # only works with self-modified fork: https://github.com/abdelfattah-lab/vtr-updated
-        elif compressor_tree_type != 'cascade':
+        elif compressor_tree_type in ['wallace', 'dadda', 'cascade', 'ternary', 'wallace_ternary']:
             cmd += ['-compressor_tree_type', compressor_tree_type] # only works with self-modified fork: https://github.com/abdelfattah-lab/vtr-updated
 
         if avoid_mult:
