@@ -488,8 +488,9 @@
                       <delay_constant max="68.88e-12" in_port="dual_lut4s.lut4_out[1]" out_port="adder[0].b" />
                       <delay_constant max="68.88e-12" in_port="arithmetic.in_direct[1]" out_port="adder[0].b" />
                     </mux>
-                    <direct name="add_to_ff1" input="adder.sumout" output="ff.D">
-                      <delay_constant max="16.45e-12" in_port="adder.sumout" out_port="ff.D" />
+                    <direct name="add_to_ff1" input="adder[1].sumout" output="ff[0].D">
+                      <pack_pattern name="chain" in_port="adder[1].sumout" out_port="ff[0].D" />
+                      <delay_constant max="16.45e-12" in_port="adder.sumout" out_port="ff[0].D" />
                     </direct>
                     <direct name="lut5_to_ff" input="dual_lut4s.lut5_out" output="ff[1].D">
                       <pack_pattern name="lut5_ff" in_port="dual_lut4s.lut5_out" out_port="ff[1].D" />
