@@ -7,10 +7,10 @@ import util.derived_metrics as derived_metrics
 # Stratix 10
 from impl.arch.stratix_10.base import BaseArchFactory
 from impl.arch.stratix_10.lut_skip import LUTSkipArchFactory
-from impl.arch.stratix_10.lut_skip_scratch3 import LUTSkip3ArchFactory
-from impl.arch.stratix_10.lut_skip_1d import LUTSkip1dArchFactory
-from impl.arch.stratix_10.lut_skip_6 import LUTSkip6ArchFactory
-from impl.arch.stratix_10.four_bit_adder import FourBitDCC2ArchFactory
+# from impl.arch.stratix_10.lut_skip_scratch3 import LUTSkip3ArchFactory
+# from impl.arch.stratix_10.lut_skip_1d import LUTSkip1dArchFactory
+# from impl.arch.stratix_10.lut_skip_6 import LUTSkip6ArchFactory
+# from impl.arch.stratix_10.four_bit_adder import FourBitDCC2ArchFactory
 
 # VTR Standard Benchmark Loader parameters
 import runs.benchmarks.vtr_full_benchmarks as vtr_bm
@@ -30,7 +30,7 @@ import os.path as path
 from pandas import DataFrame
 
 BASE_ARCH = BaseArchFactory
-EXP_ARCH = FourBitDCC2ArchFactory
+EXP_ARCH = LUTSkipArchFactory
 
 BASE_PARAMS = {
     keys.KEY_EXP: {
@@ -61,7 +61,7 @@ VARIABLE_ARCH_PARAMS = dict(
 
 DESIGN_LIST = [
     # VTR Standard benchmarks
-    (Conv1dFuDesign(), kratos.get_conv_1d_fu_params(BASE_PARAMS)),
+    # (Conv1dFuDesign(), kratos.get_conv_1d_fu_params(BASE_PARAMS)),
     # (VtrBenchmarkLoaderDesign(), vtr_bm.get_all_vtr_bm_params(BASE_PARAMS)),
     # Koios benchmarks
     # (VtrBenchmarkLoaderDesign(), vtr_bm.get_all_koios_params(BASE_PARAMS)),
@@ -108,7 +108,6 @@ def add_derived_metrics(df: DataFrame) -> tuple[DataFrame, list[str]]:
     ]
 
 print("BASE", BASE_ARCH)
-print("EXP", EXP_ARCH, "\n")
 
 run_vtr_denoised_v1(
     new_arch=EXP_ARCH,
@@ -146,7 +145,8 @@ run_vtr_denoised_v1(
     rotate_x_axis_labels=True,
     merge_designs=False,
     num_parallel_tasks=1,
-    stagger_launch_sec=120,
+    seeds=(1239,),
+    # stagger_launch_sec=120,
     # verbose=True,
     desc='(Narwhal) Base vs. LUT Skip, all Koios benchmarks'
 )

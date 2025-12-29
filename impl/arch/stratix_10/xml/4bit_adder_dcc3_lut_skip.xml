@@ -490,7 +490,7 @@
                     </mux>
                     <direct name="add_to_ff1" input="adder[1].sumout" output="ff[0].D">
                       <pack_pattern name="chain" in_port="adder[1].sumout" out_port="ff[0].D" />
-                      <delay_constant max="16.45e-12" in_port="adder.sumout" out_port="ff[0].D" />
+                      <delay_constant max="16.45e-12" in_port="adder.sumout" out_port="ff.D" />
                     </direct>
                     <direct name="lut5_to_ff" input="dual_lut4s.lut5_out" output="ff[1].D">
                       <pack_pattern name="lut5_ff" in_port="dual_lut4s.lut5_out" out_port="ff[1].D" />
@@ -512,8 +512,7 @@
                     <!-- the output of this connection should be adder[1].a only, however, a
                     complete cross bar
                              is used since the packer is not aware that the adder inputs are logically equivalent -->
-                    <complete name="add2_input"
-                      input="arithmetic.in[4] arithmetic.in[0] adder[0].sumout"
+                    <complete name="add2_input" input="arithmetic.in[4] arithmetic.in[0] adder[0].sumout"
                       output="adder[1].a adder[1].b">
                       <pack_pattern name="chain" in_port="adder[0].sumout" out_port="adder[1].b" />
                     </complete>
@@ -623,14 +622,14 @@
                       <delay_constant max="68.88e-12" in_port="arithmetic.in_direct[1]" out_port="adder[0].b" />
                     </mux>
                     <direct name="add_to_ff1" input="adder[0].sumout" output="ff[0].D">
+                      <!-- <pack_pattern name="simple_chain" in_port="adder[0].sumout" out_port="ff[0].D" /> -->
                       <delay_constant max="16.45e-12" in_port="adder[0].sumout" out_port="ff[0].D" />
                     </direct>
-                    <direct name="add_to_ff2" input="adder[1].sumout" output="ff[1].D">
-                      <delay_constant max="16.45e-12" in_port="adder[1].sumout" out_port="ff[1].D" />
-                    </direct>
-                    <direct name="lut5_to_ff" input="dual_lut4s.lut5_out" output="ff[1].D">
+                    <complete name="add_to_ff2" input="dual_lut4s.lut5_out adder[1].sumout" output="ff[1].D">
+                      <!-- <pack_pattern name="simple_chain" in_port="adder[1].sumout" out_port="ff[1].D" /> -->
                       <pack_pattern name="lut5_ff" in_port="dual_lut4s.lut5_out" out_port="ff[1].D" />
-                    </direct>
+                      <delay_constant max="16.45e-12" in_port="adder[1].sumout" out_port="ff[1].D" />
+                    </complete>
                     <direct name="carry_in1" input="arithmetic.cin[0]" output="adder[0].cin">
                       <pack_pattern name="simple_chain" in_port="arithmetic.cin[0]"
                         out_port="adder[0].cin" />
@@ -648,10 +647,8 @@
                         out_port="arithmetic.cout[1]" />
                     </direct>
                     <!-- the output of this connection should be adder[1].a only, however, a
-                    complete cross bar
-                             is used since the packer is not aware that the adder inputs are logically equivalent -->
-                    <complete name="add2_input" input="dual_lut4s.lut4_out[0] arithmetic.in[4]"
-                      output="adder[1].a adder[1].b" />
+                    complete cross bar is used since the packer is not aware that the adder inputs are logically equivalent -->
+                    <complete name="add2_input" input="arithmetic.in[4] arithmetic.in[0] dual_lut4s.lut4_out[0]" output="adder[1].a adder[1].b" />
                     <!-- Split sumout to avoid duplicate edges with lut5_out -->
                     <complete name="sumout0" input="ff[0].Q adder[0].sumout" output="arithmetic.out[0]">
                       <delay_constant max="39.78e-12" in_port="adder[0].sumout" out_port="arithmetic.out[0]" />

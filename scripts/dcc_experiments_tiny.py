@@ -32,7 +32,7 @@ from impl.arch.stratix_10.four_bit_adder import (
     DCC3ArchFactory,
 )
 from impl.arch.stratix_10.lut_skip import LUTSkipArchFactory
-from impl.arch.stratix_10.lut_skip_dcc3 import LUTSkipDCC3ArchFactory
+from impl.arch.stratix_10.lut_skip_dcc3 import LUTSkipDCC3ArchFactory, AdderSkipDCC3ArchFactory
 
 # Design imports
 from impl.design.conv_1d.fu import Conv1dFuDesign
@@ -65,7 +65,7 @@ ARCH_CONFIG: dict[Type, dict] = {
         "name": "base",
         "compressor_tree_type": "wallace",
         "tree_base": 2,
-        "allow_skipping": True,
+        # "allow_skipping": False,
     },
     DCC1ArchFactory: {
         "name": "dcc1",
@@ -81,23 +81,26 @@ ARCH_CONFIG: dict[Type, dict] = {
         # "compressor_tree_type": "cascade",
         # "soft_multiplier_adders": True,
         "compressor_tree_type": "wallace_ternary",
-        # "ternary_adder_dp": True,  # Use 3D DP to find optimal triplets for ternary adder chains
+        # "ternary_adder_dp": True,  # 3D DP to find optimal triplets for ternary adder chains
         "tree_base": 3,
-        "allow_skipping": False,
+        'allow_skipping': True,
     },
     LUTSkipArchFactory: {
         "name": "dd5",
-        "compressor_tree_type": "wallace",
-    },
-    DCC2FaithfulArchFactory: {
-        "name": "dcc2_f",
         "compressor_tree_type": "wallace",
     },
     LUTSkipDCC3ArchFactory: {
         "name": "dcc3_dd5",
         "compressor_tree_type": "wallace_ternary",
         "tree_base": 3,
-        "allow_skipping": True,
+        'allow_skipping': True,
+        # "ternary_adder_dp": True,
+    },
+    AdderSkipDCC3ArchFactory: {
+        "name": "dcc3_skip_add",
+        "compressor_tree_type": "wallace_ternary",
+        "tree_base": 3,
+        'allow_skipping': False,
         # "ternary_adder_dp": True,
     }
 }
@@ -135,24 +138,24 @@ BASE_PARAMS = {
 # Designs to run
 DESIGN_LIST = [
     # (VtrBenchmarkLoaderDesign(), vtr_bm.get_all_vtr_bm_params(BASE_PARAMS)),
-    # (Conv1dFuDesign(), tiny.get_conv_1d_fu_params(BASE_PARAMS)),
-    # (Conv1dPwDesign(), tiny.get_conv_1d_pw_params(BASE_PARAMS)),
-    # (Conv2dFuDesign(), tiny.get_conv_2d_fu_params(BASE_PARAMS)),
-    # (Conv2dPwDesign(), tiny.get_conv_2d_pw_params(BASE_PARAMS)),
-    # (GemmTFuDesign(), tiny.get_gemmt_fu_params(BASE_PARAMS)),
-    # (GemmTRpDesign(), tiny.get_gemmt_rp_params(BASE_PARAMS)),
+    (Conv1dFuDesign(), tiny.get_conv_1d_fu_params(BASE_PARAMS)),
+    (Conv1dPwDesign(), tiny.get_conv_1d_pw_params(BASE_PARAMS)),
+    (Conv2dFuDesign(), tiny.get_conv_2d_fu_params(BASE_PARAMS)),
+    (Conv2dPwDesign(), tiny.get_conv_2d_pw_params(BASE_PARAMS)),
+    (GemmTFuDesign(), tiny.get_gemmt_fu_params(BASE_PARAMS)),
+    (GemmTRpDesign(), tiny.get_gemmt_rp_params(BASE_PARAMS)),
     (GemmSDesign(), tiny.get_gemms_params(BASE_PARAMS)),
 ]
 
 # Which architectures to actually run (subset of ARCH_MAP keys)
 ARCHS_TO_RUN: list[Type] = [
     BaseArchFactory,
-    # LUTSkipArchFactory,
-    # DCC1ArchFactory,
+    # # LUTSkipArchFactory,
+    # # DCC1ArchFactory,
     # DCC2ArchFactory,
-    # DCC2FaithfulArchFactory,
     DCC3ArchFactory,
-    # LUTSkipDCC3ArchFactory,
+    LUTSkipDCC3ArchFactory,
+    AdderSkipDCC3ArchFactory
 ]
 
 # Metrics to plot
@@ -173,11 +176,11 @@ FILTER_RESULTS = [
 FILTER_BLOCKS = ['clb', 'fle', 'fle1', 'fle2', 'lut5', 'lut6', 'adder']
 
 # Runner settings
-NUM_PARALLEL_TASKS = 3
+NUM_PARALLEL_TASKS = 2
 VERBOSE = True
 
 # Results folder prefix (e.g., 'dcc-exp-' creates 'results/dcc-exp-<timestamp>')
-RUN_PREFIX = 'dcc-exp-'
+RUN_PREFIX = 'dcc-exp-tiny-'
 
 # =============================================================================
 # DERIVED METRICS
@@ -365,7 +368,7 @@ def normalize_all_against_baseline(
         return pd.DataFrame()
 
     combined = pd.concat(results, ignore_index=True)
-    combined = combined.sort_values(["impl", "arch"], kind="mergesort").reset_index(drop=True)
+    combined = combined.sort_values(["impl"], kind="mergesort").reset_index(drop=True)
     return combined
 
 # =============================================================================
@@ -376,10 +379,10 @@ BAR_COLORS = {
     "base": "#808080",
     "dcc1": "#2c9b22",
     "dcc2": "#ff7f0e",
-    "dcc2_f": "#aa1204",
     "dcc3": "#9467bd",
     "dd5": "#1f77b4",
     "dcc3_dd5": "#d62728",
+    "dcc3_skip_add": "#008080",
 }
 
 
@@ -473,6 +476,419 @@ def plot_normalized_metrics(
     plt.savefig(output_path, dpi=300, bbox_inches="tight")
     plt.close()
     print(f"Saved plot: {output_path}")
+
+
+# =============================================================================
+# FLE HISTOGRAM PLOTTING
+# =============================================================================
+
+from util.extract import extract_fle_histogram, extract_arithmetic_ble5_input_histogram
+import glob
+
+
+def collect_all_fle_histograms(
+    experiments_root: str = "experiments",
+    seeds: tuple = (1239,),
+) -> dict[str, dict[str, list[int]]]:
+    """
+    Collect FLE histograms for all experiments, grouped by architecture.
+
+    Scans all experiment directories for clustering_profile.echo files and extracts
+    FLE usage histograms, grouping by architecture name from directory path.
+
+    Args:
+        experiments_root: Root directory containing experiment results
+        seeds: Seeds used in experiments
+
+    Returns:
+        Dictionary mapping arch_name -> {impl_name -> histogram_list}
+        (each histogram list has 11 elements for FLE counts 0-10)
+    """
+    result = {}
+
+    # Scan for all clustering_profile.echo files
+    for seed in seeds:
+        pattern = f"{experiments_root}/**/seed-{seed}/type.s10-*--*--*/temp/clustering_profile.echo"
+        matches = glob.glob(pattern, recursive=True)
+
+        for profile_path in matches:
+            # Extract arch and impl names from the path
+            # Path format: .../type.s10-<arch>--<impl>--<exp>/temp/clustering_profile.echo
+            temp_dir = path.dirname(profile_path)
+            exp_dir = path.dirname(temp_dir)
+            exp_name = path.basename(exp_dir)
+
+            # Parse arch and impl names from exp_name (format: type.s10-arch--impl--exp)
+            parts = exp_name.split('--')
+            if len(parts) >= 2:
+                # Extract arch name (remove "type.s10-" prefix)
+                arch_part = parts[0]
+                if arch_part.startswith('type.s10-'):
+                    arch_name = arch_part[9:]  # Remove "type.s10-"
+                else:
+                    arch_name = arch_part
+
+                # Extract impl name
+                impl_name = parts[1]
+                # Clean up impl name - extract the core identifier
+                if impl_name.startswith('i.'):
+                    impl_name = impl_name[2:]
+                # Simplify to just the design type
+                if 'conv_reg_1d_full' in impl_name:
+                    impl_name = 'conv_1d_fu'
+                elif 'conv_bram_1d' in impl_name:
+                    impl_name = 'conv_1d_pw'
+                elif 'conv_reg_full' in impl_name:
+                    impl_name = 'conv_2d_fu'
+                elif 'conv_bram_sr_fast' in impl_name:
+                    impl_name = 'conv_2d_pw'
+                elif 'mm_reg_full' in impl_name:
+                    impl_name = 'gemmt_fu'
+                elif 'mm_bram_parallel' in impl_name:
+                    impl_name = 'gemmt_rp'
+                elif 'systolic_ws' in impl_name:
+                    impl_name = 'gemms'
+
+                histogram_data = extract_fle_histogram(temp_dir)
+                if histogram_data['total_clbs'] > 0:
+                    if arch_name not in result:
+                        result[arch_name] = {}
+                    result[arch_name][impl_name] = histogram_data['fle_histogram']
+
+    return result
+
+
+def plot_fle_histograms(
+    arch_histograms: dict[str, dict[str, list[int]]],
+    output_dir: Path,
+) -> None:
+    """
+    Plot FLE usage histograms for each architecture.
+
+    Creates one PNG per architecture, with each experiment as a separate subplot
+    arranged in one column.
+
+    Args:
+        arch_histograms: Dictionary mapping arch_name -> {impl_name -> histogram_list}
+        output_dir: Directory to save the PNG files
+    """
+    for arch_name, impl_histograms in arch_histograms.items():
+        if not impl_histograms:
+            continue
+
+        num_impls = len(impl_histograms)
+        sorted_impls = sorted(impl_histograms.items())
+
+        # Create subplots arranged in one column
+        fig, axes = plt.subplots(num_impls, 1, figsize=(10, 3 * num_impls), sharex=True)
+
+        # Handle single subplot case
+        if num_impls == 1:
+            axes = [axes]
+
+        x_labels = [str(i) for i in range(11)]  # 0-10 FLEs
+        x = np.arange(len(x_labels))
+
+        # Get color for this architecture
+        arch_color = BAR_COLORS.get(arch_name, '#1f77b4')
+
+        for idx, (impl_name, histogram) in enumerate(sorted_impls):
+            ax = axes[idx]
+            ax.bar(x, histogram, color=arch_color, alpha=0.8, edgecolor='black', linewidth=0.5)
+            ax.set_ylabel('CLB Count')
+            ax.set_title(impl_name, fontsize=10, fontweight='bold')
+            ax.grid(axis='y', alpha=0.3)
+
+            # Add count labels on top of bars
+            for i, count in enumerate(histogram):
+                if count > 0:
+                    ax.text(i, count, str(count), ha='center', va='bottom', fontsize=7)
+
+        # Set x-axis labels only on bottom subplot
+        axes[-1].set_xlabel('FLEs Used per CLB')
+        axes[-1].set_xticks(x)
+        axes[-1].set_xticklabels(x_labels)
+
+        fig.suptitle(f'FLE Utilization Distribution - {arch_name}', fontsize=12, fontweight='bold')
+        fig.tight_layout()
+        plot_path = output_dir / f"fle_histogram_{arch_name}.png"
+        plt.savefig(plot_path, dpi=300, bbox_inches="tight")
+        plt.close()
+        print(f"Saved FLE histogram: {plot_path}")
+
+
+def collect_and_plot_fle_histograms(
+    output_dir: Path,
+    experiments_root: str = "experiments",
+    seeds: tuple = (1239,),
+) -> None:
+    """
+    Collect and plot FLE histograms for all architectures found in experiments.
+
+    Args:
+        output_dir: Directory to save the PNG files
+        experiments_root: Root directory containing experiment results
+        seeds: Seeds used in experiments
+    """
+    all_histograms = collect_all_fle_histograms(
+        experiments_root=experiments_root,
+        seeds=seeds,
+    )
+
+    for arch_name, histograms in all_histograms.items():
+        print(f"Collected FLE histograms for {arch_name}: {len(histograms)} experiments")
+
+    if all_histograms:
+        plot_fle_histograms(all_histograms, output_dir)
+
+
+# =============================================================================
+# ARITHMETIC BLE5 INPUT PIN HISTOGRAM PLOTTING
+# =============================================================================
+
+def collect_all_arithmetic_input_histograms(
+    experiments_root: str = "experiments",
+    seeds: tuple = (1239,),
+) -> dict[str, dict[str, dict]]:
+    """
+    Collect arithmetic BLE5 input pin histograms for all experiments, grouped by architecture.
+
+    Scans all experiment directories for clustering_profile.echo files and extracts
+    input pin usage histograms for BLE5s in arithmetic mode.
+
+    Args:
+        experiments_root: Root directory containing experiment results
+        seeds: Seeds used in experiments
+
+    Returns:
+        Dictionary mapping arch_name -> {impl_name -> histogram_data}
+        where histogram_data contains 'input_histogram', 'mode_breakdown', etc.
+    """
+    result = {}
+
+    # Scan for all clustering_profile.echo files
+    for seed in seeds:
+        pattern = f"{experiments_root}/**/seed-{seed}/type.s10-*--*--*/temp/clustering_profile.echo"
+        matches = glob.glob(pattern, recursive=True)
+
+        for profile_path in matches:
+            # Extract arch and impl names from the path
+            temp_dir = path.dirname(profile_path)
+            exp_dir = path.dirname(temp_dir)
+            exp_name = path.basename(exp_dir)
+
+            # Parse arch and impl names from exp_name (format: type.s10-arch--impl--exp)
+            parts = exp_name.split('--')
+            if len(parts) >= 2:
+                # Extract arch name (remove "type.s10-" prefix)
+                arch_part = parts[0]
+                if arch_part.startswith('type.s10-'):
+                    arch_name = arch_part[9:]
+                else:
+                    arch_name = arch_part
+
+                # Extract impl name
+                impl_name = parts[1]
+                if impl_name.startswith('i.'):
+                    impl_name = impl_name[2:]
+                # Simplify to just the design type
+                if 'conv_reg_1d_full' in impl_name:
+                    impl_name = 'conv_1d_fu'
+                elif 'conv_bram_1d' in impl_name:
+                    impl_name = 'conv_1d_pw'
+                elif 'conv_reg_full' in impl_name:
+                    impl_name = 'conv_2d_fu'
+                elif 'conv_bram_sr_fast' in impl_name:
+                    impl_name = 'conv_2d_pw'
+                elif 'mm_reg_full' in impl_name:
+                    impl_name = 'gemmt_fu'
+                elif 'mm_bram_parallel' in impl_name:
+                    impl_name = 'gemmt_rp'
+                elif 'systolic_ws' in impl_name:
+                    impl_name = 'gemms'
+
+                histogram_data = extract_arithmetic_ble5_input_histogram(temp_dir)
+                if histogram_data['total_arithmetic_ble5s'] > 0:
+                    if arch_name not in result:
+                        result[arch_name] = {}
+                    result[arch_name][impl_name] = histogram_data
+
+    return result
+
+
+def plot_arithmetic_input_histograms(
+    arch_histograms: dict[str, dict[str, dict]],
+    output_dir: Path,
+) -> None:
+    """
+    Plot arithmetic BLE5 input pin usage histograms for each architecture.
+
+    Creates one PNG per architecture, with each experiment as a separate subplot.
+    Shows how many of the 5 input pins (in[0..4]) are used per arithmetic BLE5.
+
+    Args:
+        arch_histograms: Dictionary mapping arch_name -> {impl_name -> histogram_data}
+        output_dir: Directory to save the PNG files
+    """
+    for arch_name, impl_histograms in arch_histograms.items():
+        if not impl_histograms:
+            continue
+
+        num_impls = len(impl_histograms)
+        sorted_impls = sorted(impl_histograms.items())
+
+        # Create subplots arranged in one column
+        fig, axes = plt.subplots(num_impls, 1, figsize=(10, 3 * num_impls), sharex=True)
+
+        # Handle single subplot case
+        if num_impls == 1:
+            axes = [axes]
+
+        x_labels = [str(i) for i in range(6)]  # 0-5 input pins
+        x = np.arange(len(x_labels))
+
+        # Get color for this architecture
+        arch_color = BAR_COLORS.get(arch_name, '#1f77b4')
+
+        for idx, (impl_name, histogram_data) in enumerate(sorted_impls):
+            ax = axes[idx]
+            histogram = histogram_data['input_histogram']
+            avg_util = histogram_data['avg_input_util']
+            total_ble5s = histogram_data['total_arithmetic_ble5s']
+
+            ax.bar(x, histogram, color=arch_color, alpha=0.8, edgecolor='black', linewidth=0.5)
+            ax.set_ylabel('BLE5 Count')
+            ax.set_title(f'{impl_name} (n={total_ble5s}, avg={avg_util:.2f})', fontsize=10, fontweight='bold')
+            ax.grid(axis='y', alpha=0.3)
+
+            # Add count labels on top of bars
+            for i, count in enumerate(histogram):
+                if count > 0:
+                    ax.text(i, count, str(count), ha='center', va='bottom', fontsize=7)
+
+        # Set x-axis labels only on bottom subplot
+        axes[-1].set_xlabel('Number of in[0..4] Pins Used per Arithmetic BLE5')
+        axes[-1].set_xticks(x)
+        axes[-1].set_xticklabels(x_labels)
+
+        fig.suptitle(f'Arithmetic BLE5 Input Pin Utilization - {arch_name}', fontsize=12, fontweight='bold')
+        fig.tight_layout()
+        plot_path = output_dir / f"arith_input_histogram_{arch_name}.png"
+        plt.savefig(plot_path, dpi=300, bbox_inches="tight")
+        plt.close()
+        print(f"Saved arithmetic input histogram: {plot_path}")
+
+
+def plot_arithmetic_input_histograms_by_mode(
+    arch_histograms: dict[str, dict[str, dict]],
+    output_dir: Path,
+) -> None:
+    """
+    Plot arithmetic BLE5 input pin usage histograms broken down by mode.
+
+    Creates one PNG per architecture showing stacked/grouped histograms
+    for different arithmetic modes (e.g., arithmetic, arithmetic_1chain).
+
+    Args:
+        arch_histograms: Dictionary mapping arch_name -> {impl_name -> histogram_data}
+        output_dir: Directory to save the PNG files
+    """
+    # Predefined colors for different modes
+    mode_colors = {
+        'arithmetic': '#2c9b22',
+        'arithmetic_1chain': '#1f77b4',
+        'arithmetic_2chain': '#ff7f0e',
+        'arithmetic_3chain': '#d62728',
+    }
+
+    for arch_name, impl_histograms in arch_histograms.items():
+        if not impl_histograms:
+            continue
+
+        num_impls = len(impl_histograms)
+        sorted_impls = sorted(impl_histograms.items())
+
+        # Create subplots
+        fig, axes = plt.subplots(num_impls, 1, figsize=(12, 3.5 * num_impls), sharex=True)
+        if num_impls == 1:
+            axes = [axes]
+
+        x_labels = [str(i) for i in range(6)]
+        x = np.arange(len(x_labels))
+
+        for idx, (impl_name, histogram_data) in enumerate(sorted_impls):
+            ax = axes[idx]
+            mode_breakdown = histogram_data['mode_breakdown']
+            total_ble5s = histogram_data['total_arithmetic_ble5s']
+
+            if not mode_breakdown:
+                continue
+
+            # Sort modes for consistent ordering
+            sorted_modes = sorted(mode_breakdown.keys())
+            num_modes = len(sorted_modes)
+            bar_width = 0.8 / num_modes
+
+            for mode_idx, mode_name in enumerate(sorted_modes):
+                mode_histogram = mode_breakdown[mode_name]
+                mode_total = sum(mode_histogram)
+                offset = (mode_idx - (num_modes - 1) / 2) * bar_width
+                color = mode_colors.get(mode_name, f'C{mode_idx}')
+
+                bars = ax.bar(x + offset, mode_histogram, bar_width,
+                             label=f'{mode_name} (n={mode_total})',
+                             color=color, alpha=0.8, edgecolor='black', linewidth=0.3)
+
+                # Add count labels
+                for bar, count in zip(bars, mode_histogram):
+                    if count > 0:
+                        ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height(),
+                               str(count), ha='center', va='bottom', fontsize=6)
+
+            ax.set_ylabel('BLE5 Count')
+            ax.set_title(f'{impl_name} (total n={total_ble5s})', fontsize=10, fontweight='bold')
+            ax.grid(axis='y', alpha=0.3)
+            ax.legend(fontsize=8, loc='upper right')
+
+        axes[-1].set_xlabel('Number of in[0..4] Pins Used per Arithmetic BLE5')
+        axes[-1].set_xticks(x)
+        axes[-1].set_xticklabels(x_labels)
+
+        fig.suptitle(f'Arithmetic BLE5 Input Utilization by Mode - {arch_name}', fontsize=12, fontweight='bold')
+        fig.tight_layout()
+        plot_path = output_dir / f"arith_input_by_mode_{arch_name}.png"
+        plt.savefig(plot_path, dpi=300, bbox_inches="tight")
+        plt.close()
+        print(f"Saved arithmetic input by-mode histogram: {plot_path}")
+
+
+def collect_and_plot_arithmetic_input_histograms(
+    output_dir: Path,
+    experiments_root: str = "experiments",
+    seeds: tuple = (1239,),
+) -> None:
+    """
+    Collect and plot arithmetic BLE5 input pin histograms for all architectures.
+
+    Args:
+        output_dir: Directory to save the PNG files
+        experiments_root: Root directory containing experiment results
+        seeds: Seeds used in experiments
+    """
+    all_histograms = collect_all_arithmetic_input_histograms(
+        experiments_root=experiments_root,
+        seeds=seeds,
+    )
+
+    for arch_name, histograms in all_histograms.items():
+        total_ble5s = sum(h['total_arithmetic_ble5s'] for h in histograms.values())
+        print(f"Collected arithmetic BLE5 input histograms for {arch_name}: "
+              f"{len(histograms)} experiments, {total_ble5s} total arithmetic BLE5s")
+
+    if all_histograms:
+        plot_arithmetic_input_histograms(all_histograms, output_dir)
+        plot_arithmetic_input_histograms_by_mode(all_histograms, output_dir)
+
 
 # =============================================================================
 # MAIN
@@ -583,6 +999,22 @@ def main():
     else:
         print(f"Warning: Baseline architecture '{BASELINE_ARCH_KEY}' not found in results")
         print("Skipping normalization and plotting")
+
+    # Generate FLE histograms (scans all architectures found in experiments directory)
+    # print(f"\nCollecting FLE histograms...")
+    # collect_and_plot_fle_histograms(
+    #     output_dir=output_dir,
+    #     experiments_root="experiments",
+    #     seeds=(1239,),
+    # )
+
+    # # Generate arithmetic BLE5 input pin histograms
+    # print(f"\nCollecting arithmetic BLE5 input pin histograms...")
+    # collect_and_plot_arithmetic_input_histograms(
+    #     output_dir=output_dir,
+    #     experiments_root="experiments",
+    #     seeds=(1239,),
+    # )
 
     print(f"\nAll outputs saved to: {output_dir}")
 

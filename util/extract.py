@@ -446,3 +446,205 @@ def extract_info_vtr(path='.', extract_blocks_list=['clb', 'fle']) -> dict:
         result_dict['nets_absorbed_frac'] = result_dict['nets_absorbed'] / result_dict['nets_total']
 
     return result_dict
+
+
+def extract_fle_histogram(path='.', block_types=None) -> dict:
+    """
+    Extract FLE usage histogram from clustering_profile.echo file.
+
+    Parses the clustering profile to count how many CLBs have each FLE utilization
+    level (0-10 FLEs used per CLB).
+
+    Args:
+        path: Directory containing clustering_profile.echo (typically the 'temp' folder of a VTR run)
+        block_types: List of block types to include (e.g., ['clb']).
+                     If None, defaults to ['clb'] to exclude IO and memory blocks.
+
+    Returns:
+        Dictionary with:
+        - 'fle_histogram': list of 11 counts [count_0, count_1, ..., count_10]
+          where count_i = number of CLBs using exactly i FLEs
+        - 'total_clbs': total number of CLBs analyzed
+        - 'avg_fle_util': average FLE utilization (0.0-10.0)
+        - 'fle_histogram_frac': fractional histogram (each count / total_clbs)
+    """
+    if block_types is None:
+        block_types = ['clb']  # Default to only CLBs (exclude io, memory, etc.)
+
+    result = {
+        'fle_histogram': [0] * 11,  # Counts for 0-10 FLEs used
+        'total_clbs': 0,
+        'avg_fle_util': 0.0,
+        'fle_histogram_frac': [0.0] * 11,
+    }
+
+    profile_path = os.path.join(path, 'clustering_profile.echo')
+    if not os.path.exists(profile_path):
+        return result
+
+    fle_counts = []
+    current_block_type = None
+
+    with open(profile_path, 'r') as f:
+        for line in f:
+            line_stripped = line.strip()
+
+            # Match CLB header lines like "CLB ID: 0 | Name: ... | Type: clb"
+            if line_stripped.startswith('CLB ID:') and '| Type:' in line_stripped:
+                # Extract the block type
+                type_match = re.search(r'\|\s*Type:\s*(\w+)', line_stripped)
+                if type_match:
+                    current_block_type = type_match.group(1).lower()
+                else:
+                    current_block_type = None
+                continue
+
+            # Match lines like "FLE UTILIZATION: 10 / 10 (100.0%)"
+            if line_stripped.startswith('FLE UTILIZATION:'):
+                # Only count if the current block is of a type we care about
+                if current_block_type is not None and current_block_type in block_types:
+                    # Extract the used FLE count (first number)
+                    match = re.search(r'FLE UTILIZATION:\s*(\d+)\s*/\s*(\d+)', line_stripped)
+                    if match:
+                        used_fles = int(match.group(1))
+                        # Clamp to 0-10 range just in case
+                        used_fles = max(0, min(10, used_fles))
+                        fle_counts.append(used_fles)
+
+    if not fle_counts:
+        return result
+
+    # Build histogram
+    histogram = [0] * 11
+    for count in fle_counts:
+        histogram[count] += 1
+
+    total_clbs = len(fle_counts)
+    avg_util = sum(fle_counts) / total_clbs if total_clbs > 0 else 0.0
+    histogram_frac = [h / total_clbs for h in histogram] if total_clbs > 0 else [0.0] * 11
+
+    result['fle_histogram'] = histogram
+    result['total_clbs'] = total_clbs
+    result['avg_fle_util'] = avg_util
+    result['fle_histogram_frac'] = histogram_frac
+
+    return result
+
+
+def extract_arithmetic_ble5_input_histogram(path='.') -> dict:
+    """
+    Extract histogram of input pin usage for arithmetic-mode BLE5s.
+
+    Parses the clustering profile to count how many of the in[0..4] pins
+    are used for each BLE5 whose mode contains "arithmetic".
+
+    Args:
+        path: Directory containing clustering_profile.echo (typically the 'temp' folder of a VTR run)
+
+    Returns:
+        Dictionary with:
+        - 'input_histogram': list of 6 counts [count_0, count_1, ..., count_5]
+          where count_i = number of arithmetic BLE5s using exactly i input pins (in[0..4])
+        - 'total_arithmetic_ble5s': total number of arithmetic BLE5s analyzed
+        - 'avg_input_util': average input pin utilization (0.0-5.0)
+        - 'input_histogram_frac': fractional histogram (each count / total)
+        - 'mode_breakdown': dict mapping mode name -> histogram for that mode
+    """
+    result = {
+        'input_histogram': [0] * 6,  # Counts for 0-5 input pins used
+        'total_arithmetic_ble5s': 0,
+        'avg_input_util': 0.0,
+        'input_histogram_frac': [0.0] * 6,
+        'mode_breakdown': {},  # mode_name -> [0..5] histogram
+    }
+
+    profile_path = os.path.join(path, 'clustering_profile.echo')
+    if not os.path.exists(profile_path):
+        return result
+
+    input_counts = []  # List of (mode_name, num_inputs_used)
+
+    with open(profile_path, 'r') as f:
+        current_mode = None
+        in_pins_section = False
+        current_in_pins_used = 0
+
+        for line in f:
+            line_stripped = line.strip()
+
+            # Match BLE5 lines like "BLE5[0] mode=arithmetic" or "BLE5[1] mode=arithmetic_1chain"
+            if 'BLE5[' in line and 'mode=' in line:
+                # Save previous BLE5 if it was arithmetic
+                if current_mode is not None and 'arithmetic' in current_mode:
+                    input_counts.append((current_mode, current_in_pins_used))
+
+                # Extract mode name
+                match = re.search(r'mode=(\S+)', line_stripped)
+                if match:
+                    mode_name = match.group(1)
+                    if 'arithmetic' in mode_name:
+                        current_mode = mode_name
+                        current_in_pins_used = 0
+                        in_pins_section = False
+                    else:
+                        current_mode = None
+                else:
+                    current_mode = None
+                continue
+
+            # Check if we're entering the Pins section
+            if current_mode is not None and line_stripped == 'Pins:':
+                in_pins_section = True
+                continue
+
+            # Check if we're leaving the Pins section (new section or new BLE5/FLE)
+            if in_pins_section and (line_stripped.startswith('Atoms:') or
+                                    'BLE5[' in line or
+                                    'FLE[' in line or
+                                    line_stripped.startswith('MOLECULES') or
+                                    line_stripped.startswith('ATOM PLACEMENTS') or
+                                    line_stripped == ''):
+                in_pins_section = False
+
+            # Parse input pins (in[0] through in[4])
+            if in_pins_section and current_mode is not None:
+                # Match lines like "in[0] = 1 (atom.port[0])" or "in[0] = 0"
+                pin_match = re.match(r'\s*in\[([0-4])\]\s*=\s*(\d+)', line_stripped)
+                if pin_match:
+                    pin_value = int(pin_match.group(2))
+                    if pin_value > 0:
+                        current_in_pins_used += 1
+
+        # Don't forget the last BLE5
+        if current_mode is not None and 'arithmetic' in current_mode:
+            input_counts.append((current_mode, current_in_pins_used))
+
+    if not input_counts:
+        return result
+
+    # Build overall histogram
+    histogram = [0] * 6
+    mode_histograms = {}  # mode_name -> [0..5] histogram
+
+    for mode_name, count in input_counts:
+        # Clamp to 0-5 range
+        count = max(0, min(5, count))
+        histogram[count] += 1
+
+        # Track per-mode histogram
+        if mode_name not in mode_histograms:
+            mode_histograms[mode_name] = [0] * 6
+        mode_histograms[mode_name][count] += 1
+
+    total_ble5s = len(input_counts)
+    total_inputs_used = sum(count for _, count in input_counts)
+    avg_util = total_inputs_used / total_ble5s if total_ble5s > 0 else 0.0
+    histogram_frac = [h / total_ble5s for h in histogram] if total_ble5s > 0 else [0.0] * 6
+
+    result['input_histogram'] = histogram
+    result['total_arithmetic_ble5s'] = total_ble5s
+    result['avg_input_util'] = avg_util
+    result['input_histogram_frac'] = histogram_frac
+    result['mode_breakdown'] = mode_histograms
+
+    return result

@@ -30,7 +30,10 @@ from impl.arch.stratix_10.four_bit_adder import (
 from impl.design.conv_1d.fu import Conv1dFuDesign
 from impl.design.conv_1d.pw import Conv1dPwDesign
 from impl.design.conv_2d.fu import Conv2dFuDesign
+from impl.design.conv_2d.pw import Conv2dPwDesign
 from impl.design.gemmt.fu import GemmTFuDesign
+from impl.design.gemmt.rp import GemmTRpDesign
+from impl.design.gemms import GemmSDesign
 
 import copy
 import numpy as np
@@ -51,34 +54,37 @@ SPARSITY = 0.5
 
 # All configurations to compare (arch_class, config_dict, display_name)
 CONFIGS_TO_COMPARE = [
-    (BaseArchFactory, {
-        'name': 'base',
-        'compressor_tree_type': 'wallace',
-    }, 'base'),
-
-    (DCC2ArchFactory, {
-        'name': 'dcc2',
-        'compressor_tree_type': 'wallace',
-    }, 'dcc2'),
-
-    # (DCC3ArchFactory, {
-    #     'name': 'dcc3_sma',
-    #     'soft_multiplier_adders': True,
+    # (BaseArchFactory, {
+    #     'name': 'base',
     #     'compressor_tree_type': 'wallace',
-    # }, 'dcc3 (sma)'),
+    # }, 'base'),
+
+    # (DCC2ArchFactory, {
+    #     'name': 'dcc2',
+    #     'compressor_tree_type': 'wallace',
+    # }, 'dcc2'),
+
+    (DCC3ArchFactory, {
+        'name': 'dcc3_sma',
+        'soft_multiplier_adders': True,
+    }, 'dcc3 (cascade)'),
+
+    (DCC3ArchFactory, {
+        'name': 'dcc3_tdp',
+        'ternary_adder_dp': True,
+    }, 'dcc3 (tdp)'),
+
+    (DCC3ArchFactory, {
+        'name': 'dcc3_wallace',
+        'soft_multiplier_adders': False,
+        'compressor_tree_type': 'wallace',
+    }, 'dcc3 (wallace)'),
 
     (DCC3ArchFactory, {
         'name': 'dcc3_wt',
         'soft_multiplier_adders': False,
         'compressor_tree_type': 'wallace_ternary',
-        'allow_skipping': True,
     }, 'dcc3 (wt)'),
-
-    (DCC3ArchFactory, {
-        'name': 'dcc3_tdp',
-        'ternary_adder_dp': True,
-        'allow_skipping': True,
-    }, 'dcc3 (tdp)'),
 
     # (DCC3ArchFactory, {
     #     'name': 'dcc3_wt_exp',
@@ -88,7 +94,7 @@ CONFIGS_TO_COMPARE = [
 ]
 
 # Baseline for normalization
-BASELINE_NAME = 'base'
+BASELINE_NAME = 'dcc3_sma'
 
 # Run configuration
 NUM_PARALLEL_TASKS = 2
@@ -109,9 +115,9 @@ BAR_COLORS = {
     'base': '#808080',
     'dcc2': '#ff7f0e',
     'dcc3_sma': '#2ca02c',
+    'dcc3_wallace': '#d62728',
     'dcc3_wt': '#1f77b4',
     'dcc3_tdp': '#9467bd',
-    'dcc3_wt_exp': '#d62728',
 }
 
 # =============================================================================
@@ -146,11 +152,16 @@ def get_base_params() -> dict:
 # Designs to run
 BASE_PARAMS = get_base_params()
 DESIGN_LIST = [
+    # (VtrBenchmarkLoaderDesign(), vtr_bm.get_all_vtr_bm_params(BASE_PARAMS)),
     (Conv1dFuDesign(), tiny.get_conv_1d_fu_params(BASE_PARAMS)),
     (Conv1dPwDesign(), tiny.get_conv_1d_pw_params(BASE_PARAMS)),
     (Conv2dFuDesign(), tiny.get_conv_2d_fu_params(BASE_PARAMS)),
+    (Conv2dPwDesign(), tiny.get_conv_2d_pw_params(BASE_PARAMS)),
     (GemmTFuDesign(), tiny.get_gemmt_fu_params(BASE_PARAMS)),
+    (GemmTRpDesign(), tiny.get_gemmt_rp_params(BASE_PARAMS)),
+    (GemmSDesign(), tiny.get_gemms_params(BASE_PARAMS)),
 ]
+
 
 FILTER_PARAMS = ['per_fle_area', 'data_width', 'sparsity', 'compressor_tree_type', 'soft_multiplier_adders', 'ternary_adder_dp']
 FILTER_RESULTS = ['fmax', 'cpd', 'twl']
