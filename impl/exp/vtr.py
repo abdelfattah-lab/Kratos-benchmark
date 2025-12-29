@@ -6,11 +6,13 @@ from util.extract import extract_info_vtr
 from util.flow import start_dependent_process
 from util.search import find_first_file_with_suffix
 
+import glob
+import json
 import os
 import subprocess
-from lxml import etree as ET
-import json
 import zipfile
+
+from lxml import etree as ET
 
 class VtrExperiment(Experiment):
     """
@@ -234,8 +236,18 @@ class VtrExperiment(Experiment):
         super()._clean()
         if not clean:
             return
-        
+
         output_temp_dir = self.vtr_output_dir
+
+        # Delete unwanted echo files (keep only pre_packing_molecules_and_patterns.echo)
+        echo_patterns = ['*.echo', '*.echo.blif', '*.echo.dot', '*.echo.json', 'chan_details.txt', 'seg_details.txt', 'sblock_pattern.txt']
+        keep_files = ['pre_packing_molecules_and_patterns.echo', 'clustering_history.echo', 'clustering_profile.echo']
+        for pattern in echo_patterns:
+            for filepath in glob.glob(os.path.join(output_temp_dir, pattern)):
+                filename = os.path.basename(filepath)
+                if filename not in keep_files and os.path.exists(filepath):
+                    os.remove(filepath)
+
         # zip parmys.out and delete the original file
         # using subprocess to zip the file
         possible_list = ['parmys.out', 'design.net.post_routing', 'design.net', 'design.route']

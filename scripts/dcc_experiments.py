@@ -31,7 +31,7 @@ from impl.arch.stratix_10.four_bit_adder import (
     DCC3ArchFactory,
 )
 from impl.arch.stratix_10.lut_skip import LUTSkipArchFactory
-from impl.arch.stratix_10.lut_skip_dcc3 import LUTSkipDCC3ArchFactory
+from impl.arch.stratix_10.lut_skip_dcc3 import LUTSkipDCC3ArchFactory, AdderSkipDCC3ArchFactory
 
 # Design imports
 from impl.design.conv_1d.fu import Conv1dFuDesign
@@ -78,18 +78,20 @@ ARCH_CONFIG: dict[Type, dict] = {
         "compressor_tree_type": "wallace_ternary",
         "tree_base": 3,
         # "ternary_adder_dp": True,  # Use 3D DP to find optimal triplets for ternary adder chains
-        "allow_skipping": False,
+        "allow_skipping": True,
     },
     LUTSkipArchFactory: {
         "name": "dd5",
         "compressor_tree_type": "wallace",
     },
-    DCC2FaithfulArchFactory: {
-        "name": "dcc2_f",
-        "compressor_tree_type": "wallace",
-    },
     LUTSkipDCC3ArchFactory: {
         "name": "dcc3_dd5",
+        "compressor_tree_type": "wallace_ternary",
+        "allow_skipping": False,
+        # "ternary_adder_dp": True,
+    },
+    AdderSkipDCC3ArchFactory: {
+        "name": "dcc3_add_skip",
         "compressor_tree_type": "wallace_ternary",
         "allow_skipping": False,
         # "ternary_adder_dp": True,
@@ -138,13 +140,13 @@ DESIGN_LIST = [
 
 # Which architectures to actually run (subset of ARCH_MAP keys)
 ARCHS_TO_RUN: list[Type] = [
-    # BaseArchFactory,
-    # LUTSkipArchFactory,
-    # DCC1ArchFactory,
-    # DCC2ArchFactory,
-    # DCC2FaithfulArchFactory,
-    # DCC3ArchFactory,
-    # LUTSkipDCC3ArchFactory,
+    BaseArchFactory,
+    LUTSkipArchFactory,
+    DCC1ArchFactory,
+    DCC2ArchFactory,
+    DCC3ArchFactory,
+    LUTSkipDCC3ArchFactory,
+    AdderSkipDCC3ArchFactory,
 ]
 
 # Metrics to plot
@@ -368,12 +370,11 @@ BAR_COLORS = {
     "base": "#808080",
     "dcc1": "#2c9b22",
     "dcc2": "#ff7f0e",
-    "dcc2_f": "#aa1204",
     "dcc3": "#9467bd",
     "dd5": "#1f77b4",
     "dcc3_dd5": "#d62728",
+    "dcc3_skip_add": "#008080",
 }
-
 
 def _geom_mean(series: pd.Series) -> float:
     """Geometric mean of positive, non-NaN values."""
