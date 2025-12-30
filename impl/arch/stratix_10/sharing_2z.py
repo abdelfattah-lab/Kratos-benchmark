@@ -346,7 +346,7 @@ TEMPLATE = """<!--
                     <output name="lut5_out" num_pins="1"/>
                     <output name="lut4_out" num_pins="2"/>
                     <mode name="as_lut5">
-                      <pb_type name="lut5_arith" blif_model=".names" num_pb="1" class="lut">
+                      <pb_type name="lut5" blif_model=".names" num_pb="1" class="lut">
                       <input name="in" num_pins="5" port_class="lut_in"/>
                       <output name="out" num_pins="1" port_class="lut_out"/>
                       <!-- LUT timing using delay matrix -->

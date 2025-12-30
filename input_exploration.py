@@ -47,7 +47,7 @@ from pandas import DataFrame
 #EXP_ARCH = DD5_2Z_Input_Shared_AB
 
 BASE_ARCH = LUTSkip3ArchFactory
-EXP_ARCH = DD5_4Z_Input_Shared_AEBF
+EXP_ARCH = DD5_4Z_Input_Shared_ABlut4
 
 BASE_PARAMS = {
     keys.KEY_EXP: {
@@ -90,11 +90,11 @@ DESIGN_LIST = [
     #(GemmSDesign(), kratos.get_gemms_params(BASE_PARAMS)),
 
     # Tiny benchmarks
-    (Conv1dFuDesign(), tiny.get_conv_1d_fu_params(BASE_PARAMS)),
+    #(Conv1dFuDesign(), tiny.get_conv_1d_fu_params(BASE_PARAMS)),
     (Conv1dPwDesign(), tiny.get_conv_1d_pw_params(BASE_PARAMS)),
     (Conv2dFuDesign(), tiny.get_conv_2d_fu_params(BASE_PARAMS)),
-    (Conv2dPwDesign(), tiny.get_conv_2d_pw_params(BASE_PARAMS)),
-    (GemmTFuDesign(), tiny.get_gemmt_fu_params(BASE_PARAMS)),
+    #(Conv2dPwDesign(), tiny.get_conv_2d_pw_params(BASE_PARAMS)),
+    #(GemmTFuDesign(), tiny.get_gemmt_fu_params(BASE_PARAMS)),
     (GemmTRpDesign(), tiny.get_gemmt_rp_params(BASE_PARAMS)),
     (GemmSDesign(), tiny.get_gemms_params(BASE_PARAMS)),
 ]
@@ -155,7 +155,7 @@ run_vtr_denoised_v1(
     filter_results=['fmax', 'cpd', 'twl', 
                     'concurrent_lut5s', 'concurrent_lut6s',
                     ],
-    filter_blocks=['clb', 'fle', 'lut4', 'lut5_arith',
+    filter_blocks=['clb', 'fle', 'lut4',
                     'lut5', 'lut6',
                     'adder',
                    ],

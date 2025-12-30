@@ -347,7 +347,7 @@ TEMPLATE = """<!--
                     <output name="lut5_out" num_pins="1"/>
                     <output name="lut4_out" num_pins="2"/>
                     <mode name="as_lut5">
-                      <pb_type name="lut5_arith" blif_model=".names" num_pb="1" class="lut"> <!-- // changed name from lut5 to disambiguate --> 
+                      <pb_type name="lut5" blif_model=".names" num_pb="1" class="lut"> <!-- // changed name from lut5 to disambiguate --> 
                       <input name="in" num_pins="5" port_class="lut_in"/>
                       <output name="out" num_pins="1" port_class="lut_out"/>
                       <!-- LUT timing using delay matrix -->
@@ -361,7 +361,7 @@ TEMPLATE = """<!--
                               139.70e-12
                               69.70e-12
                             -->
-                        <delay_matrix type="max" in_port="lut5_arith.in" out_port="lut5_arith.out">
+                        <delay_matrix type="max" in_port="lut5.in" out_port="lut5.out">
                             149.24e-12
                             149.24e-12
                             149.24e-12
@@ -370,8 +370,8 @@ TEMPLATE = """<!--
                         </delay_matrix>
                       </pb_type>
                       <interconnect>
-                        <direct name="lut5_in" input="dual_lut4s.in" output="lut5_arith.in"/>
-                        <direct name="lut5_out" input="lut5_arith.out" output="dual_lut4s.lut5_out"/>
+                        <direct name="lut5_in" input="dual_lut4s.in" output="lut5.in"/>
+                        <direct name="lut5_out" input="lut5.out" output="dual_lut4s.lut5_out"/>
                       </interconnect>
                     </mode>
                     <mode name="as_dual_lut4s">

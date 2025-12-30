@@ -12,6 +12,11 @@ from impl.arch.stratix_10.fair.base import BaseArchFactory
 from impl.arch.stratix_10.fair.lut_skip import LUTSkipArchFactory
 from impl.arch.stratix_10.lut_skip_scratch3 import LUTSkip3ArchFactory # @2.19 20:08, 10 dummy inputs
 
+# Input sharing architectures
+from impl.arch.stratix_10.sharing_2z import DD5_2Z_Input_Shared_AB
+from impl.arch.stratix_10.sharing_4z_AEBF import DD5_4Z_Input_Shared_AEBF
+from impl.arch.stratix_10.sharing_4z_ABlut4 import DD5_4Z_Input_Shared_ABlut4
+
 # Designs
 # Conv-1D
 from impl.design.conv_1d.fu import Conv1dFuDesign
@@ -103,8 +108,8 @@ def add_derived_metrics(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 # Make ArchFactory and Design instances
-BASE_ARCH = BaseArchFactory()
-MOD_ARCH = LUTSkip3ArchFactory()
+BASE_ARCH = LUTSkip3ArchFactory()
+MOD_ARCH = DD5_2Z_Input_Shared_AB()
 
 # Define design class list and plugin, N parameter
 PLUGIN = ShaxNPlugin()
@@ -112,13 +117,13 @@ N_PARAM = 'sha_num'
 DESIGN_CLASS_LIST = [
     # Mini benchmarks
     (Conv1dFuDesign, mini.get_conv_1d_fu_params(BASE_PARAMS)),
-    # (Conv1dPwDesign, mini.get_conv_1d_pw_params(BASE_PARAMS)),
+    #(Conv1dPwDesign, mini.get_conv_1d_pw_params(BASE_PARAMS)),
     (Conv2dFuDesign, mini.get_conv_2d_fu_params(BASE_PARAMS)),
-    # (Conv2dRpDesign, mini.get_conv_2d_rp_params(BASE_PARAMS)),
-    # (Conv2dPwDesign, mini.get_conv_2d_pw_params(BASE_PARAMS)),
-    (GemmTFuDesign, mini.get_gemmt_fu_params(BASE_PARAMS)),
-    # (GemmTRpDesign, mini.get_gemmt_rp_params(BASE_PARAMS)),
-    # (GemmSDesign, mini.get_gemms_params(BASE_PARAMS)),
+    #(Conv2dRpDesign, mini.get_conv_2d_rp_params(BASE_PARAMS)),
+    (Conv2dPwDesign, mini.get_conv_2d_pw_params(BASE_PARAMS)),
+    (GemmTFuDesign,  mini.get_gemmt_fu_params(BASE_PARAMS)),
+    #(GemmTRpDesign,  mini.get_gemmt_rp_params(BASE_PARAMS)),
+    #(GemmSDesign,    mini.get_gemms_params(BASE_PARAMS)),
     
     # Kratos benchmarks
     # (Conv1dFuDesign, kratos.get_conv_1d_fu_params(BASE_PARAMS)),
@@ -133,7 +138,7 @@ DESIGN_CLASS_LIST = [
 
 # Other args
 NOTIFY_VIA_TELE = True
-MACHINE_NAME = "Narwhal"
+MACHINE_NAME = "Beluga"
 
 # define notify function
 def notify_via_tele(msg: str) -> None:
@@ -172,7 +177,6 @@ def get_max_N(arch: ArchFactory, DesignClass: Type[PluginDesign], plugin: Plugin
             result_kwargs=dict(
                 extract_blocks_list=FILTER_BLOCKS,
             ),
-            notify_via_tele=False,
         )
         runner.clear_experiments()
         if len(results) == 0:
