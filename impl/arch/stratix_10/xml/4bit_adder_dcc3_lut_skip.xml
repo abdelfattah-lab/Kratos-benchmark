@@ -515,14 +515,14 @@
                       <pack_pattern name="chain" in_port="adder[0].sumout" out_port="adder[1].b" />
                     </complete>
                     <!-- Split sumout to avoid duplicate edges with lut5_out -->
-                    <complete name="sumout0" input="ff[0].Q adder[0].sumout adder[1].sumout" output="arithmetic.out[0]">
-                      <delay_constant max="39.78e-12" in_port="adder[0].sumout" out_port="arithmetic.out[0]" />
-                      <delay_constant max="39.78e-12" in_port="adder[1].sumout" out_port="arithmetic.out[0]" />
-                      <delay_constant max="39.78e-12" in_port="ff[0].Q" out_port="arithmetic.out[0]" />
+                    <complete name="sumout0" input="ff[0].Q adder[0].sumout adder[1].sumout" output="arithmetic[0].out">
+                      <delay_constant max="39.78e-12" in_port="adder[0].sumout" out_port="arithmetic[0].out" />
+                      <delay_constant max="39.78e-12" in_port="adder[1].sumout" out_port="arithmetic[0].out" />
+                      <delay_constant max="39.78e-12" in_port="ff[0].Q" out_port="arithmetic[0].out" />
                     </complete>
-                    <complete name="sumout1" input="ff[1].Q dual_lut4s.lut5_out" output="arithmetic.out[1]">
-                      <delay_constant max="39.78e-12" in_port="ff[1].Q" out_port="arithmetic.out[1]" />
-                      <delay_constant max="39.78e-12" in_port="dual_lut4s.lut5_out" out_port="arithmetic.out[1]" />
+                    <complete name="sumout1" input="ff[1].Q dual_lut4s.lut5_out" output="arithmetic[1].out">
+                      <delay_constant max="39.78e-12" in_port="ff[1].Q" out_port="arithmetic[1].out" />
+                      <delay_constant max="39.78e-12" in_port="dual_lut4s.lut5_out" out_port="arithmetic[1].out" />
                     </complete>
                   </interconnect>
                 </pb_type>
@@ -650,14 +650,14 @@
                     <complete name="add2_input" input="arithmetic.in[4] arithmetic.in[0] dual_lut4s.lut4_out[0]"
                       output="adder[1].a adder[1].b" />
                     <!-- Split sumout to avoid duplicate edges with lut5_out -->
-                    <complete name="sumout0" input="ff[0].Q adder[0].sumout adder[1].sumout" output="arithmetic.out[0]">
-                      <delay_constant max="39.78e-12" in_port="adder[0].sumout" out_port="arithmetic.out[0]" />
-                      <delay_constant max="39.78e-12" in_port="adder[1].sumout" out_port="arithmetic.out[0]" />
-                      <delay_constant max="39.78e-12" in_port="ff[0].Q" out_port="arithmetic.out[0]" />
+                    <complete name="sumout0" input="ff[0].Q adder[0].sumout adder[1].sumout" output="arithmetic[0].out">
+                      <delay_constant max="39.78e-12" in_port="adder[0].sumout" out_port="arithmetic[0].out" />
+                      <delay_constant max="39.78e-12" in_port="adder[1].sumout" out_port="arithmetic[0].out" />
+                      <delay_constant max="39.78e-12" in_port="ff[0].Q" out_port="arithmetic[0].out" />
                     </complete>
-                    <complete name="sumout1" input="ff[1].Q dual_lut4s.lut5_out" output="arithmetic.out[1]">
-                      <delay_constant max="39.78e-12" in_port="dual_lut4s.lut5_out" out_port="arithmetic.out[1]" />
-                      <delay_constant max="39.78e-12" in_port="ff[1].Q" out_port="arithmetic.out[1]" />
+                    <complete name="sumout1" input="ff[1].Q dual_lut4s.lut5_out" output="arithmetic[1].out">
+                      <delay_constant max="39.78e-12" in_port="dual_lut4s.lut5_out" out_port="arithmetic[1].out" />
+                      <delay_constant max="39.78e-12" in_port="ff[1].Q" out_port="arithmetic[1].out" />
                     </complete>
                   </interconnect>
                 </pb_type>

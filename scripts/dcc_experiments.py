@@ -92,7 +92,7 @@ ARCH_CONFIG: dict[Type, dict] = {
         # "ternary_adder_dp": True,
     },
     AdderSkipDCC3ArchFactory: {
-        "name": "dcc3_add_skip",
+        "name": "dcc3_skip_add",
         "compressor_tree_type": "wallace_ternary",
         "allow_skipping": False,
         "tree_base": 3,
@@ -148,7 +148,7 @@ ARCHS_TO_RUN: list[Type] = [
     # DCC2ArchFactory,
     DCC3ArchFactory,
     LUTSkipDCC3ArchFactory,
-    AdderSkipDCC3ArchFactory,
+    # AdderSkipDCC3ArchFactory,
 ]
 
 # Metrics to plot
