@@ -20,6 +20,7 @@ TEMPLATE_DCC1 = (XML_DIR / '4bit_adder_dcc1.xml').read_text(encoding='utf-8')
 TEMPLATE_DCC2 = (XML_DIR / '4bit_adder_dcc2.xml').read_text(encoding='utf-8')
 TEMPLATE_DCC2_FAITHFUL = (XML_DIR / '4bit_adder_dcc2_faithful.xml').read_text(encoding='utf-8')
 TEMPLATE_DCC3 = (XML_DIR / '4bit_adder_dcc3.xml').read_text(encoding='utf-8')
+TEMPLATE_DCC3_EXP = (XML_DIR / '4bit_adder_dcc3_exp.xml').read_text(encoding='utf-8')
 
 def gen_layout_sizing(fixed_size: tuple[int, int]|None):
     if fixed_size is None:
@@ -107,19 +108,42 @@ class DCC3ArchFactory(ArchFactory, ParamsChecker):
     def get_name(self, per_fle_area: float, enable_lut6: bool, fixed_size: tuple[int, int]|None, **kwargs):
         name = f"type.s10-chain_3"
         return name
-    
+
     def verify_params(self, params):
         # DCC3 template uses grid_logic_tile_area=25241.08 (small)
         filled = self.verify_required_keys(DEFAULTS, [], params)
         filled['per_fle_area'] = 2524.108
         return filled
-    
+
     def get_arch(self, per_fle_area: float, enable_lut6: bool, fixed_size: tuple[int, int]|None, **kwargs):
         # Inject fixed layout sizing if requested; otherwise return template as-is
         if fixed_size is None:
             return TEMPLATE_DCC3
         w, h = fixed_size
         s = TEMPLATE_DCC3
+        s = s.replace('<auto_layout aspect_ratio="1.0">', f'<fixed_layout name="fixed_arch_size" width="{w}" height="{h}">')
+        s = s.replace('</auto_layout>', '</fixed_layout>')
+        return s
+
+
+class DCC3ExpArchFactory(ArchFactory, ParamsChecker):
+    """DCC3 experimental architecture with single FF per arithmetic mode."""
+    def get_name(self, per_fle_area: float, enable_lut6: bool, fixed_size: tuple[int, int]|None, **kwargs):
+        name = f"type.s10-chain_3_exp"
+        return name
+
+    def verify_params(self, params):
+        # DCC3 Exp uses same grid_logic_tile_area=25241.08 as DCC3
+        filled = self.verify_required_keys(DEFAULTS, [], params)
+        filled['per_fle_area'] = 2524.108
+        return filled
+
+    def get_arch(self, per_fle_area: float, enable_lut6: bool, fixed_size: tuple[int, int]|None, **kwargs):
+        # Inject fixed layout sizing if requested; otherwise return template as-is
+        if fixed_size is None:
+            return TEMPLATE_DCC3_EXP
+        w, h = fixed_size
+        s = TEMPLATE_DCC3_EXP
         s = s.replace('<auto_layout aspect_ratio="1.0">', f'<fixed_layout name="fixed_arch_size" width="{w}" height="{h}">')
         s = s.replace('</auto_layout>', '</fixed_layout>')
         return s

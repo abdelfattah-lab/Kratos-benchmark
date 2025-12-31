@@ -62,7 +62,7 @@ VARIABLE_ARCH_PARAMS = dict(
 DESIGN_LIST = [
     # VTR Standard benchmarks
     # (Conv1dFuDesign(), kratos.get_conv_1d_fu_params(BASE_PARAMS)),
-    # (VtrBenchmarkLoaderDesign(), vtr_bm.get_all_vtr_bm_params(BASE_PARAMS)),
+    (VtrBenchmarkLoaderDesign(), vtr_bm.get_all_vtr_bm_params(BASE_PARAMS)),
     # Koios benchmarks
     # (VtrBenchmarkLoaderDesign(), vtr_bm.get_all_koios_params(BASE_PARAMS)),
 ]
@@ -144,7 +144,7 @@ run_vtr_denoised_v1(
     df_processing_fn=add_derived_metrics,
     rotate_x_axis_labels=True,
     merge_designs=False,
-    num_parallel_tasks=1,
+    num_parallel_tasks=2,
     seeds=(1239,),
     # stagger_launch_sec=120,
     # verbose=True,

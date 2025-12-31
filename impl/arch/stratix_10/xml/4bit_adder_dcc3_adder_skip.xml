@@ -408,11 +408,11 @@
                   <direct name="direct3" input="flut5.out" output="ble5.out" />
                 </interconnect>
               </mode>
-              <!-- arithmetic_1chain: Cascaded adder mode (3:1 reduction)
+              <!-- arithmetic_cascade: Cascaded adder mode (3:1 reduction)
                    - adder[0].sumout feeds adder[1].b
                    - Only adder[1].sumout is registered (1 FF)
                    - Uses "chain" pack pattern -->
-              <mode name="arithmetic_1chain">
+              <mode name="arithmetic_cascade">
                 <pb_type name="arithmetic" num_pb="1">
                   <input name="in" num_pins="5" />
                   <input name="cin" num_pins="2" />
@@ -443,7 +443,7 @@
                     <delay_constant max="25.61e-12" in_port="adder.cin" out_port="adder.cout" />
                   </pb_type>
                   <!-- Only 1 FF for the cascaded output -->
-                  <pb_type name="ff" blif_model=".latch" num_pb="1" class="flipflop">
+                  <pb_type name="ff" blif_model=".latch" num_pb="2" class="flipflop">
                     <input name="D" num_pins="1" port_class="D" />
                     <output name="Q" num_pins="1" port_class="Q" />
                     <clock name="clk" num_pins="1" port_class="clock" />
@@ -451,7 +451,7 @@
                     <T_clock_to_Q max="60.32e-12" port="ff.Q" clock="clk" />
                   </pb_type>
                   <interconnect>
-                    <direct name="clock" input="arithmetic.clk" output="ff.clk" />
+                    <complete name="clock" input="arithmetic.clk" output="ff.clk" />
                     <direct name="lut4_in1" input="arithmetic.in[3:0]" output="lut4[0].in" />
                     <direct name="lut4_in2" input="arithmetic.in[3:0]" output="lut4[1].in" />
                     <direct name="lut_to_add1" input="lut4[0:0].out" output="adder[0].a" />
@@ -462,9 +462,9 @@
                       <delay_constant max="68.88e-12" in_port="adder[0].sumout" out_port="adder[1].b" />
                     </complete>
                     <!-- Only adder[1].sumout goes to FF -->
-                    <direct name="add_to_ff" input="adder[1].sumout" output="ff.D">
-                      <delay_constant max="16.45e-12" in_port="adder[1].sumout" out_port="ff.D" />
-                      <pack_pattern name="chain" in_port="adder[1].sumout" out_port="ff.D" />
+                    <direct name="add_to_ff" input="adder.sumout" output="ff.D">
+                      <delay_constant max="16.45e-12" in_port="adder.sumout" out_port="ff.D" />
+                      <pack_pattern name="chain" in_port="adder[1].sumout" out_port="ff[1].D" />
                     </direct>
                     <!-- Carry chain connections -->
                     <direct name="carry_in1" input="arithmetic.cin[0]" output="adder[0].cin">
@@ -480,9 +480,13 @@
                       <pack_pattern name="chain" in_port="adder[1].cout" out_port="arithmetic.cout[1]" />
                     </direct>
                     <!-- Output mux: ff.Q or adder sumouts -->
-                    <complete name="sumout" input="ff.Q adder.sumout" output="arithmetic.out">
-                      <delay_constant max="39.78e-12" in_port="adder.sumout" out_port="arithmetic.out" />
-                      <delay_constant max="39.78e-12" in_port="ff.Q" out_port="arithmetic.out" />
+                    <complete name="sumout0" input="ff[0].Q adder[0].sumout" output="arithmetic[0].out">
+                      <delay_constant max="39.78e-12" in_port="adder[0].sumout" out_port="arithmetic[0].out" />
+                      <delay_constant max="39.78e-12" in_port="ff[0].Q" out_port="arithmetic[0].out" />
+                    </complete>
+                    <complete name="sumout1" input="ff[1].Q adder[1].sumout" output="arithmetic[1].out">
+                      <delay_constant max="39.78e-12" in_port="adder[1].sumout" out_port="arithmetic[1].out" />
+                      <delay_constant max="39.78e-12" in_port="ff[1].Q" out_port="arithmetic[1].out" />
                     </complete>
                   </interconnect>
                 </pb_type>
@@ -498,12 +502,12 @@
                   <direct name="direct3" input="arithmetic.out" output="ble5.out" />
                 </interconnect>
               </mode>
-              <!-- arithmetic_2chains: Concurrent adder mode (simple chain)
+              <!-- arithmetic_concurrent: Concurrent adder mode (simple chain)
                    - Both adders operate independently
                    - Both adder sumouts are registered (2 FFs)
                    - adder[1] input from in_direct, not from adder[0].sumout
                    - Uses "simple_chain" pack pattern -->
-              <mode name="arithmetic_2chains">
+              <mode name="arithmetic_concurrent">
                 <pb_type name="arithmetic" num_pb="1">
                   <input name="in" num_pins="5" />
                   <input name="in_direct" num_pins="1" />
@@ -549,7 +553,8 @@
                     <direct name="lut_to_add1" input="lut4[0:0].out" output="adder[0].a" />
                     <direct name="lut_to_add2" input="lut4[1:1].out" output="adder[0].b" />
                     <!-- adder[1] inputs from in[4] and in_direct (concurrent mode) -->
-                    <complete name="add2_input" input="arithmetic.in[0] arithmetic.in[4] arithmetic.in_direct" output="adder[1].a adder[1].b">
+                    <complete name="add2_input" input="arithmetic.in[0] arithmetic.in[4] arithmetic.in_direct"
+                        output="adder[1].a adder[1].b">
                       <pack_pattern name="simple_chain" in_port="arithmetic.in_direct" out_port="adder[1].b" />
                       <delay_constant max="68.88e-12" in_port="arithmetic.in_direct" out_port="adder[1].b" />
                     </complete>
@@ -576,9 +581,13 @@
                       <pack_pattern name="simple_chain" in_port="adder[1].cout" out_port="arithmetic.cout[1]" />
                     </direct>
                     <!-- Output mux: ff.Q or adder sumouts -->
-                    <complete name="sumout" input="ff.Q adder.sumout" output="arithmetic.out">
-                      <delay_constant max="39.78e-12" in_port="adder.sumout" out_port="arithmetic.out" />
-                      <delay_constant max="39.78e-12" in_port="ff.Q" out_port="arithmetic.out" />
+                    <complete name="sumout0" input="ff[0].Q adder[0].sumout" output="arithmetic[0].out">
+                      <delay_constant max="39.78e-12" in_port="adder[0].sumout" out_port="arithmetic[0].out" />
+                      <delay_constant max="39.78e-12" in_port="ff[0].Q" out_port="arithmetic[0].out" />
+                    </complete>
+                    <complete name="sumout1" input="ff[1].Q adder[1].sumout" output="arithmetic[1].out">
+                      <delay_constant max="39.78e-12" in_port="adder[1].sumout" out_port="arithmetic[1].out" />
+                      <delay_constant max="39.78e-12" in_port="ff[1].Q" out_port="arithmetic[1].out" />
                     </complete>
                   </interconnect>
                 </pb_type>

@@ -28,8 +28,8 @@ from impl.arch.stratix_10.base import BaseArchFactory
 from impl.arch.stratix_10.four_bit_adder import (
     DCC1ArchFactory,
     DCC2ArchFactory,
-    DCC2FaithfulArchFactory,
     DCC3ArchFactory,
+    DCC3ExpArchFactory,
 )
 from impl.arch.stratix_10.lut_skip import LUTSkipArchFactory
 from impl.arch.stratix_10.lut_skip_dcc3 import LUTSkipDCC3ArchFactory, AdderSkipDCC3ArchFactory
@@ -67,14 +67,21 @@ ARCH_CONFIG: dict[Type, dict] = {
         "tree_base": 2,
         # "allow_skipping": False,
     },
+    LUTSkipArchFactory: {
+        "name": "dd5",
+        "compressor_tree_type": "wallace",
+        "tree_base": 2,
+    },
     DCC1ArchFactory: {
         "name": "dcc1",
         "compressor_tree_type": "wallace",
+        "tree_base": 2,
     },
     DCC2ArchFactory: {
         "name": "dcc2",
         # "soft_multiplier_adders": True,
         "compressor_tree_type": "wallace",
+        "tree_base": 2,
     },
     DCC3ArchFactory: {
         "name": "dcc3",
@@ -85,15 +92,17 @@ ARCH_CONFIG: dict[Type, dict] = {
         "tree_base": 3,
         'allow_skipping': True,
     },
-    LUTSkipArchFactory: {
-        "name": "dd5",
-        "compressor_tree_type": "wallace",
+    DCC3ExpArchFactory: {
+        "name": "dcc3_exp",
+        "compressor_tree_type": "wallace_ternary",
+        "tree_base": 3,
+        'allow_skipping': True,
     },
     LUTSkipDCC3ArchFactory: {
         "name": "dcc3_dd5",
         "compressor_tree_type": "wallace_ternary",
         "tree_base": 3,
-        'allow_skipping': True,
+        'allow_skipping': False,
         # "ternary_adder_dp": True,
     },
     AdderSkipDCC3ArchFactory: {
@@ -102,7 +111,7 @@ ARCH_CONFIG: dict[Type, dict] = {
         "tree_base": 3,
         'allow_skipping': False,
         # "ternary_adder_dp": True,
-    }
+    },
 }
 
 # Helper to get arch name from config
@@ -150,12 +159,14 @@ DESIGN_LIST = [
 # Which architectures to actually run (subset of ARCH_MAP keys)
 ARCHS_TO_RUN: list[Type] = [
     BaseArchFactory,
-    # # LUTSkipArchFactory,
-    # # DCC1ArchFactory,
-    # DCC2ArchFactory,
-    DCC3ArchFactory,
+    LUTSkipArchFactory,
+    DCC1ArchFactory,
+    DCC2ArchFactory,
+    # DCC3ArchFactory,
+    DCC3ExpArchFactory,
     LUTSkipDCC3ArchFactory,
-    AdderSkipDCC3ArchFactory
+    AdderSkipDCC3ArchFactory,
+    
 ]
 
 # Metrics to plot
@@ -383,6 +394,7 @@ BAR_COLORS = {
     "dd5": "#1f77b4",
     "dcc3_dd5": "#d62728",
     "dcc3_skip_add": "#008080",
+    "dcc3_exp": "#e377c2",
 }
 
 

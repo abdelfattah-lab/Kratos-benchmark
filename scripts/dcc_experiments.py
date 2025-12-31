@@ -88,12 +88,14 @@ ARCH_CONFIG: dict[Type, dict] = {
         "name": "dcc3_dd5",
         "compressor_tree_type": "wallace_ternary",
         "allow_skipping": False,
+        "tree_base": 3,
         # "ternary_adder_dp": True,
     },
     AdderSkipDCC3ArchFactory: {
         "name": "dcc3_add_skip",
         "compressor_tree_type": "wallace_ternary",
         "allow_skipping": False,
+        "tree_base": 3,
         # "ternary_adder_dp": True,
     }
 }
@@ -142,8 +144,8 @@ DESIGN_LIST = [
 ARCHS_TO_RUN: list[Type] = [
     BaseArchFactory,
     LUTSkipArchFactory,
-    DCC1ArchFactory,
-    DCC2ArchFactory,
+    # DCC1ArchFactory,
+    # DCC2ArchFactory,
     DCC3ArchFactory,
     LUTSkipDCC3ArchFactory,
     AdderSkipDCC3ArchFactory,

@@ -16,7 +16,7 @@ Each metric (area, cpd, adp) gets its own subplot column.
 import structure.consts.keys as keys
 from runs.vtr_denoised_same_arch_raw import run_vtr_denoised_same_arch_raw
 from utils import VERILOG_DIR
-import runs.benchmarks.kratos_tiny as tiny
+import runs.benchmarks.kratos as kratos
 import util.derived_metrics as derived_metrics
 
 # Architecture imports
@@ -97,7 +97,7 @@ CONFIGS_TO_COMPARE = [
 BASELINE_NAME = 'dcc3_sma'
 
 # Run configuration
-NUM_PARALLEL_TASKS = 2
+NUM_PARALLEL_TASKS = 1
 VERBOSE = False
 
 # Results folder prefix (e.g., 'compare-' creates 'results/compare-<timestamp>')
@@ -153,13 +153,13 @@ def get_base_params() -> dict:
 BASE_PARAMS = get_base_params()
 DESIGN_LIST = [
     # (VtrBenchmarkLoaderDesign(), vtr_bm.get_all_vtr_bm_params(BASE_PARAMS)),
-    (Conv1dFuDesign(), tiny.get_conv_1d_fu_params(BASE_PARAMS)),
-    (Conv1dPwDesign(), tiny.get_conv_1d_pw_params(BASE_PARAMS)),
-    (Conv2dFuDesign(), tiny.get_conv_2d_fu_params(BASE_PARAMS)),
-    (Conv2dPwDesign(), tiny.get_conv_2d_pw_params(BASE_PARAMS)),
-    (GemmTFuDesign(), tiny.get_gemmt_fu_params(BASE_PARAMS)),
-    (GemmTRpDesign(), tiny.get_gemmt_rp_params(BASE_PARAMS)),
-    (GemmSDesign(), tiny.get_gemms_params(BASE_PARAMS)),
+    (Conv1dFuDesign(), kratos.get_conv_1d_fu_params(BASE_PARAMS)),
+    (Conv1dPwDesign(), kratos.get_conv_1d_pw_params(BASE_PARAMS)),
+    # (Conv2dFuDesign(), kratos.get_conv_2d_fu_params(BASE_PARAMS)),
+    # (Conv2dPwDesign(), kratos.get_conv_2d_pw_params(BASE_PARAMS)),
+    (GemmTFuDesign(), kratos.get_gemmt_fu_params(BASE_PARAMS)),
+    (GemmTRpDesign(), kratos.get_gemmt_rp_params(BASE_PARAMS)),
+    (GemmSDesign(), kratos.get_gemms_params(BASE_PARAMS)),
 ]
 
 
