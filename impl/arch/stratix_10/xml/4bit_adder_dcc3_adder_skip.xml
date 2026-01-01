@@ -480,13 +480,10 @@
                       <pack_pattern name="chain" in_port="adder[1].cout" out_port="arithmetic.cout[1]" />
                     </direct>
                     <!-- Output mux: ff.Q or adder sumouts -->
-                    <complete name="sumout0" input="ff[0].Q adder[0].sumout" output="arithmetic[0].out">
-                      <delay_constant max="39.78e-12" in_port="adder[0].sumout" out_port="arithmetic[0].out" />
-                      <delay_constant max="39.78e-12" in_port="ff[0].Q" out_port="arithmetic[0].out" />
-                    </complete>
-                    <complete name="sumout1" input="ff[1].Q adder[1].sumout" output="arithmetic[1].out">
-                      <delay_constant max="39.78e-12" in_port="adder[1].sumout" out_port="arithmetic[1].out" />
-                      <delay_constant max="39.78e-12" in_port="ff[1].Q" out_port="arithmetic[1].out" />
+                    <complete name="sumout" input="ff.Q adder.sumout" output="arithmetic.out">
+                      <delay_constant max="39.78e-12" in_port="adder.sumout"
+                        out_port="arithmetic.out" />
+                      <delay_constant max="39.78e-12" in_port="ff.Q" out_port="arithmetic.out" />
                     </complete>
                   </interconnect>
                 </pb_type>
@@ -581,13 +578,10 @@
                       <pack_pattern name="simple_chain" in_port="adder[1].cout" out_port="arithmetic.cout[1]" />
                     </direct>
                     <!-- Output mux: ff.Q or adder sumouts -->
-                    <complete name="sumout0" input="ff[0].Q adder[0].sumout" output="arithmetic[0].out">
-                      <delay_constant max="39.78e-12" in_port="adder[0].sumout" out_port="arithmetic[0].out" />
-                      <delay_constant max="39.78e-12" in_port="ff[0].Q" out_port="arithmetic[0].out" />
-                    </complete>
-                    <complete name="sumout1" input="ff[1].Q adder[1].sumout" output="arithmetic[1].out">
-                      <delay_constant max="39.78e-12" in_port="adder[1].sumout" out_port="arithmetic[1].out" />
-                      <delay_constant max="39.78e-12" in_port="ff[1].Q" out_port="arithmetic[1].out" />
+                    <complete name="sumout" input="ff.Q adder.sumout" output="arithmetic.out">
+                      <delay_constant max="39.78e-12" in_port="adder.sumout"
+                        out_port="arithmetic.out" />
+                      <delay_constant max="39.78e-12" in_port="ff.Q" out_port="arithmetic.out" />
                     </complete>
                   </interconnect>
                 </pb_type>
