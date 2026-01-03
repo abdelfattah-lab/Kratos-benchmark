@@ -548,7 +548,7 @@ TEMPLATE = """<!--
                 <pack_pattern name="chain_arith" in_port="ble5[1].cout" out_port="fle.cout"/>
               </direct>
               <direct name="carry_link" input="ble5[0].cout" output="ble5[1].cin">
-                <pack_pattern name="chain_arith" in_port="ble5[0].cout" out_port="ble5[1].cout"/>
+                <pack_pattern name="chain_arith" in_port="ble5[0].cout" out_port="ble5[1].cin"/>
               </direct>
               <complete name="clock" input="fle.clk" output="ble5[1:0].clk"/>
             </interconnect>

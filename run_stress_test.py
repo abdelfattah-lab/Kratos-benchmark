@@ -50,18 +50,17 @@ from structure.plugin import Plugin
 
 # Constants
 import structure.consts.keys as keys
-from structure.consts.translation import TRANSLATIONS_GRAPH
 
 # utilities
 import util.derived_metrics as derived_metrics
 from util.formatting import pretty
 from util.calc import merge_op
-from util.results import save_and_plot
-from util.plot import plot_xy
 from util.external_notifs import telegram_notify
 
 # Python libraries
 import os.path as path
+import os
+from datetime import datetime as dt
 import pandas as pd
 from copy import deepcopy
 from time import sleep
@@ -108,8 +107,12 @@ def add_derived_metrics(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 # Make ArchFactory and Design instances
-BASE_ARCH = LUTSkip3ArchFactory()
-MOD_ARCH = DD5_2Z_Input_Shared_AB()
+#*BASE_ARCH = LUTSkip3ArchFactory()
+#*MOD_ARCH = DD5_2Z_Input_Shared_AB()
+BASE_STRATIX_ARCH = BaseArchFactory()
+FOURSHARING_ARCH = DD5_4Z_Input_Shared_AEBF()
+TWOSHARING_ARCH = DD5_2Z_Input_Shared_AB()
+BASEDD5_ARCH = LUTSkip3ArchFactory()
 
 # Define design class list and plugin, N parameter
 PLUGIN = ShaxNPlugin()
@@ -120,7 +123,7 @@ DESIGN_CLASS_LIST = [
     #(Conv1dPwDesign, mini.get_conv_1d_pw_params(BASE_PARAMS)),
     (Conv2dFuDesign, mini.get_conv_2d_fu_params(BASE_PARAMS)),
     #(Conv2dRpDesign, mini.get_conv_2d_rp_params(BASE_PARAMS)),
-    (Conv2dPwDesign, mini.get_conv_2d_pw_params(BASE_PARAMS)),
+    #(Conv2dPwDesign, mini.get_conv_2d_pw_params(BASE_PARAMS)),
     (GemmTFuDesign,  mini.get_gemmt_fu_params(BASE_PARAMS)),
     #(GemmTRpDesign,  mini.get_gemmt_rp_params(BASE_PARAMS)),
     #(GemmSDesign,    mini.get_gemms_params(BASE_PARAMS)),
@@ -198,6 +201,10 @@ def get_max_N(arch: ArchFactory, DesignClass: Type[PluginDesign], plugin: Plugin
         N_start += 3
 
     # apply derived metrics
+
+    if main_df is None:
+        return pd.DataFrame()
+
     main_df = add_derived_metrics(main_df)
     
     # return all found records
@@ -208,9 +215,13 @@ def run_seq(DesignClass: Type[PluginDesign], plugin: Plugin, base_params: dict[s
     """
     Returns:
     {
-        'base': DataFrame,
-        'mod': DataFrame,
-        'norm': DataFrame,
+        'base_stratix': DataFrame,
+        'fourshare': DataFrame,
+        'twoshare': DataFrame,
+        'base_dd5': DataFrame,
+        'norm_fourshare': DataFrame,
+        'norm_twoshare': DataFrame,
+        'norm_dd5': DataFrame,
     }
     """
 
@@ -220,9 +231,9 @@ def run_seq(DesignClass: Type[PluginDesign], plugin: Plugin, base_params: dict[s
     # 1. Run baseline with 1 instance and get grid size
     print("(!) Running initial sizing...")
     params = deepcopy(base_params)
-    params[keys.KEY_EXP]['root_dir'] = path.join(params[keys.KEY_EXP]['root_dir'], BASE_ARCH.__class__.__name__)
+    params[keys.KEY_EXP]['root_dir'] = path.join(params[keys.KEY_EXP]['root_dir'], BASE_STRATIX_ARCH.__class__.__name__)
     params[keys.KEY_DESIGN][N_param] = 1
-    base_exp = VtrExperiment(BASE_ARCH, DesignClass(plugin=plugin), params)
+    base_exp = VtrExperiment(BASE_STRATIX_ARCH, DesignClass(plugin=plugin), params)
     base_exp.run()
     if base_exp.process:
         base_exp.process.wait()
@@ -238,40 +249,67 @@ def run_seq(DesignClass: Type[PluginDesign], plugin: Plugin, base_params: dict[s
     print(f"(!) Sizing to {grid_w} x {grid_h}.")
 
     # 2.1 Fix grid size
-    base_params[keys.KEY_ARCH]['fixed_size'] = (grid_w, grid_h)
+    sweep_params = deepcopy(base_params)
+    sweep_params[keys.KEY_ARCH]['fixed_size'] = (grid_w, grid_h)
 
     # get all possible instances for each architecture
-    print("(!) Getting all possible instances for base architecture...")
-    base_df = get_max_N(BASE_ARCH, DesignClass, plugin, base_params, N_param)
-    print("(!) Getting all possible instances for modified architecture...")
-    mod_df = get_max_N(MOD_ARCH, DesignClass, plugin, base_params, N_param)
+    print("(!) Getting all possible instances for base Stratix-10 architecture...")
+    base_stratix_df = get_max_N(BASE_STRATIX_ARCH, DesignClass, plugin, sweep_params, N_param)
+    print("(!) Getting all possible instances for 4Z architecture...")
+    fourshare_df = get_max_N(FOURSHARING_ARCH, DesignClass, plugin, sweep_params, N_param)
+    print("(!) Getting all possible instances for 2Z architecture...")
+    twoshare_df = get_max_N(TWOSHARING_ARCH, DesignClass, plugin, sweep_params, N_param)
+    print("(!) Getting all possible instances for base DD5 architecture...")
+    base_dd5_df = get_max_N(BASEDD5_ARCH, DesignClass, plugin, sweep_params, N_param)
 
     # Print maximums
-    base_max = base_df.loc[base_df[N_param].idxmax()].to_dict()
-    mod_max = mod_df.loc[mod_df[N_param].idxmax()].to_dict()
-    print("(!) Maximum for base architecture:")
-    pretty(base_max, 1)
-    print("(!) Maximum for modified architecture:")
-    pretty(mod_max, 1)
+    base_stratix_max = base_stratix_df.loc[base_stratix_df[N_param].idxmax()].to_dict()
+    fourshare_max = fourshare_df.loc[fourshare_df[N_param].idxmax()].to_dict()
+    twoshare_max = twoshare_df.loc[twoshare_df[N_param].idxmax()].to_dict()
+    base_dd5_max = base_dd5_df.loc[base_dd5_df[N_param].idxmax()].to_dict()
+    print("(!) Maximum for base Stratix-10 architecture:")
+    pretty(base_stratix_max, 1)
+    print("(!) Maximum for 4Z architecture:")
+    pretty(fourshare_max, 1)
+    print("(!) Maximum for 2Z architecture:")
+    pretty(twoshare_max, 1)
+    print("(!) Maximum for base DD5 architecture:")
+    pretty(base_dd5_max, 1)
     
-    notify_via_tele(f"{design_name} maximum N | base: {base_max[N_param]}, modified: {mod_max[N_param]}")
+    notify_via_tele(f"{design_name} maximum N | Stratix-10: {base_stratix_max[N_param]}, 4Z: {fourshare_max[N_param]}, 2Z: {twoshare_max[N_param]}, DD5: {base_dd5_max[N_param]}")
 
-    # Merge on 'sha_num' and normalize to baseline
-    norm_df = merge_op(mod_df, base_df, lambda a, b: a/b, 
-                    merge_on=[N_param],
-                    ignore=AVOID_NORM_COLS + ['data_width', 'per_fle_area'])
+    # Merge on 'sha_num' and normalize to baseline for each design
+    norm_fourshare_df = merge_op(fourshare_df, base_stratix_df, lambda a, b: a/b, 
+                        merge_on=[N_param],
+                        ignore=AVOID_NORM_COLS + ['data_width', 'per_fle_area'])
+
+    norm_twoshare_df = merge_op(twoshare_df, base_stratix_df, lambda a, b: a/b, 
+                        merge_on=[N_param],
+                        ignore=AVOID_NORM_COLS + ['data_width', 'per_fle_area'])
+
+    norm_base_dd5_df = merge_op(base_dd5_df, base_stratix_df, lambda a, b: a/b, 
+                        merge_on=[N_param],
+                        ignore=AVOID_NORM_COLS + ['data_width', 'per_fle_area'])
 
     return dict(
-        base=base_df,
-        mod=mod_df,
-        norm=norm_df,
+        base_stratix=base_stratix_df,
+        fourshare=fourshare_df,
+        twoshare=twoshare_df,
+        base_dd5=base_dd5_df,
+        norm_fourshare=norm_fourshare_df,
+        norm_twoshare=norm_twoshare_df,
+        norm_dd5=norm_base_dd5_df
     )
 
 
 #### MAIN RUN SEQUENCE ####
-base_dfs = {}
-mod_dfs = {}
-norm_dfs = {}
+base_stratix_dfs = {}
+fourshare_dfs = {}
+twoshare_dfs = {}
+base_dd5_dfs = {}
+norm_fourshare_dfs = {}
+norm_twoshare_dfs = {}
+norm_dd5_dfs = {}
 for DesignClass, base_params in DESIGN_CLASS_LIST:
     design_name = DesignClass.__name__
     
@@ -281,39 +319,35 @@ for DesignClass, base_params in DESIGN_CLASS_LIST:
     if dfs is None:
         continue
 
-    base_dfs[design_name] = dfs['base']
-    mod_dfs[design_name] = dfs['mod']
-    norm_dfs[design_name] = dfs['norm']
-
-# Save raw results
-def do_with_dir_fn(save_dir: str) -> None:
-    def save_df(df, name, suffix):
-        df.to_csv(path.join(save_dir, f"{name}_{suffix}"))
-
-    for key in base_dfs.keys():
-        base_df = base_dfs[key]
-        mod_df = mod_dfs[key]
-
-        save_df(base_df, key, 'base_raw')
-        save_df(mod_df, key, 'mod_raw')
+    base_stratix_dfs[design_name] = dfs['base_stratix']
+    fourshare_dfs[design_name] = dfs['fourshare']
+    twoshare_dfs[design_name] = dfs['twoshare']
+    base_dd5_dfs[design_name] = dfs['base_dd5']
+    norm_fourshare_dfs[design_name] = dfs['norm_fourshare']
+    norm_twoshare_dfs[design_name] = dfs['norm_twoshare']
+    norm_dd5_dfs[design_name] = dfs['norm_dd5']
 
 # Save results
-def plot_fn(save_dir: str, filesafe_name: str, df: pd.DataFrame):
-    plot_xy(
-        df=df,
-        group_identifiers=['data_width'],
-        x_axis_col=[N_PARAM],
-        x_axis_label=['N'],
-        y_axis_col=PLOT_COLS,
-        y_axis_label=[f"{'*' if c in AVOID_NORM_COLS else ''}{TRANSLATIONS_GRAPH.get(c, c)}" for c in PLOT_COLS],
-        short_labels=dict(data_width='dw'),
-        save_path=path.join(save_dir, f"{filesafe_name}.png"),
-        normalized_y_axes=list(set(PLOT_COLS) - set(AVOID_NORM_COLS)),
-        )
-save_and_plot(
-    results=norm_dfs,
-    do_with_dir_fn=do_with_dir_fn,
-    plot_fn=plot_fn,
-)
 
-notify_via_tele("Finished stress test.")
+def make_results_dir(parent: str = "results") -> str:
+    save_dir = path.join(parent, dt.now().strftime("%d%b%y-%H.%M.%S"))
+    os.makedirs(save_dir, exist_ok=True)
+    return save_dir
+
+def save_all_csvs(save_dir: str) -> None:
+    def save_df(df, name, suffix):
+        df.to_csv(path.join(save_dir, f"{name}_{suffix}.csv"), index=False)
+
+    for key in base_stratix_dfs.keys():
+        save_df(base_stratix_dfs[key], key, 'base_stratix_raw')
+        save_df(fourshare_dfs[key],    key, 'fourshare_raw')
+        save_df(twoshare_dfs[key],     key, 'twoshare_raw')
+        save_df(base_dd5_dfs[key],     key, 'base_dd5_raw')
+
+        save_df(norm_fourshare_dfs[key], key, 'norm_fourshare')
+        save_df(norm_twoshare_dfs[key],  key, 'norm_twoshare')
+        save_df(norm_dd5_dfs[key],       key, 'norm_dd5')
+
+save_dir = make_results_dir("results")
+save_all_csvs(save_dir)
+notify_via_tele(f"Saved CSVs to {save_dir}")

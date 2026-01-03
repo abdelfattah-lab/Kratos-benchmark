@@ -5,7 +5,7 @@ from runs.vtr_denoised_v1 import run_vtr_denoised_v1
 import util.derived_metrics as derived_metrics
 
 # Stratix 10
-from impl.arch.stratix_10.base import BaseArchFactory
+from impl.arch.stratix_10.fair.base import BaseArchFactory
 from impl.arch.stratix_10.lut_skip import LUTSkipArchFactory
 from impl.arch.stratix_10.lut_skip_scratch3 import LUTSkip3ArchFactory
 from impl.arch.stratix_10.lut_skip_1d import LUTSkip1dArchFactory
@@ -14,6 +14,10 @@ from impl.arch.stratix_10.sharing_1z import DD5_1Z_Input_Shared_A
 from impl.arch.stratix_10.sharing_2z import DD5_2Z_Input_Shared_AB
 from impl.arch.stratix_10.sharing_4z_AEBF import DD5_4Z_Input_Shared_AEBF
 from impl.arch.stratix_10.sharing_4z_ABlut4 import DD5_4Z_Input_Shared_ABlut4
+from impl.arch.stratix_10.temp_sharing_1 import LUTSkipArchShare1
+from impl.arch.stratix_10.temp_sharing_2 import LUTSkipArchShare2
+from impl.arch.stratix_10.sharing_3 import LUTSkipArchShare3
+from impl.arch.stratix_10.temp_sharing_4 import LUTSkipArchShare4
 
 # VTR Standard Benchmark Loader parameters
 import runs.benchmarks.vtr_full_benchmarks as vtr_bm
@@ -46,8 +50,8 @@ from pandas import DataFrame
 #BASE_ARCH = LUTSkip3ArchFactory
 #EXP_ARCH = DD5_2Z_Input_Shared_AB
 
-BASE_ARCH = LUTSkip3ArchFactory
-EXP_ARCH = DD5_4Z_Input_Shared_ABlut4
+BASE_ARCH = DD5_1Z_Input_Shared_A
+EXP_ARCH = LUTSkipArchShare1
 
 BASE_PARAMS = {
     keys.KEY_EXP: {
@@ -91,12 +95,12 @@ DESIGN_LIST = [
 
     # Tiny benchmarks
     #(Conv1dFuDesign(), tiny.get_conv_1d_fu_params(BASE_PARAMS)),
-    (Conv1dPwDesign(), tiny.get_conv_1d_pw_params(BASE_PARAMS)),
-    (Conv2dFuDesign(), tiny.get_conv_2d_fu_params(BASE_PARAMS)),
+    #(Conv1dPwDesign(), tiny.get_conv_1d_pw_params(BASE_PARAMS)),
+    #(Conv2dFuDesign(), tiny.get_conv_2d_fu_params(BASE_PARAMS)),
     #(Conv2dPwDesign(), tiny.get_conv_2d_pw_params(BASE_PARAMS)),
-    #(GemmTFuDesign(), tiny.get_gemmt_fu_params(BASE_PARAMS)),
-    (GemmTRpDesign(), tiny.get_gemmt_rp_params(BASE_PARAMS)),
-    (GemmSDesign(), tiny.get_gemms_params(BASE_PARAMS)),
+    (GemmTFuDesign(), tiny.get_gemmt_fu_params(BASE_PARAMS)),
+    #(GemmTRpDesign(), tiny.get_gemmt_rp_params(BASE_PARAMS)),
+    #(GemmSDesign(), tiny.get_gemms_params(BASE_PARAMS)),
 ]
 
 # add derived metrics:
