@@ -1107,7 +1107,7 @@ def gen_layout_sizing(fixed_size: tuple[int, int]|None):
 DEFAULTS = {
     'cin_mux_stride': 0, # insert a 2:1 MUX in the carry chain every ? ALMs.
     'enable_lut6': True, # turn on/off 6-LUT mode
-    'per_fle_area': 2248.0434, # LAB area / 10
+    'per_fle_area': 2152.2039, # LAB area / 10
     'fixed_size': None, # (w, h) of fixed size, None for auto sizing
 }
 
