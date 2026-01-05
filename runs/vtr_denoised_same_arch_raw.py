@@ -95,7 +95,8 @@ def run_vtr_denoised_same_arch_raw(
                     filter_results.append(df_key)
 
         # save DataFrame individually
-        seed_mean.insert(0, 'impl', impl)
+        if 'impl' not in seed_mean.columns:
+            seed_mean.insert(0, 'impl', impl)
         if all_df is None:
             all_df = seed_mean
         else:

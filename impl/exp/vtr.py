@@ -2,7 +2,7 @@ from structure.exp import Experiment
 from structure.test import VerilogImplTester
 from structure.consts.shared_defaults import DEFAULTS_EXP_VTR
 from structure.consts.shared_requirements import REQUIRED_KEYS_EXP_VERILOG
-from util.extract import extract_info_vtr
+from util.extract import extract_info_vtr, extract_molecule_chain_stats
 from util.flow import start_dependent_process
 from util.search import find_first_file_with_suffix
 
@@ -301,7 +301,10 @@ class VtrExperiment(Experiment):
                             with z.open('design.net') as net_file:
                                 netstats = self._generate_netstats_json(ET.parse(net_file).getroot(), self.vtr_output_dir)
 
-        self.result = { **extract_info_vtr(self.vtr_output_dir, **kwargs), **netstats }
+        # Extract molecule chain statistics (chain vs simple_chain)
+        molecule_stats = extract_molecule_chain_stats(self.vtr_output_dir)
+
+        self.result = { **extract_info_vtr(self.vtr_output_dir, **kwargs), **netstats, **molecule_stats }
 
         # add verification result
         if self.verify is not None:

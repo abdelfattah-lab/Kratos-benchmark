@@ -32,8 +32,11 @@ from impl.arch.stratix_10.four_bit_adder import (
     DCC3ExpArchFactory,
 )
 from impl.arch.stratix_10.lut_skip import LUTSkipArchFactory
-from impl.arch.stratix_10.lut_skip_dcc3 import LUTSkipDCC3ArchFactory, AdderSkipDCC3ArchFactory
-
+from impl.arch.stratix_10.lut_skip_dcc3 import (
+  LUTSkipDCC3ArchFactory,
+  LUTSkipDCC3ExpArchFactory,
+  AdderSkipDCC3ArchFactory
+)
 # Design imports
 from impl.design.conv_1d.fu import Conv1dFuDesign
 from impl.design.conv_1d.pw import Conv1dPwDesign
@@ -105,6 +108,13 @@ ARCH_CONFIG: dict[Type, dict] = {
         'allow_skipping': False,
         # "ternary_adder_dp": True,
     },
+    LUTSkipDCC3ExpArchFactory: {
+        "name": "dcc3_dd5",
+        "compressor_tree_type": "wallace_ternary",
+        "tree_base": 3,
+        'allow_skipping': False,
+        # "ternary_adder_dp": True,
+    },
     AdderSkipDCC3ArchFactory: {
         "name": "dcc3_skip_add",
         "compressor_tree_type": "wallace_ternary",
@@ -158,14 +168,15 @@ DESIGN_LIST = [
 
 # Which architectures to actually run (subset of ARCH_MAP keys)
 ARCHS_TO_RUN: list[Type] = [
-    BaseArchFactory,
-    LUTSkipArchFactory,
-    DCC1ArchFactory,
-    DCC2ArchFactory,
+    # BaseArchFactory,
+    # LUTSkipArchFactory,
+    # DCC1ArchFactory,
+    # DCC2ArchFactory,
     # DCC3ArchFactory,
-    DCC3ExpArchFactory,
-    LUTSkipDCC3ArchFactory,
-    AdderSkipDCC3ArchFactory,
+    # DCC3ExpArchFactory,
+    # LUTSkipDCC3ArchFactory,
+    LUTSkipDCC3ExpArchFactory,
+    # AdderSkipDCC3ArchFactory,
     
 ]
 
@@ -187,7 +198,7 @@ FILTER_RESULTS = [
 FILTER_BLOCKS = ['clb', 'fle', 'fle1', 'fle2', 'lut5', 'lut6', 'adder']
 
 # Runner settings
-NUM_PARALLEL_TASKS = 2
+NUM_PARALLEL_TASKS = 8
 VERBOSE = True
 
 # Results folder prefix (e.g., 'dcc-exp-' creates 'results/dcc-exp-<timestamp>')

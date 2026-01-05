@@ -17,6 +17,7 @@ from lxml.etree import Element
 BASE_DIR = Path(__file__).resolve().parent
 XML_DIR = BASE_DIR / 'xml'
 TEMPLATE = (XML_DIR / '4bit_adder_dcc3_lut_skip.xml').read_text(encoding='utf-8')
+EXP_TEMPLATE = (XML_DIR / '4bit_adder_dcc3_lut_skip_exp.xml').read_text(encoding='utf-8')
 
 def gen_layout_sizing(fixed_size: tuple[int, int]|None):
     if fixed_size is None:
@@ -84,6 +85,58 @@ class LUTSkipDCC3ArchFactory(ArchFactory, ParamsChecker):
             adder1_block = ns.get_valid_child_block_instance(arith_block, 'adder[1]')
 
             # Count as concurrent if LUT5 is used AND at least one adder is active
+            if lut5_block is not None and (adder0_block is not None or adder1_block is not None):
+                concurrent_lut5s += 1
+
+        return dict(
+            concurrent_lut5s=concurrent_lut5s,
+        )
+
+
+class LUTSkipDCC3ExpArchFactory(ArchFactory, ParamsChecker):
+    """
+    Experimental architecture with split sumout paths:
+    - arithmetic.out[0] ← adder outputs (registered or combinational)
+    - arithmetic.out[1] ← LUT5 output (registered or combinational bypass)
+
+    This provides dedicated output paths similar to fair_lut_skip.xml,
+    enabling true concurrent LUT5+adder usage.
+    """
+    def get_name(self, per_fle_area: float, enable_lut6: bool, fixed_size: tuple[int, int]|None, **kwargs):
+        name = f"type.s10-skip_chain_3_exp"
+        return name
+
+    def verify_params(self, params):
+        # DCC3 template uses grid_logic_tile_area=25241.08 (small)
+        filled = self.verify_required_keys(DEFAULTS, [], params)
+        filled['per_fle_area'] = 2604.8359
+        return filled
+
+    def get_arch(self, per_fle_area: float, enable_lut6: bool, fixed_size: tuple[int, int]|None, **kwargs):
+        # Inject fixed layout sizing if requested; otherwise return template as-is
+        if fixed_size is None:
+            return EXP_TEMPLATE
+        w, h = fixed_size
+        s = EXP_TEMPLATE
+        s = s.replace('<auto_layout aspect_ratio="1.0">', f'<fixed_layout name="fixed_arch_size" width="{w}" height="{h}">')
+        s = s.replace('</auto_layout>', '</fixed_layout>')
+        return s
+
+    def should_update_netstats(self, netstats: dict[str, any]) -> bool:
+        required_keys = ['concurrent_lut5s']
+        for key in required_keys:
+            if key not in netstats:
+                return True
+        return False
+
+    def get_netstats(self, root: Element) -> dict[str, any]:
+        concurrent_lut5s = 0
+
+        for arith_block in ns.find_all_block_instances(root, 'arithmetic[0]'):
+            lut5_block = ns.get_valid_child_block_mode(arith_block, 'as_lut5')
+            adder0_block = ns.get_valid_child_block_instance(arith_block, 'adder[0]')
+            adder1_block = ns.get_valid_child_block_instance(arith_block, 'adder[1]')
+
             if lut5_block is not None and (adder0_block is not None or adder1_block is not None):
                 concurrent_lut5s += 1
 

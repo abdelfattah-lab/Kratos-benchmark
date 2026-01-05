@@ -418,7 +418,23 @@ def extract_info_vtr(path='.', extract_blocks_list=['clb', 'fle']) -> dict:
                     start_range -= 0.1
                 end_range = start_range + 0.1 # instead of directly using the end range in the file, which contains 'inf', we use start_range + 0.1
                 result_dict[f'rcu_{end_range:.1f}'] = float(parts[4]) / 100
-            
+
+        # Arithmetic modes usage (for DCC3 architectures)
+        # Parses: "Arithmetic modes usage (ble5):" section
+        # NOTE: Counter-intuitive naming in VPR!
+        #   arithmetic_1chain : N  (ternary chain - 2 adders connected as ternary unit)
+        #   arithmetic_2chains : M (simple chain - 2 independent/separate adder chains)
+        if line.startswith('Arithmetic modes usage'):
+            for i in range(5):  # Read up to 5 lines to find the modes
+                line = f.readline().strip()
+                if not line or not ':' in line:
+                    break
+                if line.startswith('arithmetic_1chain'):
+                    parts = line.split(':')
+                    result_dict['arithmetic_1chain'] = int(parts[1].strip())
+                elif line.startswith('arithmetic_2chains'):
+                    parts = line.split(':')
+                    result_dict['arithmetic_2chains'] = int(parts[1].strip())
 
     f.close()
 
@@ -646,5 +662,57 @@ def extract_arithmetic_ble5_input_histogram(path='.') -> dict:
     result['avg_input_util'] = avg_util
     result['input_histogram_frac'] = histogram_frac
     result['mode_breakdown'] = mode_histograms
+
+    return result
+
+
+def extract_molecule_chain_stats(path='.') -> dict:
+    """
+    Extract chain and simple_chain molecule counts from pre_packing_molecules_and_patterns.echo.
+
+    This function counts the number of 'chain' (ternary chain) and 'simple_chain' (independent
+    carry chains) molecules, which is useful for analyzing how well synthesis maps to ternary
+    adder architectures like DCC3.
+
+    Args:
+        path: Directory containing pre_packing_molecules_and_patterns.echo
+              (typically the 'temp' folder of a VTR run)
+
+    Returns:
+        Dictionary with:
+        - 'chain_molecules': count of chain (ternary) molecules
+        - 'simple_chain_molecules': count of simple_chain molecules
+        - 'total_chain_molecules': chain_molecules + simple_chain_molecules
+        - 'chain_ratio': chain_molecules / total_chain_molecules (0 if no chains)
+    """
+    result = {
+        'chain_molecules': 0,
+        'simple_chain_molecules': 0,
+        'total_chain_molecules': 0,
+        'chain_ratio': 0.0,
+    }
+
+    echo_path = os.path.join(path, 'pre_packing_molecules_and_patterns.echo')
+    if not os.path.exists(echo_path):
+        return result
+
+    chain_count = 0
+    simple_chain_count = 0
+
+    with open(echo_path, 'r') as f:
+        for line in f:
+            # Lines that start a new molecule look like: "molecule type: chain" or "molecule type: simple_chain"
+            if line.startswith('molecule type:'):
+                mol_type = line.split(':', 1)[1].strip()
+                if mol_type == 'chain':
+                    chain_count += 1
+                elif mol_type == 'simple_chain':
+                    simple_chain_count += 1
+
+    total = chain_count + simple_chain_count
+    result['chain_molecules'] = chain_count
+    result['simple_chain_molecules'] = simple_chain_count
+    result['total_chain_molecules'] = total
+    result['chain_ratio'] = chain_count / total if total > 0 else 0.0
 
     return result

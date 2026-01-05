@@ -1,24 +1,23 @@
 #!/usr/bin/env python3
 """
-Run multiple designs across multiple architectures, producing:
+Run VTR standard benchmarks across multiple architectures, producing:
 1. Augmented all_results.csv with 'arch' column
 2. Normalized results CSV (normalized against baseline architecture)
 3. Plot PNGs for key metrics
 
 Configuration:
-- ARCH_MAP: Dictionary mapping ArchFactory classes to string labels
-- DESIGN_LIST: List of (Design, params) tuples to run
+- ARCH_CONFIG: Dictionary mapping ArchFactory classes to their configs
+- ARCHS_TO_RUN: List of architectures to run
 - BASELINE_ARCH_KEY: Which arch label to use as normalization baseline
 """
 
 import structure.consts.keys as keys
 from structure.consts.translation import TRANSLATIONS_GRAPH
-from utils import VERILOG_DIR
 
 from runs.vtr_denoised_same_arch_raw import run_vtr_denoised_same_arch_raw
+from structure.run import run_parallel_arch_experiments
 
-import runs.benchmarks.kratos as kratos
-import runs.benchmarks.kratos_tiny as tiny
+import runs.benchmarks.vtr_full_benchmarks as vtr_bm
 
 import util.derived_metrics as derived_metrics
 
@@ -27,20 +26,18 @@ from impl.arch.stratix_10.base import BaseArchFactory
 from impl.arch.stratix_10.four_bit_adder import (
     DCC1ArchFactory,
     DCC2ArchFactory,
-    DCC3ExpArchFactory,
     DCC3ArchFactory,
+    DCC3ExpArchFactory,
 )
 from impl.arch.stratix_10.lut_skip import LUTSkipArchFactory
-from impl.arch.stratix_10.lut_skip_dcc3 import LUTSkipDCC3ArchFactory, AdderSkipDCC3ArchFactory, LUTSkipDCC3ExpArchFactory
+from impl.arch.stratix_10.lut_skip_dcc3 import (
+  LUTSkipDCC3ArchFactory,
+  LUTSkipDCC3ExpArchFactory,
+  AdderSkipDCC3ArchFactory
+)
 
 # Design imports
-from impl.design.conv_1d.fu import Conv1dFuDesign
-from impl.design.conv_1d.pw import Conv1dPwDesign
-from impl.design.conv_2d.fu import Conv2dFuDesign
-from impl.design.conv_2d.pw import Conv2dPwDesign
-from impl.design.gemmt.fu import GemmTFuDesign
-from impl.design.gemmt.rp import GemmTRpDesign
-from impl.design.gemms import GemmSDesign
+from impl.design.vtr_full_benchmarks.loader import VtrBenchmarkLoaderDesign
 
 import copy
 import numpy as np
@@ -64,50 +61,53 @@ ARCH_CONFIG: dict[Type, dict] = {
     BaseArchFactory: {
         "name": "base",
         "compressor_tree_type": "wallace",
-    },
-    DCC1ArchFactory: {
-        "name": "dcc1",
-        "compressor_tree_type": "wallace",
-    },
-    DCC2ArchFactory: {
-        "name": "dcc2",
-        "compressor_tree_type": "wallace",
-    },
-    DCC3ArchFactory: {
-        "name": "dcc3",
-        "tree_base": 3,
-        "compressor_tree_type": "wallace_ternary",
-        # "ternary_adder_dp": True,  # Use 3D DP to find optimal triplets for ternary adder chains
-        "allow_skipping": True,
-    },
-    DCC3ExpArchFactory: {
-        "name": "dcc3_exp",
-        "tree_base": 3,
-        "compressor_tree_type": "wallace_ternary",
-        'allow_skipping': True,
+        "tree_base": 2,
     },
     LUTSkipArchFactory: {
         "name": "dd5",
         "compressor_tree_type": "wallace",
+        "tree_base": 2,
+    },
+    DCC1ArchFactory: {
+        "name": "dcc1",
+        "compressor_tree_type": "wallace",
+        "tree_base": 2,
+    },
+    DCC2ArchFactory: {
+        "name": "dcc2",
+        "compressor_tree_type": "wallace",
+        "tree_base": 2,
+    },
+    DCC3ArchFactory: {
+        "name": "dcc3",
+        "compressor_tree_type": "wallace_ternary",
+        "tree_base": 3,
+        "allow_skipping": True,
+    },
+    DCC3ExpArchFactory: {
+        "name": "dcc3_exp",
+        "compressor_tree_type": "wallace_ternary",
+        "tree_base": 3,
+        "allow_skipping": True,
     },
     LUTSkipDCC3ArchFactory: {
         "name": "dcc3_dd5",
         "compressor_tree_type": "wallace_ternary",
-        "allow_skipping": True,
         "tree_base": 3,
+        "allow_skipping": True,
     },
     LUTSkipDCC3ExpArchFactory: {
-        "name": "dcc3_dd5",
+        "name": "dcc3_dd5_exp",
         "compressor_tree_type": "wallace_ternary",
-        "allow_skipping": True,
         "tree_base": 3,
+        "allow_skipping": True,
     },
     AdderSkipDCC3ArchFactory: {
         "name": "dcc3_skip_add",
         "compressor_tree_type": "wallace_ternary",
-        "allow_skipping": True,
         "tree_base": 3,
-    }
+        "allow_skipping": False,
+    },
 }
 
 # Helper to get arch name from config
@@ -118,48 +118,42 @@ def get_arch_name(arch_class: Type) -> str:
 BASELINE_ARCH_KEY: str = "base"
 
 # Base parameters for all experiments
-# Note: 'allow_skipping', 'compressor_tree_type', 'soft_multiplier_adders', 'ternary_adder_dp' can be overridden per-architecture in ARCH_CONFIG
 BASE_PARAMS = {
     keys.KEY_EXP: {
-        'verilog_search_dir': str(VERILOG_DIR),
+        'verilog_search_dir': path.join(path.dirname(path.realpath(__file__)), 'verilog'),
         'allow_skipping': True,
+        'avoid_mult': False,
         'adder_cin_global': False,
+        'soft_multiplier_adders': False,
         'route_chan_width': 400,
-        'target_ext_pin_util': '0.9,0.9',
-        'compressor_tree_type': 'wallace',  # default, can be overridden per-arch
-        'soft_multiplier_adders': False,  # default, can be overridden per-arch (True uses cascade adder chain)
-        'ternary_adder_dp': False,  # default, can be overridden per-arch (True uses 3D DP for ternary adders)
+        'compressor_tree_type': 'wallace',
+        'ternary_adder_dp': False,
+        'parser': 'default',  # avoid bug
     },
     keys.KEY_ARCH: {
         'cin_mux_stride': 0,
     },
     keys.KEY_DESIGN: {
+        'sparsity': 0.5,
         'data_width': 6,
-        'sparsity': [0.5],
+        'tree_base': 2,
     }
 }
 
-# Designs to run
+# Designs to run (VTR Standard Benchmarks)
 DESIGN_LIST = [
-    (Conv1dFuDesign(), kratos.get_conv_1d_fu_params(BASE_PARAMS)),
-    (Conv1dPwDesign(), kratos.get_conv_1d_pw_params(BASE_PARAMS)),
-    (Conv2dFuDesign(), kratos.get_conv_2d_fu_params(BASE_PARAMS)),
-    (Conv2dPwDesign(), kratos.get_conv_2d_pw_params(BASE_PARAMS)),
-    (GemmTFuDesign(), kratos.get_gemmt_fu_params(BASE_PARAMS)),
-    (GemmTRpDesign(), kratos.get_gemmt_rp_params(BASE_PARAMS)),
-    (GemmSDesign(), kratos.get_gemms_params(BASE_PARAMS)),
+    (VtrBenchmarkLoaderDesign(), vtr_bm.get_all_vtr_bm_params(BASE_PARAMS)),
 ]
 
-# Which architectures to actually run (subset of ARCH_MAP keys)
+# Which architectures to run (subset of ARCH_CONFIG keys)
 ARCHS_TO_RUN: list[Type] = [
-    BaseArchFactory,
-    LUTSkipArchFactory,
-    DCC1ArchFactory,
-    DCC2ArchFactory,
-    # DCC3ArchFactory,
-    DCC3ExpArchFactory,
+    # BaseArchFactory,
+    # LUTSkipArchFactory,
+    # DCC1ArchFactory,
+    # DCC2ArchFactory,
+    # DCC3ExpArchFactory,
+    # LUTSkipDCC3ExpArchFactory,
     # LUTSkipDCC3ArchFactory,
-    LUTSkipDCC3ExpArchFactory,
     AdderSkipDCC3ArchFactory,
 ]
 
@@ -171,21 +165,21 @@ METRICS_TO_PLOT = (
 )
 
 # Filtering parameters
-FILTER_PARAMS = ['per_fle_area', 'data_width', 'sparsity', 'compressor_tree_type', 'soft_multiplier_adders', 'ternary_adder_dp']
+# Note: 'impl' is the individual benchmark name (e.g., 'sha', 'mcml')
+FILTER_PARAMS = ['impl', 'per_fle_area', 'data_width', 'sparsity', 'compressor_tree_type', 'soft_multiplier_adders', 'ternary_adder_dp']
 FILTER_RESULTS = [
-    'fmax', 'cpd', 'twl', 'mrcu',
-    'rcu_0.1', 'rcu_0.2', 'rcu_0.3', 'rcu_0.4', 'rcu_0.5',
-    'rcu_0.6', 'rcu_0.7', 'rcu_0.8', 'rcu_0.9', 'rcu_1.0',
+    'fmax', 'cpd', 'twl',
     'concurrent_lut5s', 'concurrent_lut6s',
 ]
 FILTER_BLOCKS = ['clb', 'fle', 'fle1', 'fle2', 'lut5', 'lut6', 'adder']
 
 # Runner settings
-NUM_PARALLEL_TASKS = 21
+NUM_PARALLEL_TASKS = 60      # Parallelism within each architecture (designs per arch)
+NUM_ARCH_WORKERS = 1        # Parallelism across architectures (set > 1 for concurrent arch runs)
 VERBOSE = True
 
-# Results folder prefix (e.g., 'full-run-' creates 'results/full-run-<timestamp>')
-RUN_PREFIX = 'full-run-'
+# Results folder prefix
+RUN_PREFIX = 'vtr-'
 
 # =============================================================================
 # DERIVED METRICS
@@ -203,7 +197,9 @@ def add_derived_metrics(df: DataFrame) -> tuple[DataFrame, list[str]]:
             return row.get('compressor_tree_type', 'wallace')
     df['mult_method'] = df.apply(get_mult_method, axis=1)
 
+    # Gather fle1 + fle2 into fle (for dcc1 architecture)
     df = derived_metrics.dcc1_gather_fle(df)
+
     df = derived_metrics.apply_adder_avg_util(df)
 
     # 5-LUT measurements
@@ -238,7 +234,7 @@ def add_derived_metrics(df: DataFrame) -> tuple[DataFrame, list[str]]:
     ]
 
 # =============================================================================
-# NORMALIZATION (adapted from normalize_multi_csv.py)
+# NORMALIZATION
 # =============================================================================
 
 DEFAULT_KEY_PRIORITY: Sequence[str] = (
@@ -377,7 +373,7 @@ def normalize_all_against_baseline(
     return combined
 
 # =============================================================================
-# PLOTTING (adapted from plot_normalized_metrics.py)
+# PLOTTING
 # =============================================================================
 
 BAR_COLORS = {
@@ -390,6 +386,7 @@ BAR_COLORS = {
     "dcc3_skip_add": "#A89D44",
     "dcc3_exp": "#85CC7E",
 }
+
 
 def _geom_mean(series: pd.Series) -> float:
     """Geometric mean of positive, non-NaN values."""
@@ -486,7 +483,7 @@ def plot_normalized_metrics(
         ax.set_ylabel(ylabel)
         ax.set_ylim(bottom=0, top=max_val * 1.15)  # Add 15% headroom for text labels
 
-    # Fourth plot: Summary by architecture (3 bars per arch: area, delay, adp)
+    # Summary plot: geomean of each metric grouped by architecture
     summary_ax = axes[-1]
     summary_metrics = [
         ("area_fle", "Area", "#f5a19c"),
@@ -555,171 +552,6 @@ def plot_normalized_metrics(
     plt.close()
     print(f"Saved plot: {output_path}")
 
-
-# =============================================================================
-# FLE HISTOGRAM PLOTTING
-# =============================================================================
-
-from util.extract import extract_fle_histogram
-import glob
-
-
-def collect_all_fle_histograms(
-    experiments_root: str = "experiments",
-    seeds: tuple = (1239,),
-) -> dict[str, dict[str, list[int]]]:
-    """
-    Collect FLE histograms for all experiments, grouped by architecture.
-
-    Scans all experiment directories for clustering_profile.echo files and extracts
-    FLE usage histograms, grouping by architecture name from directory path.
-
-    Args:
-        experiments_root: Root directory containing experiment results
-        seeds: Seeds used in experiments
-
-    Returns:
-        Dictionary mapping arch_name -> {impl_name -> histogram_list}
-        (each histogram list has 11 elements for FLE counts 0-10)
-    """
-    result = {}
-
-    # Scan for all clustering_profile.echo files
-    for seed in seeds:
-        pattern = f"{experiments_root}/**/seed-{seed}/type.s10-*--*--*/temp/clustering_profile.echo"
-        matches = glob.glob(pattern, recursive=True)
-
-        for profile_path in matches:
-            # Extract arch and impl names from the path
-            # Path format: .../type.s10-<arch>--<impl>--<exp>/temp/clustering_profile.echo
-            temp_dir = path.dirname(profile_path)
-            exp_dir = path.dirname(temp_dir)
-            exp_name = path.basename(exp_dir)
-
-            # Parse arch and impl names from exp_name (format: type.s10-arch--impl--exp)
-            parts = exp_name.split('--')
-            if len(parts) >= 2:
-                # Extract arch name (remove "type.s10-" prefix)
-                arch_part = parts[0]
-                if arch_part.startswith('type.s10-'):
-                    arch_name = arch_part[9:]  # Remove "type.s10-"
-                else:
-                    arch_name = arch_part
-
-                # Extract impl name
-                impl_name = parts[1]
-                # Clean up impl name - extract the core identifier
-                if impl_name.startswith('i.'):
-                    impl_name = impl_name[2:]
-                # Simplify to just the design type
-                if 'conv_reg_1d_full' in impl_name:
-                    impl_name = 'conv_1d_fu'
-                elif 'conv_bram_1d' in impl_name:
-                    impl_name = 'conv_1d_pw'
-                elif 'conv_reg_full' in impl_name:
-                    impl_name = 'conv_2d_fu'
-                elif 'conv_bram_sr_fast' in impl_name:
-                    impl_name = 'conv_2d_pw'
-                elif 'mm_reg_full' in impl_name:
-                    impl_name = 'gemmt_fu'
-                elif 'mm_bram_parallel' in impl_name:
-                    impl_name = 'gemmt_rp'
-                elif 'systolic_ws' in impl_name:
-                    impl_name = 'gemms'
-
-                histogram_data = extract_fle_histogram(temp_dir)
-                if histogram_data['total_clbs'] > 0:
-                    if arch_name not in result:
-                        result[arch_name] = {}
-                    result[arch_name][impl_name] = histogram_data['fle_histogram']
-
-    return result
-
-
-def plot_fle_histograms(
-    arch_histograms: dict[str, dict[str, list[int]]],
-    output_dir: Path,
-) -> None:
-    """
-    Plot FLE usage histograms for each architecture.
-
-    Creates one PNG per architecture, with each experiment as a separate subplot
-    arranged in one column.
-
-    Args:
-        arch_histograms: Dictionary mapping arch_name -> {impl_name -> histogram_list}
-        output_dir: Directory to save the PNG files
-    """
-    for arch_name, impl_histograms in arch_histograms.items():
-        if not impl_histograms:
-            continue
-
-        num_impls = len(impl_histograms)
-        sorted_impls = sorted(impl_histograms.items())
-
-        # Create subplots arranged in one column
-        fig, axes = plt.subplots(num_impls, 1, figsize=(10, 3 * num_impls), sharex=True)
-
-        # Handle single subplot case
-        if num_impls == 1:
-            axes = [axes]
-
-        x_labels = [str(i) for i in range(11)]  # 0-10 FLEs
-        x = np.arange(len(x_labels))
-
-        # Get color for this architecture
-        arch_color = BAR_COLORS.get(arch_name, '#1f77b4')
-
-        for idx, (impl_name, histogram) in enumerate(sorted_impls):
-            ax = axes[idx]
-            ax.bar(x, histogram, color=arch_color, alpha=0.8, edgecolor='black', linewidth=0.5)
-            ax.set_ylabel('CLB Count')
-            ax.set_title(impl_name, fontsize=10, fontweight='bold')
-            ax.grid(axis='y', alpha=0.3)
-
-            # Add count labels on top of bars
-            for i, count in enumerate(histogram):
-                if count > 0:
-                    ax.text(i, count, str(count), ha='center', va='bottom', fontsize=7)
-
-        # Set x-axis labels only on bottom subplot
-        axes[-1].set_xlabel('FLEs Used per CLB')
-        axes[-1].set_xticks(x)
-        axes[-1].set_xticklabels(x_labels)
-
-        fig.suptitle(f'FLE Utilization Distribution - {arch_name}', fontsize=12, fontweight='bold')
-        fig.tight_layout()
-        plot_path = output_dir / f"fle_histogram_{arch_name}.png"
-        plt.savefig(plot_path, dpi=300, bbox_inches="tight")
-        plt.close()
-        print(f"Saved FLE histogram: {plot_path}")
-
-
-def collect_and_plot_fle_histograms(
-    output_dir: Path,
-    experiments_root: str = "experiments",
-    seeds: tuple = (1239,),
-) -> None:
-    """
-    Collect and plot FLE histograms for all architectures found in experiments.
-
-    Args:
-        output_dir: Directory to save the PNG files
-        experiments_root: Root directory containing experiment results
-        seeds: Seeds used in experiments
-    """
-    all_histograms = collect_all_fle_histograms(
-        experiments_root=experiments_root,
-        seeds=seeds,
-    )
-
-    for arch_name, histograms in all_histograms.items():
-        print(f"Collected FLE histograms for {arch_name}: {len(histograms)} experiments")
-
-    if all_histograms:
-        plot_fle_histograms(all_histograms, output_dir)
-
-
 # =============================================================================
 # MAIN
 # =============================================================================
@@ -757,6 +589,7 @@ def run_single_arch(arch_class: Type, arch_config: dict) -> pd.DataFrame | None:
     print(f"Running architecture: {arch_name} ({arch_class.__name__})")
     print(f"  compressor_tree_type: {arch_config.get('compressor_tree_type', 'default')}")
     print(f"  allow_skipping: {arch_config.get('allow_skipping', 'default')}")
+    print(f"  soft_multiplier_adders: {arch_config.get('soft_multiplier_adders', 'default')}")
     print(f"{'='*60}\n")
 
     # Apply per-architecture overrides to design parameters
@@ -770,8 +603,9 @@ def run_single_arch(arch_class: Type, arch_config: dict) -> pd.DataFrame | None:
         filter_blocks=FILTER_BLOCKS,
         df_processing_fn=add_derived_metrics,
         verbose=VERBOSE,
+        # seeds=(1239,),
         num_parallel_tasks=NUM_PARALLEL_TASKS,
-        save_to_folder=False,  # Don't save individual results
+        save_to_folder=False,
         desc=f'{arch_name} architecture run',
     )
 
@@ -779,6 +613,188 @@ def run_single_arch(arch_class: Type, arch_config: dict) -> pd.DataFrame | None:
         df.insert(0, 'arch', arch_name)
 
     return df
+
+
+def normalize_single_arch(
+    base_df: pd.DataFrame,
+    arch_df: pd.DataFrame,
+) -> pd.DataFrame:
+    """Normalize a single architecture's results against the baseline."""
+    join_keys = resolve_keys(base_df, arch_df)
+    return normalize_dataframe(base_df, arch_df, join_keys)
+
+
+def plot_single_arch_metrics(
+    normalized_df: pd.DataFrame,
+    arch_name: str,
+    output_path: Path,
+    metrics: Sequence[tuple[str, str]] = METRICS_TO_PLOT,
+) -> None:
+    """Plot normalized metrics for a single architecture as a bar chart.
+
+    Args:
+        normalized_df: DataFrame with normalized metrics for a single architecture
+        arch_name: Name of the architecture being plotted
+        output_path: Path to save the plot
+        metrics: Sequence of (metric_column, y_label) tuples
+    """
+    implementations = normalized_df["impl"].unique()
+    num_impls = len(implementations)
+
+    num_plots = len(metrics) + 1  # +1 for summary plot
+    fig, axes = plt.subplots(num_plots, 1, figsize=(12, 4 * num_plots), sharey=False)
+    if num_plots == 1:
+        axes = [axes]
+
+    x_positions = np.arange(num_impls + 1)  # +1 for Geomean
+    bar_width = 0.6
+
+    color = BAR_COLORS.get(arch_name, "#1f77b4")
+
+    for ax, (metric, ylabel) in zip(axes, metrics):
+        values = normalized_df.set_index("impl").reindex(implementations)[metric].values
+        geo = _geom_mean(normalized_df[metric])
+        values_with_geo = np.concatenate([values, [geo]])
+
+        # Track max value for ylim
+        valid_values = [v for v in values_with_geo if not np.isnan(v)]
+        max_val = max(valid_values) if valid_values else 1.0
+
+        bars = ax.bar(
+            x_positions,
+            values_with_geo,
+            width=bar_width,
+            color=color,
+            label=arch_name,
+            edgecolor='black',
+            linewidth=0.8,
+        )
+
+        for bar, value in zip(bars, values_with_geo):
+            if np.isnan(value):
+                label = "NaN"
+            else:
+                label = f"{value:.2f}"
+            ax.text(
+                bar.get_x() + bar.get_width() / 2,
+                bar.get_height() + 0.01,
+                label,
+                ha="center",
+                va="bottom",
+                fontsize=8,
+                rotation=90,
+            )
+
+        ax.axhline(1.0, color="black", linestyle="--", linewidth=1, alpha=0.7)
+        ax.grid(axis='y', linestyle='-', alpha=0.3, color='gray')
+        ax.set_axisbelow(True)
+        ax.set_xticks(x_positions)
+        ax.set_xticklabels([*implementations, "Geomean"], rotation=30, ha="right")
+        ax.set_ylabel(ylabel)
+        ax.set_ylim(bottom=0, top=max_val * 1.15)
+
+    # Summary plot: geomean of each metric for this architecture
+    summary_ax = axes[-1]
+    summary_metrics = [
+        ("area_fle", "Area", "#f5a19c"),
+        ("cpd", "Delay", "#96bbf5"),
+        ("adp_fle", "ADP", "#8ccd8c"),
+    ]
+
+    metric_x_positions = np.arange(len(summary_metrics))
+    geomeans = []
+    colors = []
+    labels = []
+
+    for metric_col, metric_label, metric_color in summary_metrics:
+        geo = _geom_mean(normalized_df[metric_col])
+        geomeans.append(geo)
+        colors.append(metric_color)
+        labels.append(metric_label)
+
+    valid_geomeans = [g for g in geomeans if not np.isnan(g)]
+    max_val = max(valid_geomeans) if valid_geomeans else 1.0
+
+    bars = summary_ax.bar(
+        metric_x_positions,
+        geomeans,
+        width=bar_width,
+        color=colors,
+        edgecolor='black',
+        linewidth=0.8,
+    )
+
+    for bar, value in zip(bars, geomeans):
+        if np.isnan(value):
+            label = "NaN"
+        else:
+            label = f"{value:.2f}"
+        summary_ax.text(
+            bar.get_x() + bar.get_width() / 2,
+            bar.get_height() + 0.01,
+            label,
+            ha="center",
+            va="bottom",
+            fontsize=8,
+            rotation=90,
+        )
+
+    summary_ax.axhline(1.0, color="black", linestyle="--", linewidth=1, alpha=0.7)
+    summary_ax.grid(axis='y', linestyle='-', alpha=0.3, color='gray')
+    summary_ax.set_axisbelow(True)
+    summary_ax.set_xticks(metric_x_positions)
+    summary_ax.set_xticklabels(labels, rotation=30, ha="right")
+    summary_ax.set_ylabel("Normalized Value")
+    summary_ax.set_ylim(bottom=0, top=max_val * 1.15)
+
+    fig.suptitle(f"{arch_name} vs {BASELINE_ARCH_KEY} (baseline)", fontsize=12)
+    fig.tight_layout(rect=[0, 0, 1, 0.97])
+    plt.savefig(output_path, dpi=300, bbox_inches="tight")
+    plt.close()
+    print(f"  Saved plot: {output_path}")
+
+
+def run_all_architectures() -> tuple[list[pd.DataFrame], dict[str, pd.DataFrame]]:
+    """Run all architectures and return results.
+
+    Uses run_parallel_arch_experiments when NUM_ARCH_WORKERS > 1 to enable
+    concurrent execution across different architectures.
+
+    Returns:
+        Tuple of (all_results list, arch_results dict by arch name)
+    """
+    # Build config list: (task_name, arch_class, arch_config)
+    arch_configs = []
+    for arch_class in ARCHS_TO_RUN:
+        if arch_class not in ARCH_CONFIG:
+            print(f"Warning: {arch_class.__name__} not in ARCH_CONFIG, skipping")
+            continue
+        arch_config = ARCH_CONFIG[arch_class]
+        arch_configs.append((arch_config["name"], arch_class, arch_config))
+
+    if NUM_ARCH_WORKERS > 1:
+        # Parallel execution across architectures
+        print(f"\nRunning {len(arch_configs)} architecture(s) with {NUM_ARCH_WORKERS} parallel workers...")
+        results_dict = run_parallel_arch_experiments(
+            arch_configs=arch_configs,
+            runner_fn=run_single_arch,
+            num_workers=NUM_ARCH_WORKERS,
+            verbose=VERBOSE,
+        )
+        # Convert to expected format
+        all_results = [df for df in results_dict.values() if df is not None]
+        arch_results = {name: df for name, df in results_dict.items() if df is not None}
+    else:
+        # Sequential execution (original behavior)
+        all_results = []
+        arch_results = {}
+        for arch_name, arch_class, arch_config in arch_configs:
+            df = run_single_arch(arch_class, arch_config)
+            if df is not None:
+                all_results.append(df)
+                arch_results[arch_name] = df
+
+    return all_results, arch_results
 
 
 def main():
@@ -789,16 +805,14 @@ def main():
     output_dir.mkdir(parents=True, exist_ok=True)
     print(f"Output directory: {output_dir}")
 
-    # Run all architectures
-    all_results = []
-    for arch_class in ARCHS_TO_RUN:
-        if arch_class not in ARCH_CONFIG:
-            print(f"Warning: {arch_class.__name__} not in ARCH_CONFIG, skipping")
-            continue
-        arch_config = ARCH_CONFIG[arch_class]
-        df = run_single_arch(arch_class, arch_config)
-        if df is not None:
-            all_results.append(df)
+    # Run all architectures (parallel or sequential based on NUM_ARCH_WORKERS)
+    all_results, arch_results = run_all_architectures()
+
+    # Save individual architecture results
+    for arch_name, df in arch_results.items():
+        arch_csv_path = output_dir / f"{arch_name}_results.csv"
+        df.to_csv(arch_csv_path, index=False)
+        print(f"  Saved individual results: {arch_csv_path}")
 
     if not all_results:
         print("No results generated!")
@@ -812,16 +826,40 @@ def main():
     combined_df.to_csv(augmented_csv_path, index=False)
     print(f"\nSaved augmented results: {augmented_csv_path}")
 
-    # Normalize results
-    if BASELINE_ARCH_KEY in combined_df["arch"].values:
+    # Normalize and plot for each architecture individually
+    if BASELINE_ARCH_KEY in arch_results:
+        base_df = arch_results[BASELINE_ARCH_KEY]
+
+        for arch_name, arch_df in arch_results.items():
+            if arch_name == BASELINE_ARCH_KEY:
+                continue
+
+            print(f"\nProcessing {arch_name} vs {BASELINE_ARCH_KEY}...")
+
+            try:
+                normalized_df = normalize_single_arch(base_df, arch_df)
+
+                # Save individual normalized CSV
+                normalized_csv_path = output_dir / f"{arch_name}_normalized.csv"
+                normalized_df.to_csv(normalized_csv_path, index=False)
+                print(f"  Saved normalized results: {normalized_csv_path}")
+
+                # Generate individual plot
+                plot_path = output_dir / f"{arch_name}_normalized.png"
+                plot_single_arch_metrics(normalized_df, arch_name, plot_path)
+
+            except Exception as e:
+                print(f"  Warning: Could not normalize {arch_name}: {e}")
+
+        # Also generate the combined normalized results and plot
         normalized_df = normalize_all_against_baseline(combined_df, BASELINE_ARCH_KEY)
         if not normalized_df.empty:
             normalized_csv_path = output_dir / "all_results_normalized.csv"
             normalized_df.to_csv(normalized_csv_path, index=False)
-            print(f"Saved normalized results: {normalized_csv_path}")
+            print(f"\nSaved combined normalized results: {normalized_csv_path}")
 
-            # Generate plots
-            plot_path = output_dir / "normalized_metrics.png"
+            # Generate combined plots
+            plot_path = output_dir / "all_normalized_metrics.png"
             plot_normalized_metrics(normalized_df, plot_path)
         else:
             print("Warning: Normalization produced empty results")
