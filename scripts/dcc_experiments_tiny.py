@@ -93,13 +93,13 @@ ARCH_CONFIG: dict[Type, dict] = {
         "compressor_tree_type": "wallace_ternary",
         # "ternary_adder_dp": True,  # 3D DP to find optimal triplets for ternary adder chains
         "tree_base": 3,
-        'allow_skipping': True,
+        'allow_skipping': False,
     },
     DCC3ExpArchFactory: {
         "name": "dcc3_exp",
         "compressor_tree_type": "wallace_ternary",
         "tree_base": 3,
-        'allow_skipping': True,
+        'allow_skipping': False,
     },
     LUTSkipDCC3ArchFactory: {
         "name": "dcc3_dd5",
@@ -120,6 +120,7 @@ ARCH_CONFIG: dict[Type, dict] = {
         "compressor_tree_type": "wallace_ternary",
         "tree_base": 3,
         'allow_skipping': False,
+        "pack_multi_chain": True,  # Enable concurrent chain packing for this architecture
         # "ternary_adder_dp": True,
     },
 }
@@ -136,10 +137,10 @@ BASELINE_ARCH_KEY: str = "base"
 BASE_PARAMS = {
     keys.KEY_EXP: {
         'verilog_search_dir': str(VERILOG_DIR),
-        'allow_skipping': True,
+        'allow_skipping': False,
         'adder_cin_global': False,
         'route_chan_width': 400,
-        'target_ext_pin_util': '0.9,0.9',
+        'target_ext_pin_util': '1.0,1.0',
         'compressor_tree_type': 'wallace',  # default, can be overridden per-arch
         'soft_multiplier_adders': False,  # default, can be overridden per-arch (True uses cascade adder chain)
         'ternary_adder_dp': False,  # default, can be overridden per-arch (True uses 3D DP for ternary adders)
@@ -168,15 +169,15 @@ DESIGN_LIST = [
 
 # Which architectures to actually run (subset of ARCH_MAP keys)
 ARCHS_TO_RUN: list[Type] = [
-    # BaseArchFactory,
+    BaseArchFactory,
     # LUTSkipArchFactory,
     # DCC1ArchFactory,
-    # DCC2ArchFactory,
+    DCC2ArchFactory,
     # DCC3ArchFactory,
-    # DCC3ExpArchFactory,
+    DCC3ExpArchFactory,
     # LUTSkipDCC3ArchFactory,
     LUTSkipDCC3ExpArchFactory,
-    # AdderSkipDCC3ArchFactory,
+    AdderSkipDCC3ArchFactory,
     
 ]
 
@@ -198,7 +199,7 @@ FILTER_RESULTS = [
 FILTER_BLOCKS = ['clb', 'fle', 'fle1', 'fle2', 'lut5', 'lut6', 'adder']
 
 # Runner settings
-NUM_PARALLEL_TASKS = 8
+NUM_PARALLEL_TASKS = 3
 VERBOSE = True
 
 # Results folder prefix (e.g., 'dcc-exp-' creates 'results/dcc-exp-<timestamp>')
@@ -933,6 +934,8 @@ def apply_arch_overrides(design_list: list, arch_config: dict) -> list:
             new_params[keys.KEY_EXP]['soft_multiplier_adders'] = arch_config['soft_multiplier_adders']
         if 'ternary_adder_dp' in arch_config:
             new_params[keys.KEY_EXP]['ternary_adder_dp'] = arch_config['ternary_adder_dp']
+        if 'pack_multi_chain' in arch_config:
+            new_params[keys.KEY_EXP]['pack_multi_chain'] = arch_config['pack_multi_chain']
 
         # Apply design overrides from arch_config
         if 'tree_base' in arch_config:

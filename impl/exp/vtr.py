@@ -107,9 +107,10 @@ class VtrExperiment(Experiment):
         ternary_adder_chains = self.exp_params.get('ternary_adder_chains', False)
         compressor_tree_type = self.exp_params['compressor_tree_type']
         avoid_mult = self.exp_params.get('avoid_mult', False)
-        route_chan_width = self.exp_params.get('route_chan_width', -1) 
+        route_chan_width = self.exp_params.get('route_chan_width', -1)
         force_denser_packing = self.exp_params.get('force_denser_packing', False)
         pin_util = self.exp_params.get('target_ext_pin_util', 'auto')
+        pack_multi_chain = self.exp_params.get('pack_multi_chain', None)
 
         # generate wrapper file
         wrapper_file_name = 'design.v'
@@ -176,6 +177,10 @@ class VtrExperiment(Experiment):
         # set target pin utilization
         cmd += ['--target_ext_pin_util', pin_util]
         cmd += ['--pack_verbosity', '2']
+
+        # set pack_multi_chain if specified
+        if pack_multi_chain is not None:
+            cmd += ['--pack_multi_chain', 'on' if pack_multi_chain else 'off']
 
         # Make out and error files
         self.stdout_file = open(os.path.join(self.exp_dir, self.exp_params['stdout_file']), 'w')

@@ -603,7 +603,7 @@ def run_single_arch(arch_class: Type, arch_config: dict) -> pd.DataFrame | None:
         filter_blocks=FILTER_BLOCKS,
         df_processing_fn=add_derived_metrics,
         verbose=VERBOSE,
-        # seeds=(1239,),
+        seeds=(1239,),
         num_parallel_tasks=NUM_PARALLEL_TASKS,
         save_to_folder=False,
         desc=f'{arch_name} architecture run',

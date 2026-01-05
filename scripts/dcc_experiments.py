@@ -72,6 +72,7 @@ ARCH_CONFIG: dict[Type, dict] = {
     DCC2ArchFactory: {
         "name": "dcc2",
         "compressor_tree_type": "wallace",
+        "pack_multi_chain": True,
     },
     DCC3ArchFactory: {
         "name": "dcc3",
@@ -107,6 +108,7 @@ ARCH_CONFIG: dict[Type, dict] = {
         "compressor_tree_type": "wallace_ternary",
         "allow_skipping": True,
         "tree_base": 3,
+        "pack_multi_chain": True,  # Enable concurrent chain packing for this architecture
     }
 }
 
@@ -125,7 +127,7 @@ BASE_PARAMS = {
         'allow_skipping': True,
         'adder_cin_global': False,
         'route_chan_width': 400,
-        'target_ext_pin_util': '0.9,0.9',
+        'target_ext_pin_util': '1.0,1.0',
         'compressor_tree_type': 'wallace',  # default, can be overridden per-arch
         'soft_multiplier_adders': False,  # default, can be overridden per-arch (True uses cascade adder chain)
         'ternary_adder_dp': False,  # default, can be overridden per-arch (True uses 3D DP for ternary adders)
@@ -740,6 +742,8 @@ def apply_arch_overrides(design_list: list, arch_config: dict) -> list:
             new_params[keys.KEY_EXP]['soft_multiplier_adders'] = arch_config['soft_multiplier_adders']
         if 'ternary_adder_dp' in arch_config:
             new_params[keys.KEY_EXP]['ternary_adder_dp'] = arch_config['ternary_adder_dp']
+        if 'pack_multi_chain' in arch_config:
+            new_params[keys.KEY_EXP]['pack_multi_chain'] = arch_config['pack_multi_chain']
 
         # Apply design overrides from arch_config
         if 'tree_base' in arch_config:
