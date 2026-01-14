@@ -68,20 +68,20 @@ VARIABLE_ARCH_PARAMS = dict(
 
 DESIGN_LIST = [
     # VTR Standard benchmarks
-    #(Conv1dFuDesign(), kratos.get_conv_1d_fu_params(BASE_PARAMS)),
-    #(Conv1dPwDesign(), kratos.get_conv_1d_pw_params(BASE_PARAMS)),
-    #(Conv2dFuDesign(), kratos.get_conv_2d_fu_params(BASE_PARAMS)),
-    #(Conv2dPwDesign(), kratos.get_conv_2d_pw_params(BASE_PARAMS)),
-    #(GemmTFuDesign(), kratos.get_gemmt_fu_params(BASE_PARAMS)),
-    #(GemmTRpDesign(), kratos.get_gemmt_rp_params(BASE_PARAMS)),
-    #(GemmSDesign(), kratos.get_gemms_params(BASE_PARAMS)),
+    (Conv1dFuDesign(), kratos.get_conv_1d_fu_params(BASE_PARAMS)),
+    (Conv1dPwDesign(), kratos.get_conv_1d_pw_params(BASE_PARAMS)),
+    (Conv2dFuDesign(), kratos.get_conv_2d_fu_params(BASE_PARAMS)),
+    (Conv2dPwDesign(), kratos.get_conv_2d_pw_params(BASE_PARAMS)),
+    (GemmTFuDesign(), kratos.get_gemmt_fu_params(BASE_PARAMS)),
+    (GemmTRpDesign(), kratos.get_gemmt_rp_params(BASE_PARAMS)),
+    (GemmSDesign(), kratos.get_gemms_params(BASE_PARAMS)),
 
     # Tiny benchmarks
-    (Conv1dFuDesign(), tiny.get_conv_1d_fu_params(BASE_PARAMS)),
+    #(Conv1dFuDesign(), tiny.get_conv_1d_fu_params(BASE_PARAMS)),
     #(Conv1dPwDesign(), tiny.get_conv_1d_pw_params(BASE_PARAMS)),
-    (Conv2dFuDesign(), tiny.get_conv_2d_fu_params(BASE_PARAMS)),
+    #(Conv2dFuDesign(), tiny.get_conv_2d_fu_params(BASE_PARAMS)),
     #(Conv2dPwDesign(), tiny.get_conv_2d_pw_params(BASE_PARAMS)),
-    (GemmTFuDesign(), tiny.get_gemmt_fu_params(BASE_PARAMS)),
+    #(GemmTFuDesign(), tiny.get_gemmt_fu_params(BASE_PARAMS)),
     #(GemmTRpDesign(), tiny.get_gemmt_rp_params(BASE_PARAMS)),
     #(GemmSDesign(), tiny.get_gemms_params(BASE_PARAMS)),
 ]
