@@ -1,6 +1,6 @@
 import structure.consts.keys as keys
 from structure.consts.translation import TRANSLATIONS_GRAPH
-from runs.vtr_denoised_v1 import run_vtr_denoised_v1
+from runs.vtr_denoised_v1 import run_vtr_denoised_v1, run_vtr_denoised_6arch
 
 import util.derived_metrics as derived_metrics
 
@@ -10,14 +10,10 @@ from impl.arch.stratix_10.lut_skip import LUTSkipArchFactory
 from impl.arch.stratix_10.lut_skip_scratch3 import LUTSkip3ArchFactory
 from impl.arch.stratix_10.lut_skip_1d import LUTSkip1dArchFactory
 from impl.arch.stratix_10.lut_skip_6 import LUTSkip6ArchFactory
-from impl.arch.stratix_10.sharing_1z import DD5_1Z_Input_Shared_A
-from impl.arch.stratix_10.sharing_2z import DD5_2Z_Input_Shared_AB
-from impl.arch.stratix_10.sharing_4z_AEBF import DD5_4Z_Input_Shared_AEBF
-from impl.arch.stratix_10.sharing_4z_ABlut4 import DD5_4Z_Input_Shared_ABlut4
-from impl.arch.stratix_10.temp_sharing_1 import LUTSkipArchShare1
-from impl.arch.stratix_10.temp_sharing_2 import LUTSkipArchShare2
+from impl.arch.stratix_10.sharing_1 import LUTSkipArchShare1
+from impl.arch.stratix_10.sharing_2 import LUTSkipArchShare2
 from impl.arch.stratix_10.sharing_3 import LUTSkipArchShare3
-from impl.arch.stratix_10.temp_sharing_4 import LUTSkipArchShare4
+from impl.arch.stratix_10.sharing_4 import LUTSkipArchShare4
 
 # VTR Standard Benchmark Loader parameters
 import runs.benchmarks.vtr_full_benchmarks as vtr_bm
@@ -41,38 +37,29 @@ import numpy as np
 import os.path as path
 from pandas import DataFrame
 
-#BASE_ARCH = BaseArchFactory
-#EXP_ARCH = LUTSkip3ArchFactory
-
-#BASE_ARCH = LUTSkip3ArchFactory
-#EXP_ARCH = DD5_1Z_Input_Shared_A
-
-#BASE_ARCH = LUTSkip3ArchFactory
-#EXP_ARCH = DD5_2Z_Input_Shared_AB
-
-BASE_ARCH = DD5_1Z_Input_Shared_A
-EXP_ARCH = LUTSkipArchShare1
+BASE_ARCH = BaseArchFactory
+EXP_ARCH0 = LUTSkipArchFactory
+EXP_ARCH1 = LUTSkipArchShare1
+EXP_ARCH2 = LUTSkipArchShare2
+EXP_ARCH3 = LUTSkipArchShare3
+EXP_ARCH4 = LUTSkipArchShare4
 
 BASE_PARAMS = {
     keys.KEY_EXP: {
         'verilog_search_dir': path.join(path.dirname(path.realpath(__file__)), 'verilog'),
         'allow_skipping': True,
-        'avoid_mult': False,
         'adder_cin_global': False,
         'soft_multiplier_adders': True,
         'route_chan_width': 400,
-        # 'force_denser_packing': True,
-        # ... additional Experiment.run() parameters
+        'compressor_tree_type': 'wallace',
+        'target_ext_pin_util' : '0.9,0.9',
     },
     keys.KEY_ARCH: {
         # fixed architecture parameters for both baseline and explored
         'cin_mux_stride': 0,
-        # 'enable_lut6': False,
-        # 'direct_ff_mux_with': 'adder',
     },
     keys.KEY_DESIGN: {
         'sparsity': 0.5,
-        #'data_width': [4,8], # maybe change to just 6?
         'data_width': 6,
     }
 }
@@ -86,19 +73,19 @@ VARIABLE_ARCH_PARAMS = dict(
 DESIGN_LIST = [
     # VTR Standard benchmarks
     #(Conv1dFuDesign(), kratos.get_conv_1d_fu_params(BASE_PARAMS)),
-    #(Conv1dPwDesign(), kratos.get_conv_1d_pw_params(BASE_PARAMS)),
+    (Conv1dPwDesign(), kratos.get_conv_1d_pw_params(BASE_PARAMS)),
     #(Conv2dFuDesign(), kratos.get_conv_2d_fu_params(BASE_PARAMS)),
-    #(Conv2dPwDesign(), kratos.get_conv_2d_pw_params(BASE_PARAMS)),
+    (Conv2dPwDesign(), kratos.get_conv_2d_pw_params(BASE_PARAMS)),
     #(GemmTFuDesign(), kratos.get_gemmt_fu_params(BASE_PARAMS)),
-    #(GemmTRpDesign(), kratos.get_gemmt_rp_params(BASE_PARAMS)),
-    #(GemmSDesign(), kratos.get_gemms_params(BASE_PARAMS)),
+    (GemmTRpDesign(), kratos.get_gemmt_rp_params(BASE_PARAMS)),
+    (GemmSDesign(), kratos.get_gemms_params(BASE_PARAMS)),
 
     # Tiny benchmarks
     #(Conv1dFuDesign(), tiny.get_conv_1d_fu_params(BASE_PARAMS)),
     #(Conv1dPwDesign(), tiny.get_conv_1d_pw_params(BASE_PARAMS)),
     #(Conv2dFuDesign(), tiny.get_conv_2d_fu_params(BASE_PARAMS)),
     #(Conv2dPwDesign(), tiny.get_conv_2d_pw_params(BASE_PARAMS)),
-    (GemmTFuDesign(), tiny.get_gemmt_fu_params(BASE_PARAMS)),
+    #(GemmTFuDesign(), tiny.get_gemmt_fu_params(BASE_PARAMS)),
     #(GemmTRpDesign(), tiny.get_gemmt_rp_params(BASE_PARAMS)),
     #(GemmSDesign(), tiny.get_gemms_params(BASE_PARAMS)),
 ]
@@ -144,10 +131,18 @@ def add_derived_metrics(df: DataFrame) -> tuple[DataFrame, list[str]]:
     ]
 
 print("BASE", BASE_ARCH)
-print("EXP", EXP_ARCH, "\n")
+print("EXP", EXP_ARCH0, "\n")
+print("EXP", EXP_ARCH1, "\n")
+print("EXP", EXP_ARCH2, "\n")
+print("EXP", EXP_ARCH3, "\n")
+print("EXP", EXP_ARCH4, "\n")
 
-run_vtr_denoised_v1(
-    new_arch=EXP_ARCH,
+run_vtr_denoised_6arch(
+    new_arch0=EXP_ARCH0,
+    new_arch1=EXP_ARCH1,
+    new_arch2=EXP_ARCH2,
+    new_arch3=EXP_ARCH3,
+    new_arch4=EXP_ARCH4,
     base_arch=BASE_ARCH,
     design_list=DESIGN_LIST,
     variable_arch_params=VARIABLE_ARCH_PARAMS,
@@ -184,5 +179,5 @@ run_vtr_denoised_v1(
     num_parallel_tasks=1,
     #stagger_launch_sec=120,
     # verbose=True,
-    desc='Base vs. DD5'
+    desc='Base vs. DD5 vs Sharing (4 variants)'
 )

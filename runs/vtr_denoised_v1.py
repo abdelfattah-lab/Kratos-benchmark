@@ -244,3 +244,261 @@ def run_vtr_denoised_v1(
     
     # save into results directory
     save_and_plot(norm_results, do_with_dir_fn=do_with_dir_fn, plot_fn=plot_fn)
+
+def run_vtr_denoised_6arch(
+        design_list: list[tuple[Type[Design], dict[str, any]]],
+        variable_arch_params: dict[str, list[any]],
+        filter_params_baseline: list[str],
+        new_arch0: Type[ArchFactory] = GenExpParallelCCArchFactory,
+        new_arch1: Type[ArchFactory] = GenExpParallelCCArchFactory,
+        new_arch2: Type[ArchFactory] = GenExpParallelCCArchFactory,
+        new_arch3: Type[ArchFactory] = GenExpParallelCCArchFactory,
+        new_arch4: Type[ArchFactory] = GenExpParallelCCArchFactory,
+        base_arch: Type[ArchFactory] = BaseArchFactory,
+        group_normalize_on: list[str] = None,
+        normalize_each_group_on: dict[str, any] = None,
+        x_axis: list[str] = None,
+        group_cols: list[str] = None,
+        group_cols_short_labels: dict[str, str] = None,
+        filter_params_add: list[str] = None,
+        filter_results: list[str] = None,
+        filter_blocks: list[str] = None,
+        seeds: tuple[int, int, int] = (1239, 5741, 1473),
+        merge_designs: bool = False,
+        avoid_norm: list[str] = None,
+        avoid_plot: list[str] = None,
+        translations: dict[str, str] = None,
+        df_processing_fn: Callable[[pd.DataFrame], tuple[pd.DataFrame, list[str]]] = None,
+        rotate_x_axis_labels: bool = False,
+        **runner_kwargs
+    ) -> None:
+
+    # ----------------------------
+    # Defaults / defensive copies
+    # ----------------------------
+    if group_cols_short_labels is None:
+        group_cols_short_labels = {}
+    if filter_params_add is None:
+        filter_params_add = []
+    if filter_results is None:
+        filter_results = ['fmax', 'cpd', 'rcw', 'area_total', 'area_total_used']
+    if filter_blocks is None:
+        filter_blocks = ['clb', 'fle']
+    if avoid_norm is None:
+        avoid_norm = []
+    if avoid_plot is None:
+        avoid_plot = []
+    if translations is None:
+        translations = {}
+
+    # Make local copies so we don't mutate caller/default lists
+    filter_params_add = list(filter_params_add)
+    filter_results = list(filter_results)
+    filter_blocks = list(filter_blocks)
+    avoid_norm = list(avoid_norm)
+    avoid_plot = list(avoid_plot)
+
+    # x-axis derived from variable arch params
+    filter_params_new = list(variable_arch_params.keys())
+    if x_axis is None:
+        x_axis = filter_params_new
+
+    # Sanity checks
+    if len(x_axis) < 1 or len(x_axis) > 2:
+        raise ValueError("x_axis must be of length either 1 or 2!")
+    if group_normalize_on is not None and normalize_each_group_on is None:
+        raise ValueError("normalize_each_group_on must be provided if group_normalize_on is provided!")
+
+    # baseline used iff not doing group normalization
+    should_use_baseline = (group_normalize_on is None)
+
+    # ----------------------------
+    # Define experiment types
+    # ----------------------------
+    exp_types: dict[str, ArchFactory] = {
+        'baseline': base_arch(),
+        'base_dd5': new_arch0(),
+        'share_1':  new_arch1(),
+        'share_2':  new_arch2(),
+        'share_3':  new_arch3(),
+        'share_4':  new_arch4(),
+    }
+
+    exp_results: dict[str, dict[str, pd.DataFrame]] = {k: {} for k in exp_types.keys()}
+
+    if not should_use_baseline:
+        # Skip baseline generation entirely
+        exp_types.pop('baseline', None)
+        exp_results.pop('baseline', None)
+
+    # ----------------------------
+    # Add experiments
+    # ----------------------------
+    runner = Runner()
+
+    for seed in seeds:
+        for (design, params) in design_list:
+            for exp_type, arch in exp_types.items():
+                p = deepcopy(params)
+
+                p[keys.KEY_EXP]['seed'] = seed
+                p[keys.KEY_EXP]['root_dir'] = path.join(p[keys.KEY_EXP]['root_dir'], f"{exp_type}-{seed}")
+
+                # tag the experiment type so it's available in the DF if you include it in filter_params
+                p[keys.KEY_EXP]['impl'] = exp_type
+
+                # only non-baseline gets arch param sweeps
+                if exp_type != 'baseline':
+                    if keys.KEY_ARCH not in p:
+                        p[keys.KEY_ARCH] = {}
+                    p[keys.KEY_ARCH].update(variable_arch_params)
+
+                runner.add_experiments(VtrExperiment, arch, design, p)
+
+    # ----------------------------
+    # Run all experiments
+    # ----------------------------
+    # include impl so it is actually captured into the DF
+    filter_params = list(filter_params_baseline) + list(filter_params_add) + list(filter_params_new) + ['impl']
+
+    # blocks are extracted through result_kwargs, but the block columns themselves must be requested in filter_results
+    filter_results_run = list(filter_results) + list(filter_blocks)
+
+    results = runner.run_all_threaded(
+        filter_params=filter_params,
+        filter_results=filter_results_run,
+        result_kwargs=dict(extract_blocks_list=filter_blocks),
+        **runner_kwargs
+    )
+
+    # ----------------------------
+    # Collect results per exp_type/key
+    # key = directory path excluding the trailing "<exp_type>-<seed>"
+    # ----------------------------
+    for exp_dir, df in results.items():
+        exp_dir_split = exp_dir.split(sep)
+        true_exp_dir = sep.join(exp_dir_split[:-1])
+
+        last = exp_dir_split[-1]
+        # safer than split('-') if exp_type ever contains '-' in the future
+        exp_type, _seed = last.rsplit('-', 1)
+
+        if exp_type not in exp_results:
+            # should not happen, but guard anyway
+            continue
+
+        df_dict = exp_results[exp_type]
+        if true_exp_dir not in df_dict:
+            df_dict[true_exp_dir] = df
+        else:
+            df_dict[true_exp_dir] = pd.concat([df_dict[true_exp_dir], df], ignore_index=True)
+
+    # ----------------------------
+    # Take mean across seeds for each exp_type/key
+    # ----------------------------
+    for exp_type, dfs in exp_results.items():
+        merged = None
+
+        flt = list(filter_params_baseline)
+        if exp_type != 'baseline':
+            flt += filter_params_new
+        # note: we generally do NOT want 'impl' in the grouping keys; it’s constant within each DF anyway.
+
+        for key, df in list(dfs.items()):
+            seed_mean = df.groupby(by=flt).mean(numeric_only=True).reset_index()
+
+            if df_processing_fn is not None:
+                seed_mean, new_keys = df_processing_fn(seed_mean)
+                for df_key in new_keys:
+                    if df_key not in filter_results_run:
+                        filter_results_run.append(df_key)
+
+            if merge_designs:
+                if merged is None:
+                    merged = seed_mean.copy(deep=True)
+                else:
+                    merged = merge_op(merged, seed_mean, lambda a, b: a * b, flt)
+
+            exp_results[exp_type][key] = seed_mean
+
+        if merge_designs and merged is not None:
+            keys_to_drop = list(exp_results[exp_type].keys())
+            # geometric mean
+            for col in [c for c in merged.columns if c not in flt]:
+                merged[col] **= 1.0 / max(len(keys_to_drop), 1)
+            exp_results[exp_type]['merged'] = merged
+
+    # ----------------------------
+    # Normalize + save/plot
+    # ----------------------------
+    new_raw_results: dict[str, pd.DataFrame] = {}
+    norm_results: dict[str, pd.DataFrame] = {}
+
+    non_baseline_types = [k for k in exp_results.keys() if k != 'baseline']
+
+    for exp_type in non_baseline_types:
+        for key, df in exp_results[exp_type].items():
+            out_key = f"{exp_type}__{key}"
+            new_raw_results[out_key] = df
+
+            if should_use_baseline:
+                base_df = exp_results['baseline'].get(key, None)
+                if base_df is None:
+                    raise KeyError(f"Missing baseline results for key='{key}' needed to normalize '{exp_type}'")
+                norm_results[out_key] = merge_op(
+                    df,
+                    base_df,
+                    lambda a, b: a / b,
+                    filter_params_baseline,
+                    ignore=avoid_norm
+                )
+            else:
+                def normalize_group(group: pd.DataFrame) -> pd.DataFrame:
+                    baseline_query = query_df(group, normalize_each_group_on)
+                    if baseline_query is None:
+                        raise ValueError(f"Could not find baseline row matching {normalize_each_group_on}")
+                    if baseline_query.shape[0] > 1:
+                        raise ValueError(f"Baseline row not unique for {normalize_each_group_on}")
+
+                    baseline_row = baseline_query.iloc[0]
+                    # normalize numeric result columns (exclude avoid_norm)
+                    norm_cols = list(set(filter_results_run) - set(avoid_norm))
+                    group[norm_cols] = group[norm_cols].div(baseline_row[norm_cols], axis=1)
+                    return group
+
+                norm_results[out_key] = df.groupby(group_normalize_on, group_keys=False).apply(normalize_group)
+
+    def do_with_dir_fn(dir: str):
+        # raw results (all non-baseline variants)
+        for exp_dir_key, df in new_raw_results.items():
+            df.to_csv(path.join(dir, f"{exp_dir_key.replace(path.sep, '_')}_raw_results.csv"))
+
+        if not should_use_baseline:
+            return
+
+        # baseline results
+        for exp_dir_key, df in exp_results['baseline'].items():
+            df.to_csv(path.join(dir, f"{exp_dir_key.replace(path.sep, '_')}_baseline_results.csv"))
+
+    if group_cols is None:
+        group_cols = list(filter_params_baseline)
+
+    plot_metrics = [x for x in filter_results_run if x not in avoid_plot]
+
+    def plot_fn(save_dir: str, filesafe_name: str, df: pd.DataFrame) -> None:
+        plot_xy(
+            df,
+            group_cols,
+            x_axis,
+            plot_metrics,
+            x_axis_label=[translations.get(c, c) for c in x_axis],
+            y_axis_label=[f"{'*' if c in avoid_norm else ''}{translations.get(c, c)}" for c in plot_metrics],
+            save_path=path.join(save_dir, f"{filesafe_name}_graphs.png"),
+            short_labels=group_cols_short_labels,
+            normalized_y_axes=list(set(plot_metrics) - set(avoid_norm)),
+            rotate_x_axis_labels=rotate_x_axis_labels,
+        )
+
+    save_and_plot(norm_results, do_with_dir_fn=do_with_dir_fn, plot_fn=plot_fn)
+
+

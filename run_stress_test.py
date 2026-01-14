@@ -10,12 +10,12 @@ This is stress testing both a baseline and modified architecture, with a Kratos 
 # Baseline and modified architectures
 from impl.arch.stratix_10.fair.base import BaseArchFactory
 from impl.arch.stratix_10.fair.lut_skip import LUTSkipArchFactory
-from impl.arch.stratix_10.lut_skip_scratch3 import LUTSkip3ArchFactory # @2.19 20:08, 10 dummy inputs
 
 # Input sharing architectures
-from impl.arch.stratix_10.sharing_2z import DD5_2Z_Input_Shared_AB
-from impl.arch.stratix_10.sharing_4z_AEBF import DD5_4Z_Input_Shared_AEBF
-from impl.arch.stratix_10.sharing_4z_ABlut4 import DD5_4Z_Input_Shared_ABlut4
+from impl.arch.stratix_10.sharing_1 import LUTSkipArchShare1
+from impl.arch.stratix_10.sharing_2 import LUTSkipArchShare2
+from impl.arch.stratix_10.sharing_3 import LUTSkipArchShare3
+from impl.arch.stratix_10.sharing_4 import LUTSkipArchShare4
 
 # Designs
 # Conv-1D
@@ -107,12 +107,12 @@ def add_derived_metrics(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 # Make ArchFactory and Design instances
-#*BASE_ARCH = LUTSkip3ArchFactory()
-#*MOD_ARCH = DD5_2Z_Input_Shared_AB()
 BASE_STRATIX_ARCH = BaseArchFactory()
-FOURSHARING_ARCH = DD5_4Z_Input_Shared_AEBF()
-TWOSHARING_ARCH = DD5_2Z_Input_Shared_AB()
-BASEDD5_ARCH = LUTSkip3ArchFactory()
+FOURSHARING_ARCH = LUTSkipArchShare4()
+THREESHARING_ARCH = LUTSkipArchShare3()
+TWOSHARING_ARCH = LUTSkipArchShare2()
+ONESHARING_ARCH =LUTSkipArchShare1()
+BASEDD5_ARCH = LUTSkipArchFactory()
 
 # Define design class list and plugin, N parameter
 PLUGIN = ShaxNPlugin()
@@ -217,11 +217,10 @@ def run_seq(DesignClass: Type[PluginDesign], plugin: Plugin, base_params: dict[s
     {
         'base_stratix': DataFrame,
         'fourshare': DataFrame,
+        'threeshare': DataFrame,
         'twoshare': DataFrame,
+        'oneshare': DataFrame,
         'base_dd5': DataFrame,
-        'norm_fourshare': DataFrame,
-        'norm_twoshare': DataFrame,
-        'norm_dd5': DataFrame,
     }
     """
 
@@ -257,59 +256,75 @@ def run_seq(DesignClass: Type[PluginDesign], plugin: Plugin, base_params: dict[s
     base_stratix_df = get_max_N(BASE_STRATIX_ARCH, DesignClass, plugin, sweep_params, N_param)
     print("(!) Getting all possible instances for 4Z architecture...")
     fourshare_df = get_max_N(FOURSHARING_ARCH, DesignClass, plugin, sweep_params, N_param)
+    print("(!) Getting all possible instances for 3Z architecture...")
+    threeshare_df = get_max_N(THREESHARING_ARCH, DesignClass, plugin, sweep_params, N_param)
     print("(!) Getting all possible instances for 2Z architecture...")
     twoshare_df = get_max_N(TWOSHARING_ARCH, DesignClass, plugin, sweep_params, N_param)
+    print("(!) Getting all possible instances for 1Z architecture...")
+    oneshare_df = get_max_N(ONESHARING_ARCH, DesignClass, plugin, sweep_params, N_param)
     print("(!) Getting all possible instances for base DD5 architecture...")
     base_dd5_df = get_max_N(BASEDD5_ARCH, DesignClass, plugin, sweep_params, N_param)
 
     # Print maximums
-    base_stratix_max = base_stratix_df.loc[base_stratix_df[N_param].idxmax()].to_dict()
-    fourshare_max = fourshare_df.loc[fourshare_df[N_param].idxmax()].to_dict()
-    twoshare_max = twoshare_df.loc[twoshare_df[N_param].idxmax()].to_dict()
-    base_dd5_max = base_dd5_df.loc[base_dd5_df[N_param].idxmax()].to_dict()
-    print("(!) Maximum for base Stratix-10 architecture:")
-    pretty(base_stratix_max, 1)
-    print("(!) Maximum for 4Z architecture:")
-    pretty(fourshare_max, 1)
-    print("(!) Maximum for 2Z architecture:")
-    pretty(twoshare_max, 1)
-    print("(!) Maximum for base DD5 architecture:")
-    pretty(base_dd5_max, 1)
-    
-    notify_via_tele(f"{design_name} maximum N | Stratix-10: {base_stratix_max[N_param]}, 4Z: {fourshare_max[N_param]}, 2Z: {twoshare_max[N_param]}, DD5: {base_dd5_max[N_param]}")
+    if not base_stratix_df.empty:
+        base_stratix_max = base_stratix_df.loc[base_stratix_df[N_param].idxmax()].to_dict()
+        print("(!) Maximum for base Stratix-10 architecture:")
+        pretty(base_stratix_max, 1)
+    else:
+        print("(!) Maximum for base Stratix-10 architecture: No successful runs")
 
-    # Merge on 'sha_num' and normalize to baseline for each design
-    norm_fourshare_df = merge_op(fourshare_df, base_stratix_df, lambda a, b: a/b, 
-                        merge_on=[N_param],
-                        ignore=AVOID_NORM_COLS + ['data_width', 'per_fle_area'])
+    if not fourshare_df.empty:
+        fourshare_max = fourshare_df.loc[fourshare_df[N_param].idxmax()].to_dict()
+        print("(!) Maximum for 4Z architecture:")
+        pretty(fourshare_max, 1)
+    else:
+        print("(!) Maximum for 4Z architecture: No successful runs")
 
-    norm_twoshare_df = merge_op(twoshare_df, base_stratix_df, lambda a, b: a/b, 
-                        merge_on=[N_param],
-                        ignore=AVOID_NORM_COLS + ['data_width', 'per_fle_area'])
+    if not threeshare_df.empty:
+        threeshare_max = threeshare_df.loc[threeshare_df[N_param].idxmax()].to_dict()
+        print("(!) Maximum for 3Z architecture:")
+        pretty(threeshare_max, 1)
+    else:
+        print("(!) Maximum for 3Z architecture: No successful runs")
 
-    norm_base_dd5_df = merge_op(base_dd5_df, base_stratix_df, lambda a, b: a/b, 
-                        merge_on=[N_param],
-                        ignore=AVOID_NORM_COLS + ['data_width', 'per_fle_area'])
+    if not twoshare_df.empty:
+        twoshare_max = twoshare_df.loc[twoshare_df[N_param].idxmax()].to_dict()
+        print("(!) Maximum for 2Z architecture:")
+        pretty(twoshare_max, 1)
+    else:
+        print("(!) Maximum for 2Z architecture: No successful runs")
+
+    if not oneshare_df.empty:
+        oneshare_max = oneshare_df.loc[oneshare_df[N_param].idxmax()].to_dict()
+        print("(!) Maximum for 1Z architecture:")
+        pretty(oneshare_max, 1)
+    else:
+        print("(!) Maximum for 1Z architecture: No successful runs")
+
+    if not base_dd5_df.empty:
+        base_dd5_max = base_dd5_df.loc[base_dd5_df[N_param].idxmax()].to_dict()
+        print("(!) Maximum for base DD5 architecture:")
+        pretty(base_dd5_max, 1)
+    else:
+        print("(!) Maximum for base DD5 architecture: No successful runs")
 
     return dict(
         base_stratix=base_stratix_df,
         fourshare=fourshare_df,
+        threeshare=threeshare_df,
         twoshare=twoshare_df,
+        oneshare=oneshare_df,
         base_dd5=base_dd5_df,
-        norm_fourshare=norm_fourshare_df,
-        norm_twoshare=norm_twoshare_df,
-        norm_dd5=norm_base_dd5_df
     )
-
 
 #### MAIN RUN SEQUENCE ####
 base_stratix_dfs = {}
 fourshare_dfs = {}
+threeshare_dfs = {}
 twoshare_dfs = {}
+oneshare_dfs = {}
 base_dd5_dfs = {}
-norm_fourshare_dfs = {}
-norm_twoshare_dfs = {}
-norm_dd5_dfs = {}
+
 for DesignClass, base_params in DESIGN_CLASS_LIST:
     design_name = DesignClass.__name__
     
@@ -321,11 +336,10 @@ for DesignClass, base_params in DESIGN_CLASS_LIST:
 
     base_stratix_dfs[design_name] = dfs['base_stratix']
     fourshare_dfs[design_name] = dfs['fourshare']
+    threeshare_dfs[design_name] = dfs['threeshare']
     twoshare_dfs[design_name] = dfs['twoshare']
+    oneshare_dfs[design_name] = dfs['oneshare']
     base_dd5_dfs[design_name] = dfs['base_dd5']
-    norm_fourshare_dfs[design_name] = dfs['norm_fourshare']
-    norm_twoshare_dfs[design_name] = dfs['norm_twoshare']
-    norm_dd5_dfs[design_name] = dfs['norm_dd5']
 
 # Save results
 
@@ -341,12 +355,10 @@ def save_all_csvs(save_dir: str) -> None:
     for key in base_stratix_dfs.keys():
         save_df(base_stratix_dfs[key], key, 'base_stratix_raw')
         save_df(fourshare_dfs[key],    key, 'fourshare_raw')
+        save_df(threeshare_dfs[key],   key, 'threeshare_raw')
         save_df(twoshare_dfs[key],     key, 'twoshare_raw')
+        save_df(oneshare_dfs[key],     key, 'oneshare_raw')
         save_df(base_dd5_dfs[key],     key, 'base_dd5_raw')
-
-        save_df(norm_fourshare_dfs[key], key, 'norm_fourshare')
-        save_df(norm_twoshare_dfs[key],  key, 'norm_twoshare')
-        save_df(norm_dd5_dfs[key],       key, 'norm_dd5')
 
 save_dir = make_results_dir("results")
 save_all_csvs(save_dir)
