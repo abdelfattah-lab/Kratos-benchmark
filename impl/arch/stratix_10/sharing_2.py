@@ -3,8 +3,8 @@ Adapted from lut_skip.py
 
 Modified:
 - shares two Z input with standard pins
-- use A and Z2, B and Z4 (maybe swap?) --> now symmetric, can have just one ble5 block now
-- all my changes denoted with "//"
+- use A and Z2, B and Z4 (maybe swap?) --> now symmetric, can have just one ble5 block (symmetric)
+- all changes from base Stratix-10 denoted with "//"
 """
 
 from structure.arch import ArchFactory
@@ -324,7 +324,7 @@ TEMPLATE = """<!--
           <mode name="n2_lut5">
             <pb_type name="ble5" num_pb="2">
               <input name="in" num_pins="5"/>
-              <input name="in_direct" num_pins="2"/> <!-- // 2 pins, but in_direct[1] = A/B -->
+              <input name="in_direct" num_pins="2"/>
               <input name="cin" num_pins="1"/>
               <output name="out" num_pins="2"/>
               <output name="cout" num_pins="1"/>
@@ -332,7 +332,7 @@ TEMPLATE = """<!--
               <mode name="arithmetic">
                 <pb_type name="arithmetic" num_pb="1">
                   <input name="in" num_pins="5"/>
-                  <input name="in_direct" num_pins="2"/> <!-- // put in_direct[1] = A/B, other one is actual in_direct -->
+                  <input name="in_direct" num_pins="2"/>
                   <input name="cin" num_pins="1"/>
                   <output name="out" num_pins="2"/>
                   <output name="cout" num_pins="1"/>

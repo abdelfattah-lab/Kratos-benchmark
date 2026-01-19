@@ -1,11 +1,11 @@
 """
-Adapted from sharing_2z.py (in same directory)
+Adapted from sharing_2z.py
 
 Modified:
 - remove Z inputs altogether from crossbar
 - use Z1 = A, Z2 = E, Z3 = B, Z4 = F
-- symmetric connection 
-- all my changes from base lutskip3 denoted with "//"
+- symmetric connection (only one ble5 structure needed)
+- all my changes from base lutskip denoted with "//"
 """
 
 from structure.arch import ArchFactory
@@ -307,7 +307,7 @@ TEMPLATE = """<!--
             -->
         <pb_type name="fle" num_pb="10">
           <input name="in" num_pins="8"/>
-          <!-- // deleted in_direct pin declaration -->
+          <!-- // removed in_direct pin declaration - no dedicated extra AddMux pins -->
           <input name="cin" num_pins="1"/>
           <output name="out" num_pins="4"/>
           <output name="cout" num_pins="1"/>
@@ -326,7 +326,7 @@ TEMPLATE = """<!--
           <mode name="n2_lut5">
             <pb_type name="ble5" num_pb="2"> 
               <input name="in" num_pins="5"/>
-              <input name="in_direct" num_pins="2"/> <!-- // 2 pins, in_direct[0] = A/B, in_direct[1] = E/F -->
+              <input name="in_direct" num_pins="2"/> 
               <input name="cin" num_pins="1"/>
               <output name="out" num_pins="2"/>
               <output name="cout" num_pins="1"/>
@@ -334,7 +334,7 @@ TEMPLATE = """<!--
               <mode name="arithmetic">
                 <pb_type name="arithmetic" num_pb="1">
                   <input name="in" num_pins="5"/>
-                  <input name="in_direct" num_pins="2"/> <!-- // 2 pins, just pass through ble.in_direct -->
+                  <input name="in_direct" num_pins="2"/> 
                   <input name="cin" num_pins="1"/>
                   <output name="out" num_pins="2"/>
                   <output name="cout" num_pins="1"/>
@@ -598,7 +598,7 @@ TEMPLATE = """<!--
             <delay_constant max="69.39e-12" in_port="lab.I2" out_port="fle.in[7:7]"/>
           </complete>
           
-          <!-- // deleted in_direct local interconnect -->
+          <!-- // removed in_direct local interconnect -->
 
           <complete name="clks" input="lab.clk" output="fle[9:0].clk"/>
           <!-- This way of specifying direct connection to clb outputs is important because this architecture uses automatic spreading of opins.  

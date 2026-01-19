@@ -1,3 +1,7 @@
+"""
+Script to look through look through VPR output zipfiles and extract various conditional probabilities
+"""
+
 from lxml import etree
 import numpy as np
 import matplotlib.pyplot as plt
